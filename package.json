@@ -1,0 +1,14 @@
+{
+  "name": "dashs-wake",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "vite": "^6.1.0"
+  }
+}
