@@ -7,8 +7,6 @@ const futureDestinations = [
   "Settings",
 ] as const;
 
-const PLAY_ROUTE = "#play";
-
 function destinationButton(name: (typeof futureDestinations)[number]): string {
   return `
     <button class="destination future" type="button" aria-label="${name} - Coming later" disabled>
@@ -18,7 +16,7 @@ function destinationButton(name: (typeof futureDestinations)[number]): string {
   `;
 }
 
-export function mountLobby(root: HTMLElement): void {
+export function mountLobby(root: HTMLElement, onPlay: () => void): () => void {
   root.innerHTML = `
     <main class="lobby">
       <header class="title">
@@ -32,7 +30,7 @@ export function mountLobby(root: HTMLElement): void {
           ${futureDestinations.slice(0, 3).map(destinationButton).join("")}
         </div>
 
-        <button class="play-button" type="button" data-action="play" aria-pressed="false">
+        <button class="play-button" type="button" data-action="play">
           <span class="play-symbol" aria-hidden="true"></span>
           <span>Play</span>
         </button>
@@ -41,32 +39,18 @@ export function mountLobby(root: HTMLElement): void {
           ${futureDestinations.slice(3).map(destinationButton).join("")}
         </div>
       </nav>
-
-      <section class="selection" hidden>
-        <p role="status">Play selected. The practice lane opens in the next build.</p>
-      </section>
     </main>
   `;
 
   const playButton = root.querySelector<HTMLButtonElement>("[data-action='play']");
-  const selection = root.querySelector<HTMLElement>(".selection");
 
-  if (!playButton || !selection) {
+  if (!playButton) {
     throw new Error("Lobby controls did not mount correctly.");
   }
 
-  const updateRoute = (): void => {
-    const selected = window.location.hash === PLAY_ROUTE;
-    playButton.setAttribute("aria-pressed", String(selected));
-    selection.hidden = !selected;
-    root.classList.toggle("play-selected", selected);
+  playButton.addEventListener("click", onPlay);
+
+  return () => {
+    playButton.removeEventListener("click", onPlay);
   };
-
-  playButton.addEventListener("click", () => {
-    window.location.hash = PLAY_ROUTE;
-    updateRoute();
-  });
-  window.addEventListener("hashchange", updateRoute);
-
-  updateRoute();
 }

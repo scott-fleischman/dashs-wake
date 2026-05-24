@@ -144,8 +144,7 @@ button {
 }
 
 .play-button:hover,
-.play-button:focus-visible,
-.play-selected .play-button {
+.play-button:focus-visible {
   border-color: #ecfcff;
   box-shadow: 0 0 44px rgba(25, 217, 243, 0.35), inset 0 0 28px rgba(25, 217, 243, 0.22);
   outline: none;
@@ -166,18 +165,186 @@ button {
   width: 0;
 }
 
-.selection {
-  background: rgba(7, 17, 29, 0.8);
-  border: 1px solid rgba(25, 217, 243, 0.42);
-  border-radius: 999px;
-  color: #bfd8e5;
-  font-size: 0.86rem;
-  letter-spacing: 0.07em;
-  padding: 0.75rem 1.5rem;
+.practice-lane {
+  height: 100%;
+  position: relative;
 }
 
-.selection p {
+.practice-header {
+  left: clamp(1.25rem, 5vw, 4rem);
+  position: absolute;
+  top: clamp(1.4rem, 7vh, 3.8rem);
+}
+
+.practice-header h1 {
+  font-size: clamp(2rem, 5vw, 3.8rem);
+}
+
+.run-status {
+  background: rgba(25, 217, 243, 0.1);
+  border: 1px solid rgba(25, 217, 243, 0.42);
+  border-radius: 999px;
+  color: #19d9f3;
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  margin: 1.1rem 0 0;
+  padding: 0.48rem 0.86rem;
+  text-transform: uppercase;
+}
+
+.input-deck {
+  align-items: center;
+  bottom: clamp(1.4rem, 5vh, 2.6rem);
+  display: flex;
+  gap: 1rem;
+  left: clamp(1.25rem, 5vw, 4rem);
+  position: absolute;
+}
+
+.pulse-pad {
+  background: rgba(8, 21, 37, 0.9);
+  border: 1px solid rgba(25, 217, 243, 0.54);
+  border-radius: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 10.5rem;
+  padding: 0.78rem 1.15rem;
+  text-align: left;
+  transition: border-color 130ms ease, box-shadow 130ms ease;
+}
+
+.pulse-pad span {
+  color: #ebf8ff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pulse-pad small {
+  color: #84a8bb;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.pulse-pad.active,
+.pulse-pad:hover,
+.pulse-pad:focus-visible {
+  border-color: #ecfcff;
+  box-shadow: 0 0 24px rgba(25, 217, 243, 0.27);
+  outline: none;
+}
+
+.input-feedback {
+  color: #84a8bb;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.19em;
   margin: 0;
+  text-transform: uppercase;
+}
+
+.run-controls {
+  align-items: center;
+  display: flex;
+  gap: 0.9rem;
+  position: absolute;
+  right: clamp(1.25rem, 5vw, 4rem);
+  top: clamp(1.4rem, 7vh, 3.8rem);
+}
+
+.run-controls span {
+  color: #8eaabd;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+kbd {
+  border: 1px solid rgba(142, 170, 189, 0.45);
+  border-radius: 0.28rem;
+  padding: 0.15rem 0.3rem;
+}
+
+.utility-button,
+.primary-button {
+  border-radius: 0.55rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  padding: 0.72rem 1rem;
+  text-transform: uppercase;
+}
+
+.utility-button {
+  background: rgba(10, 23, 38, 0.8);
+  border: 1px solid rgba(142, 170, 189, 0.43);
+}
+
+.primary-button {
+  background: rgba(25, 217, 243, 0.17);
+  border: 1px solid #19d9f3;
+}
+
+.utility-button:hover,
+.utility-button:focus-visible,
+.primary-button:hover,
+.primary-button:focus-visible {
+  border-color: #ecfcff;
+  outline: none;
+}
+
+.pause-overlay {
+  align-items: center;
+  background: rgba(7, 17, 29, 0.94);
+  border: 1px solid rgba(25, 217, 243, 0.5);
+  border-radius: 1rem;
+  box-shadow: 0 0 70px rgba(0, 0, 0, 0.48);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  left: 50%;
+  min-width: min(22rem, calc(100vw - 2.5rem));
+  padding: 2rem 2.4rem;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.pause-overlay[hidden] {
+  display: none;
+}
+
+.pause-overlay h2 {
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+  letter-spacing: 0.17em;
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.practice-paused .input-deck,
+.practice-paused .run-controls {
+  opacity: 0.35;
+}
+
+.practice-paused::after {
+  background: rgba(7, 17, 29, 0.56);
+  content: "";
+  inset: 0;
+  position: absolute;
+  z-index: 1;
 }
 
 @media (max-width: 640px) {
@@ -206,5 +373,20 @@ button {
   .future-left,
   .future-right {
     width: min(100%, 20rem);
+  }
+
+  .practice-header,
+  .input-deck,
+  .run-controls {
+    left: 1.25rem;
+    right: auto;
+  }
+
+  .input-deck {
+    bottom: 1.25rem;
+  }
+
+  .run-controls {
+    top: 10.4rem;
   }
 }

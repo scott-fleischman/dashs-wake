@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 const LOBBY_SCENE_KEY = "lobby-backdrop";
+const PRACTICE_SCENE_KEY = "practice-lane";
 
 class LobbyBackdropScene extends Phaser.Scene {
   private pulse?: Phaser.GameObjects.Arc;
@@ -13,6 +14,9 @@ class LobbyBackdropScene extends Phaser.Scene {
   create(): void {
     this.drawScene();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.drawScene, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.drawScene, this);
+    });
   }
 
   update(time: number): void {
@@ -76,8 +80,133 @@ class LobbyBackdropScene extends Phaser.Scene {
   }
 }
 
-export function startLobbyBackdrop(parent: HTMLElement): Phaser.Game {
-  return new Phaser.Game({
+interface MovingMarker {
+  object: Phaser.GameObjects.Rectangle;
+  startX: number;
+}
+
+class PracticeLaneScene extends Phaser.Scene {
+  private elapsed = 0;
+  private floorY = 0;
+  private movingMarkers: MovingMarker[] = [];
+  private player?: Phaser.GameObjects.Rectangle;
+  private pulseRemaining = 0;
+  private running = true;
+
+  constructor() {
+    super(PRACTICE_SCENE_KEY);
+  }
+
+  create(): void {
+    this.elapsed = 0;
+    this.pulseRemaining = 0;
+    this.running = true;
+    this.drawScene();
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.drawScene, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.drawScene, this);
+    });
+  }
+
+  update(_time: number, delta: number): void {
+    if (!this.running) {
+      return;
+    }
+
+    this.elapsed += delta;
+    this.pulseRemaining = Math.max(0, this.pulseRemaining - delta);
+
+    const span = this.scale.width + 180;
+    const distance = (this.elapsed * 0.22) % span;
+
+    for (const marker of this.movingMarkers) {
+      marker.object.x = ((marker.startX - distance + span) % span) - 70;
+    }
+
+    const pulseProgress = this.pulseRemaining / 360;
+    const lift = Math.sin((1 - pulseProgress) * Math.PI) * 56;
+    const baseline = this.floorY - 27;
+
+    this.player
+      ?.setY(baseline - lift)
+      .setRotation(this.elapsed / 350)
+      .setFillStyle(this.pulseRemaining > 0 ? 0xecfcff : 0x19d9f3);
+  }
+
+  setPaused(paused: boolean): void {
+    this.running = !paused;
+  }
+
+  pulsePlayer(): void {
+    if (this.running) {
+      this.pulseRemaining = 360;
+    }
+  }
+
+  private drawScene(): void {
+    const width = this.scale.width;
+    const height = this.scale.height;
+
+    this.children.removeAll();
+    this.floorY = height * 0.71;
+    this.movingMarkers = [];
+
+    const wash = this.add.graphics();
+    wash.fillGradientStyle(0x07111d, 0x07111d, 0x112037, 0x112037, 1);
+    wash.fillRect(0, 0, width, height);
+
+    const horizon = this.add.graphics();
+    horizon.lineStyle(1, 0x19d9f3, 0.16);
+    for (let y = this.floorY - 150; y < this.floorY; y += 38) {
+      horizon.lineBetween(0, y, width, y);
+    }
+
+    const track = this.add.graphics();
+    track.fillStyle(0x0d1d2d, 1);
+    track.fillRect(0, this.floorY, width, height - this.floorY);
+    track.lineStyle(3, 0x19d9f3, 0.75);
+    track.lineBetween(0, this.floorY, width, this.floorY);
+
+    const markerSpacing = 138;
+    const markerCount = Math.ceil((width + 180) / markerSpacing) + 1;
+
+    for (let index = 0; index < markerCount; index += 1) {
+      const startX = index * markerSpacing;
+      const marker = this.add
+        .rectangle(startX, this.floorY + 34, 52, 3, 0xa45bff, 0.58)
+        .setOrigin(0, 0.5);
+      this.movingMarkers.push({ object: marker, startX });
+
+      if (index % 3 === 2) {
+        const obstacle = this.add
+          .rectangle(startX + 70, this.floorY - 15, 22, 22, 0xa45bff, 0.34)
+          .setRotation(Math.PI / 4);
+        this.movingMarkers.push({ object: obstacle, startX: startX + 70 });
+      }
+    }
+
+    this.player = this.add
+      .rectangle(width * 0.22, this.floorY - 27, 38, 38, 0x19d9f3)
+      .setStrokeStyle(3, 0xecfcff, 0.85);
+
+    this.add
+      .rectangle(width * 0.22, this.floorY + 2, 80, 3, 0x19d9f3, 0.28)
+      .setOrigin(0.5, 0);
+  }
+}
+
+export interface BackdropController {
+  destroy(removeCanvas?: boolean): void;
+  pulsePlayer(): void;
+  setPracticePaused(paused: boolean): void;
+  showLobby(): void;
+  showPractice(): void;
+}
+
+export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
+  let requestedScene = LOBBY_SCENE_KEY;
+  let scenesReady = false;
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
     backgroundColor: "#07111d",
@@ -89,4 +218,51 @@ export function startLobbyBackdrop(parent: HTMLElement): Phaser.Game {
     },
     scene: LobbyBackdropScene,
   });
+
+  const applyRequestedScene = (): void => {
+    if (!game.isBooted || !scenesReady) {
+      return;
+    }
+
+    const inactiveScene =
+      requestedScene === LOBBY_SCENE_KEY ? PRACTICE_SCENE_KEY : LOBBY_SCENE_KEY;
+
+    if (game.scene.isActive(inactiveScene)) {
+      game.scene.stop(inactiveScene);
+    }
+
+    if (!game.scene.isActive(requestedScene)) {
+      game.scene.start(requestedScene);
+    }
+  };
+
+  game.events.once(Phaser.Core.Events.READY, () => {
+    game.scene.add(PRACTICE_SCENE_KEY, PracticeLaneScene, false);
+    scenesReady = true;
+    applyRequestedScene();
+  });
+
+  return {
+    destroy: (removeCanvas = false) => game.destroy(removeCanvas),
+    pulsePlayer: () => {
+      if (game.scene.isActive(PRACTICE_SCENE_KEY)) {
+        (game.scene.getScene(PRACTICE_SCENE_KEY) as PracticeLaneScene).pulsePlayer();
+      }
+    },
+    setPracticePaused: (paused: boolean) => {
+      if (game.scene.isActive(PRACTICE_SCENE_KEY)) {
+        (game.scene.getScene(PRACTICE_SCENE_KEY) as PracticeLaneScene).setPaused(
+          paused,
+        );
+      }
+    },
+    showLobby: () => {
+      requestedScene = LOBBY_SCENE_KEY;
+      applyRequestedScene();
+    },
+    showPractice: () => {
+      requestedScene = PRACTICE_SCENE_KEY;
+      applyRequestedScene();
+    },
+  };
 }
