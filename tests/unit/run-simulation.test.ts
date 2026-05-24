@@ -63,7 +63,7 @@ describe("cube run simulation", () => {
       elapsedMs: 400,
       player: {
         grounded: false,
-        velocityY: 4,
+        velocityY: 8,
         x: 9,
         y: 91,
       },
