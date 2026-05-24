@@ -118,6 +118,7 @@ export function mountPracticeLane(
   return () => {
     window.clearTimeout(feedbackTimer);
     window.removeEventListener("keydown", onKeyDown);
+    root.classList.remove("practice-paused");
     actions.onPauseChange(false);
   };
 }

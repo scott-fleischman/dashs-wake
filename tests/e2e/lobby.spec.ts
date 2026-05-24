@@ -53,6 +53,12 @@ test("practice lane pauses with Escape and returns to the lobby", async ({
   await expect(
     page.getByRole("heading", { name: "Dash's Wake" }),
   ).toBeVisible();
+
+  await page.getByRole("button", { name: "Play" }).click();
+  await expect(page).toHaveURL(/#play$/);
+  await expect(
+    page.getByRole("heading", { name: "Practice Lane" }),
+  ).toBeVisible();
 });
 
 test("practice lane ignores a second jump while the cube is airborne", async ({
