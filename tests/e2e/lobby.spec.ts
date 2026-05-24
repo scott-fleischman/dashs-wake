@@ -54,3 +54,15 @@ test("practice lane pauses with Escape and returns to the lobby", async ({
     page.getByRole("heading", { name: "Dash's Wake" }),
   ).toBeVisible();
 });
+
+test("practice lane ignores a second jump while the cube is airborne", async ({
+  page,
+}) => {
+  await page.goto("/#play");
+
+  await page.keyboard.press("Space");
+  await expect(page.getByText("Pulse registered")).toBeVisible();
+
+  await page.keyboard.press("Space");
+  await expect(page.getByText("Airborne - jump ignored")).toBeVisible();
+});

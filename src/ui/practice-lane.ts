@@ -1,5 +1,5 @@
 interface PracticeLaneActions {
-  onInput: () => void;
+  onInput: () => boolean;
   onPauseChange: (paused: boolean) => void;
   onReturnToLobby: () => void;
 }
@@ -82,7 +82,11 @@ export function mountPracticeLane(
       return;
     }
 
-    actions.onInput();
+    if (!actions.onInput()) {
+      feedback.textContent = "Airborne - jump ignored";
+      return;
+    }
+
     pulseButton.classList.add("active");
     feedback.textContent = "Pulse registered";
     window.clearTimeout(feedbackTimer);

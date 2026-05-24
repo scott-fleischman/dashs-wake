@@ -137,10 +137,13 @@ class PracticeLaneScene extends Phaser.Scene {
     this.running = !paused;
   }
 
-  pulsePlayer(): void {
-    if (this.running) {
-      this.pulseRemaining = 360;
+  pulsePlayer(): boolean {
+    if (!this.running || this.pulseRemaining > 0) {
+      return false;
     }
+
+    this.pulseRemaining = 360;
+    return true;
   }
 
   private drawScene(): void {
@@ -197,7 +200,7 @@ class PracticeLaneScene extends Phaser.Scene {
 
 export interface BackdropController {
   destroy(removeCanvas?: boolean): void;
-  pulsePlayer(): void;
+  pulsePlayer(): boolean;
   setPracticePaused(paused: boolean): void;
   showLobby(): void;
   showPractice(): void;
@@ -246,8 +249,10 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
     destroy: (removeCanvas = false) => game.destroy(removeCanvas),
     pulsePlayer: () => {
       if (game.scene.isActive(PRACTICE_SCENE_KEY)) {
-        (game.scene.getScene(PRACTICE_SCENE_KEY) as PracticeLaneScene).pulsePlayer();
+        return (game.scene.getScene(PRACTICE_SCENE_KEY) as PracticeLaneScene).pulsePlayer();
       }
+
+      return false;
     },
     setPracticePaused: (paused: boolean) => {
       if (game.scene.isActive(PRACTICE_SCENE_KEY)) {
