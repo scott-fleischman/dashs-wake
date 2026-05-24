@@ -1,9 +1,9 @@
 import "./styles.css";
 import { startLobbyBackdrop } from "./game/lobby-backdrop";
 import { mountLobby } from "./ui/lobby";
-import { mountPracticeLane } from "./ui/practice-lane";
+import { mountFirstWake } from "./ui/first-wake";
 
-const PRACTICE_ROUTE = "#play";
+const FIRST_WAKE_ROUTE = "#play";
 
 function requiredElement(id: string): HTMLElement {
   const element = document.getElementById(id);
@@ -22,21 +22,24 @@ let disposeView = (): void => {};
 function renderRoute(): void {
   disposeView();
 
-  if (window.location.hash === PRACTICE_ROUTE) {
-    backdrop.showPractice();
-    disposeView = mountPracticeLane(root, {
-      onInput: () => backdrop.pulsePlayer(),
-      onPauseChange: (paused) => backdrop.setPracticePaused(paused),
+  if (window.location.hash === FIRST_WAKE_ROUTE) {
+    backdrop.showFirstWake();
+    disposeView = mountFirstWake(root, {
+      onInput: () => backdrop.jumpFirstWake(),
+      onPauseChange: (paused) => backdrop.setFirstWakePaused(paused),
+      onRestart: () => backdrop.restartFirstWake(),
       onReturnToLobby: () => {
         window.location.hash = "";
       },
+      onSnapshotChange: (listener) =>
+        backdrop.setFirstWakeSnapshotListener(listener),
     });
     return;
   }
 
   backdrop.showLobby();
   disposeView = mountLobby(root, () => {
-    window.location.hash = PRACTICE_ROUTE;
+    window.location.hash = FIRST_WAKE_ROUTE;
   });
 }
 

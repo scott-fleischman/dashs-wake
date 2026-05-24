@@ -1,7 +1,15 @@
 import Phaser from "phaser";
+import {
+  createRunState,
+  resetRunState,
+  tickRun,
+  type LevelEntity,
+  type RunRules,
+  type RunState,
+} from "../core/run-simulation";
 
 const LOBBY_SCENE_KEY = "lobby-backdrop";
-const PRACTICE_SCENE_KEY = "practice-lane";
+const FIRST_WAKE_SCENE_KEY = "first-wake";
 
 class LobbyBackdropScene extends Phaser.Scene {
   private pulse?: Phaser.GameObjects.Arc;
@@ -80,28 +88,55 @@ class LobbyBackdropScene extends Phaser.Scene {
   }
 }
 
-interface MovingMarker {
-  object: Phaser.GameObjects.Rectangle;
-  startX: number;
+export interface FirstWakeSnapshot {
+  attempt: number;
+  deathCause?: "fall" | "spike";
+  percent: number;
+  status: "complete" | "dead" | "running";
 }
 
-class PracticeLaneScene extends Phaser.Scene {
-  private elapsed = 0;
+const FIRST_WAKE_RULES: RunRules = {
+  fallBoundaryY: 420,
+  gravity: 1250,
+  groundY: 300,
+  horizontalSpeed: 190,
+  jumpVelocity: -540,
+  playerHeight: 34,
+  playerWidth: 34,
+};
+const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
+  { type: "spike", height: 30, width: 30, x: 160, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 425, y: 270 },
+];
+const FIRST_WAKE_FINISH_X = 690;
+const SIMULATION_STEP_MS = 1000 / 60;
+
+class FirstWakeScene extends Phaser.Scene {
+  private accumulator = 0;
+  private attempt = 1;
+  private courseLayer?: Phaser.GameObjects.Container;
   private floorY = 0;
-  private movingMarkers: MovingMarker[] = [];
+  private jumpQueued = false;
+  private lastSnapshotKey = "";
+  private onSnapshot?: (snapshot: FirstWakeSnapshot) => void;
+  private paused = false;
   private player?: Phaser.GameObjects.Rectangle;
-  private pulseRemaining = 0;
-  private running = true;
+  private state: RunState = createRunState(FIRST_WAKE_RULES);
+  private status: FirstWakeSnapshot["status"] = "running";
 
   constructor() {
-    super(PRACTICE_SCENE_KEY);
+    super(FIRST_WAKE_SCENE_KEY);
   }
 
   create(): void {
-    this.elapsed = 0;
-    this.pulseRemaining = 0;
-    this.running = true;
+    this.accumulator = 0;
+    this.attempt = 1;
+    this.jumpQueued = false;
+    this.paused = false;
+    this.state = createRunState(FIRST_WAKE_RULES);
+    this.status = "running";
     this.drawScene();
+    this.publishSnapshot(true);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.drawScene, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.drawScene, this);
@@ -109,41 +144,72 @@ class PracticeLaneScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (!this.running) {
+    if (this.paused || this.status !== "running") {
       return;
     }
 
-    this.elapsed += delta;
-    this.pulseRemaining = Math.max(0, this.pulseRemaining - delta);
+    this.accumulator += Math.min(delta, 100);
 
-    const span = this.scale.width + 180;
-    const distance = (this.elapsed * 0.22) % span;
+    while (this.accumulator >= SIMULATION_STEP_MS) {
+      this.state = tickRun(
+        this.state,
+        { jumpPressed: this.jumpQueued },
+        SIMULATION_STEP_MS,
+        FIRST_WAKE_RULES,
+        FIRST_WAKE_ENTITIES,
+      );
+      this.jumpQueued = false;
+      this.accumulator -= SIMULATION_STEP_MS;
 
-    for (const marker of this.movingMarkers) {
-      marker.object.x = ((marker.startX - distance + span) % span) - 70;
+      if (this.state.status === "dead") {
+        this.status = "dead";
+        break;
+      }
+
+      if (this.state.player.x >= FIRST_WAKE_FINISH_X) {
+        this.status = "complete";
+        break;
+      }
     }
 
-    const pulseProgress = this.pulseRemaining / 360;
-    const lift = Math.sin((1 - pulseProgress) * Math.PI) * 56;
-    const baseline = this.floorY - 27;
-
-    this.player
-      ?.setY(baseline - lift)
-      .setRotation(this.elapsed / 350)
-      .setFillStyle(this.pulseRemaining > 0 ? 0xecfcff : 0x19d9f3);
+    this.updatePresentation();
+    this.publishSnapshot();
   }
 
   setPaused(paused: boolean): void {
-    this.running = !paused;
+    this.paused = paused;
   }
 
-  pulsePlayer(): boolean {
-    if (!this.running || this.pulseRemaining > 0) {
+  jump(): boolean {
+    if (
+      this.paused ||
+      this.status !== "running" ||
+      this.jumpQueued ||
+      !this.state.player.grounded
+    ) {
       return false;
     }
 
-    this.pulseRemaining = 360;
+    this.jumpQueued = true;
     return true;
+  }
+
+  restart(): void {
+    this.accumulator = 0;
+    this.attempt += 1;
+    this.jumpQueued = false;
+    this.paused = false;
+    this.state = resetRunState(this.state, FIRST_WAKE_RULES);
+    this.status = "running";
+    this.updatePresentation();
+    this.publishSnapshot(true);
+  }
+
+  setSnapshotListener(
+    listener: ((snapshot: FirstWakeSnapshot) => void) | undefined,
+  ): void {
+    this.onSnapshot = listener;
+    this.publishSnapshot(true);
   }
 
   private drawScene(): void {
@@ -152,7 +218,6 @@ class PracticeLaneScene extends Phaser.Scene {
 
     this.children.removeAll();
     this.floorY = height * 0.71;
-    this.movingMarkers = [];
 
     const wash = this.add.graphics();
     wash.fillGradientStyle(0x07111d, 0x07111d, 0x112037, 0x112037, 1);
@@ -164,51 +229,123 @@ class PracticeLaneScene extends Phaser.Scene {
       horizon.lineBetween(0, y, width, y);
     }
 
+    this.courseLayer = this.add.container(0, 0);
+
     const track = this.add.graphics();
     track.fillStyle(0x0d1d2d, 1);
-    track.fillRect(0, this.floorY, width, height - this.floorY);
+    track.fillRect(-180, this.floorY, FIRST_WAKE_FINISH_X + width, height - this.floorY);
     track.lineStyle(3, 0x19d9f3, 0.75);
-    track.lineBetween(0, this.floorY, width, this.floorY);
-
-    const markerSpacing = 138;
-    const markerCount = Math.ceil((width + 180) / markerSpacing) + 1;
-
-    for (let index = 0; index < markerCount; index += 1) {
-      const startX = index * markerSpacing;
-      const marker = this.add
-        .rectangle(startX, this.floorY + 34, 52, 3, 0xa45bff, 0.58)
-        .setOrigin(0, 0.5);
-      this.movingMarkers.push({ object: marker, startX });
-
-      if (index % 3 === 2) {
-        const obstacle = this.add
-          .rectangle(startX + 70, this.floorY - 15, 22, 22, 0xa45bff, 0.34)
-          .setRotation(Math.PI / 4);
-        this.movingMarkers.push({ object: obstacle, startX: startX + 70 });
-      }
+    track.lineBetween(-180, this.floorY, FIRST_WAKE_FINISH_X + width, this.floorY);
+    track.lineStyle(2, 0xa45bff, 0.44);
+    for (let x = 30; x < FIRST_WAKE_FINISH_X + width; x += 110) {
+      track.lineBetween(x, this.floorY + 35, x + 48, this.floorY + 35);
     }
+    this.courseLayer.add(track);
+
+    const hazards = this.add.graphics();
+    hazards.fillStyle(0xff437d, 1);
+    for (const entity of FIRST_WAKE_ENTITIES) {
+      if (entity.type !== "spike") {
+        continue;
+      }
+
+      const y = this.floorY + entity.y - FIRST_WAKE_RULES.groundY;
+      hazards.fillTriangle(
+        entity.x,
+        y + entity.height,
+        entity.x + entity.width / 2,
+        y,
+        entity.x + entity.width,
+        y + entity.height,
+      );
+    }
+    this.courseLayer.add(hazards);
+
+    const finishGate = this.add.graphics();
+    finishGate.lineStyle(4, 0x19d9f3, 0.85);
+    finishGate.lineBetween(FIRST_WAKE_FINISH_X, this.floorY - 132, FIRST_WAKE_FINISH_X, this.floorY);
+    finishGate.lineStyle(2, 0xecfcff, 0.62);
+    finishGate.strokeCircle(FIRST_WAKE_FINISH_X, this.floorY - 145, 10);
+    this.courseLayer.add(finishGate);
+    this.courseLayer.add(
+      this.add.text(FIRST_WAKE_FINISH_X - 30, this.floorY - 177, "FINISH", {
+        color: "#ecfcff",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "12px",
+        letterSpacing: 2,
+      }),
+    );
 
     this.player = this.add
-      .rectangle(width * 0.22, this.floorY - 27, 38, 38, 0x19d9f3)
+      .rectangle(
+        width * 0.22,
+        this.floorY - FIRST_WAKE_RULES.playerHeight / 2,
+        FIRST_WAKE_RULES.playerWidth,
+        FIRST_WAKE_RULES.playerHeight,
+        0x19d9f3,
+      )
       .setStrokeStyle(3, 0xecfcff, 0.85);
 
     this.add
       .rectangle(width * 0.22, this.floorY + 2, 80, 3, 0x19d9f3, 0.28)
       .setOrigin(0.5, 0);
+
+    this.updatePresentation();
+  }
+
+  private updatePresentation(): void {
+    const playerScreenX = this.scale.width * 0.22;
+    const playerScreenY =
+      this.floorY +
+      this.state.player.y -
+      FIRST_WAKE_RULES.groundY -
+      FIRST_WAKE_RULES.playerHeight / 2;
+
+    this.courseLayer?.setX(playerScreenX - this.state.player.x);
+    this.player
+      ?.setY(playerScreenY)
+      .setRotation(this.state.player.x / 62)
+      .setFillStyle(this.status === "dead" ? 0xff437d : 0x19d9f3);
+  }
+
+  private publishSnapshot(force = false): void {
+    const percent =
+      this.status === "complete"
+        ? 100
+        : Math.min(99, Math.floor((this.state.player.x / FIRST_WAKE_FINISH_X) * 100));
+    const snapshot: FirstWakeSnapshot = {
+      attempt: this.attempt,
+      ...(this.state.deathCause ? { deathCause: this.state.deathCause } : {}),
+      percent,
+      status: this.status,
+    };
+    const key = JSON.stringify(snapshot);
+
+    if (!force && key === this.lastSnapshotKey) {
+      return;
+    }
+
+    this.lastSnapshotKey = key;
+    this.onSnapshot?.(snapshot);
   }
 }
 
 export interface BackdropController {
   destroy(removeCanvas?: boolean): void;
-  pulsePlayer(): boolean;
-  setPracticePaused(paused: boolean): void;
+  jumpFirstWake(): boolean;
+  restartFirstWake(): void;
+  setFirstWakeSnapshotListener(
+    listener: ((snapshot: FirstWakeSnapshot) => void) | undefined,
+  ): void;
+  setFirstWakePaused(paused: boolean): void;
   showLobby(): void;
-  showPractice(): void;
+  showFirstWake(): void;
 }
 
 export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
   let requestedScene = LOBBY_SCENE_KEY;
   let scenesReady = false;
+  let snapshotListener: ((snapshot: FirstWakeSnapshot) => void) | undefined;
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -228,7 +365,7 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
     }
 
     const inactiveScene =
-      requestedScene === LOBBY_SCENE_KEY ? PRACTICE_SCENE_KEY : LOBBY_SCENE_KEY;
+      requestedScene === LOBBY_SCENE_KEY ? FIRST_WAKE_SCENE_KEY : LOBBY_SCENE_KEY;
 
     if (game.scene.isActive(inactiveScene)) {
       game.scene.stop(inactiveScene);
@@ -240,23 +377,40 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
   };
 
   game.events.once(Phaser.Core.Events.READY, () => {
-    game.scene.add(PRACTICE_SCENE_KEY, PracticeLaneScene, false);
+    game.scene.add(FIRST_WAKE_SCENE_KEY, FirstWakeScene, false);
+    (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).setSnapshotListener(
+      snapshotListener,
+    );
     scenesReady = true;
     applyRequestedScene();
   });
 
   return {
     destroy: (removeCanvas = false) => game.destroy(removeCanvas),
-    pulsePlayer: () => {
-      if (game.scene.isActive(PRACTICE_SCENE_KEY)) {
-        return (game.scene.getScene(PRACTICE_SCENE_KEY) as PracticeLaneScene).pulsePlayer();
+    jumpFirstWake: () => {
+      if (game.scene.isActive(FIRST_WAKE_SCENE_KEY)) {
+        return (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).jump();
       }
 
       return false;
     },
-    setPracticePaused: (paused: boolean) => {
-      if (game.scene.isActive(PRACTICE_SCENE_KEY)) {
-        (game.scene.getScene(PRACTICE_SCENE_KEY) as PracticeLaneScene).setPaused(
+    restartFirstWake: () => {
+      if (game.scene.isActive(FIRST_WAKE_SCENE_KEY)) {
+        (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).restart();
+      }
+    },
+    setFirstWakeSnapshotListener: (listener) => {
+      snapshotListener = listener;
+
+      if (scenesReady) {
+        (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).setSnapshotListener(
+          listener,
+        );
+      }
+    },
+    setFirstWakePaused: (paused: boolean) => {
+      if (game.scene.isActive(FIRST_WAKE_SCENE_KEY)) {
+        (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).setPaused(
           paused,
         );
       }
@@ -265,8 +419,8 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
       requestedScene = LOBBY_SCENE_KEY;
       applyRequestedScene();
     },
-    showPractice: () => {
-      requestedScene = PRACTICE_SCENE_KEY;
+    showFirstWake: () => {
+      requestedScene = FIRST_WAKE_SCENE_KEY;
       applyRequestedScene();
     },
   };

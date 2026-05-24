@@ -165,18 +165,18 @@ button {
   width: 0;
 }
 
-.practice-lane {
+.first-wake {
   height: 100%;
   position: relative;
 }
 
-.practice-header {
+.first-wake-header {
   left: clamp(1.25rem, 5vw, 4rem);
   position: absolute;
   top: clamp(1.4rem, 7vh, 3.8rem);
 }
 
-.practice-header h1 {
+.first-wake-header h1 {
   font-size: clamp(2rem, 5vw, 3.8rem);
 }
 
@@ -192,6 +192,41 @@ button {
   margin: 1.1rem 0 0;
   padding: 0.48rem 0.86rem;
   text-transform: uppercase;
+}
+
+.run-hud {
+  align-items: center;
+  background: rgba(8, 21, 37, 0.8);
+  border: 1px solid rgba(25, 217, 243, 0.34);
+  border-radius: 0.8rem;
+  display: flex;
+  gap: 0.8rem;
+  left: 50%;
+  padding: 0.7rem 1rem;
+  position: absolute;
+  top: clamp(1.4rem, 7vh, 3.8rem);
+  transform: translateX(-50%);
+}
+
+.hud-label,
+.attempt-count {
+  color: #84a8bb;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.hud-value {
+  color: #ecfcff;
+  font-size: 1.4rem;
+  letter-spacing: 0.1em;
+}
+
+.attempt-count {
+  border-left: 1px solid rgba(142, 170, 189, 0.3);
+  padding-left: 0.8rem;
 }
 
 .input-deck {
@@ -238,6 +273,12 @@ button {
   border-color: #ecfcff;
   box-shadow: 0 0 24px rgba(25, 217, 243, 0.27);
   outline: none;
+}
+
+.pulse-pad:disabled {
+  border-color: rgba(142, 170, 189, 0.27);
+  cursor: default;
+  opacity: 0.5;
 }
 
 .input-feedback {
@@ -334,12 +375,19 @@ kbd {
   gap: 0.7rem;
 }
 
-.practice-paused .input-deck,
-.practice-paused .run-controls {
+.result-message {
+  color: #9eb8cc;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+}
+
+.first-wake-paused .input-deck,
+.first-wake-paused .run-controls {
   opacity: 0.35;
 }
 
-.practice-paused::after {
+.first-wake-paused::after {
   background: rgba(7, 17, 29, 0.56);
   content: "";
   inset: 0;
@@ -375,7 +423,8 @@ kbd {
     width: min(100%, 20rem);
   }
 
-  .practice-header,
+  .first-wake-header,
+  .run-hud,
   .input-deck,
   .run-controls {
     left: 1.25rem;
@@ -386,7 +435,12 @@ kbd {
     bottom: 1.25rem;
   }
 
-  .run-controls {
+  .run-hud {
     top: 10.4rem;
+    transform: none;
+  }
+
+  .run-controls {
+    top: 14.8rem;
   }
 }
