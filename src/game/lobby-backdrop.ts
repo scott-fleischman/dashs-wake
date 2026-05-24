@@ -1,10 +1,9 @@
 import Phaser from "phaser";
+import { firstWakeLevel } from "../content/first-wake";
 import {
   createRunState,
   resetRunState,
   tickRun,
-  type LevelEntity,
-  type RunRules,
   type RunState,
 } from "../core/run-simulation";
 
@@ -95,20 +94,9 @@ export interface FirstWakeSnapshot {
   status: "complete" | "dead" | "running";
 }
 
-const FIRST_WAKE_RULES: RunRules = {
-  fallBoundaryY: 420,
-  gravity: 1250,
-  groundY: 300,
-  horizontalSpeed: 190,
-  jumpVelocity: -540,
-  playerHeight: 34,
-  playerWidth: 34,
-};
-const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 160, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 425, y: 270 },
-];
-const FIRST_WAKE_FINISH_X = 690;
+const FIRST_WAKE_RULES = firstWakeLevel.rules;
+const FIRST_WAKE_ENTITIES = firstWakeLevel.entities;
+const FIRST_WAKE_FINISH_X = firstWakeLevel.finishX;
 const SIMULATION_STEP_MS = 1000 / 60;
 
 class FirstWakeScene extends Phaser.Scene {
