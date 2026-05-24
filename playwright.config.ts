@@ -7,10 +7,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:4173",
-    channel: "chrome",
-    trace: "on-first-retry",
     ...devices["Desktop Chrome"],
+    baseURL: "http://127.0.0.1:4173",
+    ...(process.env.CI ? {} : { channel: "chrome" }),
+    trace: "on-first-retry",
   },
   webServer: {
     command: "npm run dev -- --host 127.0.0.1 --port 4173",
