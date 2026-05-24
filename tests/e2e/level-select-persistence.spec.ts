@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
-
-const PROFILE_STORAGE_KEY = "dashs-wake-profile-v1";
+import { seedProfile } from "./helpers/profile-storage";
 
 test("lobby shows zero coins and locked Level 2 with no stored profile", async ({
   page,
@@ -16,24 +15,13 @@ test("persisted profile shows best percent, completion, key, and Level 2 unlock 
   page,
 }) => {
   await page.goto("/");
-  await page.evaluate(
-    (key) => {
-      localStorage.setItem(
-        key,
-        JSON.stringify({
-          version: 1,
-          profile: {
-            bestPercents: { level_1: 100 },
-            coins: 100,
-            completedLevels: ["level_1"],
-            keys: { easy: 1 },
-            unlockedLevels: ["level_2"],
-          },
-        }),
-      );
-    },
-    PROFILE_STORAGE_KEY,
-  );
+  await seedProfile(page, {
+    bestPercents: { level_1: 100 },
+    coins: 100,
+    completedLevels: ["level_1"],
+    keys: { easy: 1 },
+    unlockedLevels: ["level_2"],
+  });
 
   await page.reload();
 

@@ -23,3 +23,7 @@ export function saveProfile(profile: PlayerProfile): void {
   const record: StoredRecord = { version: 1, profile };
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(record));
 }
+
+export function clearProfile(): void {
+  localStorage.removeItem(PROFILE_STORAGE_KEY);
+}
