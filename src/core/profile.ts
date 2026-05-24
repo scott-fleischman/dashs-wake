@@ -1,6 +1,9 @@
 export interface PlayerProfile {
   bestPercents: Readonly<Record<string, number>>;
   coins: number;
+  completedLevels: readonly string[];
+  keys: Readonly<Record<string, number>>;
+  unlockedLevels: readonly string[];
 }
 
 export interface ProgressAwardInput {
@@ -13,12 +16,44 @@ export interface ProgressAwardResult {
   profile: PlayerProfile;
 }
 
+export interface KeyReward {
+  type: string;
+  amount: number;
+}
+
+export interface LevelCompletionRule {
+  keyAwarded?: KeyReward;
+  unlocks?: readonly string[];
+}
+
+export type LevelCompletionRules = Readonly<Record<string, LevelCompletionRule>>;
+
+export interface CompletionAwardInput {
+  levelId: string;
+}
+
+export interface CompletionAwardResult {
+  keysAwarded: Readonly<Record<string, number>>;
+  profile: PlayerProfile;
+  unlockedLevels: readonly string[];
+}
+
 const MAX_PERCENT_PER_LEVEL = 100;
+
+export const OFFICIAL_LEVEL_COMPLETION_RULES: LevelCompletionRules = {
+  level_1: {
+    keyAwarded: { type: "easy", amount: 1 },
+    unlocks: ["level_2"],
+  },
+};
 
 export function createProfile(): PlayerProfile {
   return {
     bestPercents: {},
     coins: 0,
+    completedLevels: [],
+    keys: {},
+    unlockedLevels: [],
   };
 }
 
@@ -47,11 +82,57 @@ export function applyProgressAward(
   return {
     coinsAwarded,
     profile: {
+      ...profile,
       bestPercents: {
         ...profile.bestPercents,
         [input.levelId]: clampedReached,
       },
       coins: profile.coins + coinsAwarded,
     },
+  };
+}
+
+export function applyCompletionAward(
+  profile: PlayerProfile,
+  input: CompletionAwardInput,
+  rules: LevelCompletionRules = OFFICIAL_LEVEL_COMPLETION_RULES,
+): CompletionAwardResult {
+  if (profile.completedLevels.includes(input.levelId)) {
+    return { keysAwarded: {}, profile, unlockedLevels: [] };
+  }
+
+  const rule = rules[input.levelId];
+  const keysAwarded: Record<string, number> = {};
+  let nextKeys = profile.keys;
+  let nextUnlockedLevels = profile.unlockedLevels;
+  const newlyUnlocked: string[] = [];
+
+  if (rule?.keyAwarded && rule.keyAwarded.amount > 0) {
+    const { type, amount } = rule.keyAwarded;
+    keysAwarded[type] = amount;
+    nextKeys = {
+      ...nextKeys,
+      [type]: (nextKeys[type] ?? 0) + amount,
+    };
+  }
+
+  if (rule?.unlocks) {
+    for (const unlockId of rule.unlocks) {
+      if (!nextUnlockedLevels.includes(unlockId)) {
+        nextUnlockedLevels = [...nextUnlockedLevels, unlockId];
+        newlyUnlocked.push(unlockId);
+      }
+    }
+  }
+
+  return {
+    keysAwarded,
+    profile: {
+      ...profile,
+      completedLevels: [...profile.completedLevels, input.levelId],
+      keys: nextKeys,
+      unlockedLevels: nextUnlockedLevels,
+    },
+    unlockedLevels: newlyUnlocked,
   };
 }
