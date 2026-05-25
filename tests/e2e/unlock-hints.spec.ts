@@ -14,4 +14,7 @@ test("locked level cards and gauntlets show what to clear next", async ({
 
   await page.getByTestId("destination-gauntlets").click();
   await expect(page.getByTestId("gauntlet-electric-wake-start")).toBeDisabled();
+  await expect(
+    page.getByRole("listitem").filter({ hasText: "Electric Wake Gauntlet" }),
+  ).toContainText("Clear First Wake, Launch Sequence");
 });
