@@ -1,12 +1,13 @@
 import type { Page } from "@playwright/test";
-import type { PlayerProfile } from "../../../src/core/profile";
+import { createProfile, type PlayerProfile } from "../../../src/core/profile";
 
 export const PROFILE_STORAGE_KEY = "dashs-wake-profile-v1";
 
 export async function seedProfile(
   page: Page,
-  profile: PlayerProfile,
+  partial: Partial<PlayerProfile>,
 ): Promise<void> {
+  const profile: PlayerProfile = { ...createProfile(), ...partial };
   await page.evaluate(
     ([key, record]) => {
       localStorage.setItem(key, JSON.stringify(record));

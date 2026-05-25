@@ -3,6 +3,8 @@ export interface PlayerProfile {
   coins: number;
   completedLevels: readonly string[];
   keys: Readonly<Record<string, number>>;
+  ownedCosmetics: readonly string[];
+  selectedCosmetics: Readonly<Record<string, string>>;
   unlockedLevels: readonly string[];
 }
 
@@ -68,6 +70,8 @@ export function createProfile(): PlayerProfile {
     coins: 0,
     completedLevels: [],
     keys: {},
+    ownedCosmetics: [],
+    selectedCosmetics: {},
     unlockedLevels: [],
   };
 }
