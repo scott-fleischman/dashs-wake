@@ -316,6 +316,12 @@ function renderRoute(): void {
         onAttemptResolved: () => {
           // Generated levels do not yet award progression.
         },
+        onRestart: () => {
+          if (record.audioBlobKey) {
+            stopAudioPlayback();
+            void startAudioPlayback(record.audioBlobKey);
+          }
+        },
         onReturnHome: () => {
           window.location.hash = "#generated";
         },
