@@ -10,19 +10,20 @@ test("lobby presents its destinations and lets the player choose Play", async ({
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
 
-  for (const destination of [
-    "Generated Levels",
-    "Gauntlets",
-    "Chest Room",
-    "Shop",
-    "Icon Customizer",
-    "Settings",
-  ]) {
+  for (const destination of ["Generated Levels", "Gauntlets", "Settings"]) {
     await expect(
       page.getByRole("button", {
         name: `${destination} - Coming later`,
       }),
     ).toBeVisible();
+  }
+
+  for (const destinationTestId of [
+    "destination-customizer",
+    "destination-shop",
+    "destination-chest-room",
+  ]) {
+    await expect(page.getByTestId(destinationTestId)).toBeEnabled();
   }
 
   await page.getByRole("button", { name: "Play" }).click();

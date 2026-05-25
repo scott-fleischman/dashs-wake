@@ -1,6 +1,7 @@
 import type { LevelSnapshot } from "../game/lobby-backdrop";
 
 export interface LevelRunMetadata {
+  equippedIcon: string;
   kicker: string;
   name: string;
 }
@@ -68,6 +69,7 @@ export function mountFirstWake(
         <p class="attempt-count" data-testid="attempt-count">Attempt 1</p>
         <p class="run-mode" data-testid="run-mode">Cube</p>
         <p class="run-cue" data-testid="run-cue">Tap to jump</p>
+        <p class="equipped-icon" data-testid="equipped-icon"></p>
       </section>
 
       <section class="input-deck" aria-label="First Wake controls">
@@ -117,8 +119,12 @@ export function mountFirstWake(
 
   const kickerEl = root.querySelector<HTMLElement>(".first-wake-header .kicker");
   const headingEl = root.querySelector<HTMLElement>(".first-wake-header h1");
+  const equippedIconEl = root.querySelector<HTMLElement>(
+    "[data-testid='equipped-icon']",
+  );
   if (kickerEl) kickerEl.textContent = metadata.kicker;
   if (headingEl) headingEl.textContent = metadata.name;
+  if (equippedIconEl) equippedIconEl.textContent = metadata.equippedIcon;
 
   const status = root.querySelector<HTMLElement>(".run-status");
   const feedback = root.querySelector<HTMLElement>(".input-feedback");

@@ -1,12 +1,16 @@
 import "./styles.css";
 import { startLobbyBackdrop, type LevelSnapshot } from "./game/lobby-backdrop";
-import { mountLobby } from "./ui/lobby";
+import { mountChestRoom } from "./ui/chest-room";
+import { mountCustomizer } from "./ui/customizer";
 import { mountFirstWake } from "./ui/first-wake";
+import { mountLobby } from "./ui/lobby";
+import { mountShop } from "./ui/shop";
 import {
   applyCompletionAward,
   applyProgressAward,
   type PlayerProfile,
 } from "./core/profile";
+import { cosmeticCatalog } from "./core/inventory";
 import { loadProfile, saveProfile } from "./persistence/profile-repository";
 import {
   getOfficialLevelContent,
@@ -34,6 +38,18 @@ function parseLevelIdFromHash(hash: string): string | null {
   return null;
 }
 
+function equippedIconName(profile: PlayerProfile): string {
+  const id = profile.selectedCosmetics["icon"];
+
+  if (!id) {
+    return "";
+  }
+
+  const item = cosmeticCatalog.find((entry) => entry.id === id);
+
+  return item?.name ?? "";
+}
+
 function applyAttemptResult(
   current: PlayerProfile,
   levelId: string,
@@ -59,7 +75,52 @@ let profile: PlayerProfile = loadProfile();
 function renderRoute(): void {
   disposeView();
 
-  const levelId = parseLevelIdFromHash(window.location.hash);
+  const hash = window.location.hash;
+  const profileRef = {
+    get current(): PlayerProfile {
+      return profile;
+    },
+  };
+
+  const updateProfile = (next: PlayerProfile): void => {
+    profile = next;
+    saveProfile(profile);
+  };
+
+  if (hash === "#customizer") {
+    backdrop.showLobby();
+    disposeView = mountCustomizer(root, profileRef, {
+      onProfileChange: updateProfile,
+      onReturnToLobby: () => {
+        window.location.hash = "";
+      },
+    });
+    return;
+  }
+
+  if (hash === "#shop") {
+    backdrop.showLobby();
+    disposeView = mountShop(root, profileRef, {
+      onProfileChange: updateProfile,
+      onReturnToLobby: () => {
+        window.location.hash = "";
+      },
+    });
+    return;
+  }
+
+  if (hash === "#chest-room") {
+    backdrop.showLobby();
+    disposeView = mountChestRoom(root, profileRef, {
+      onProfileChange: updateProfile,
+      onReturnToLobby: () => {
+        window.location.hash = "";
+      },
+    });
+    return;
+  }
+
+  const levelId = parseLevelIdFromHash(hash);
 
   if (levelId) {
     const metadata = getOfficialLevelMetadata(levelId);
@@ -94,7 +155,11 @@ function renderRoute(): void {
 
     disposeView = mountFirstWake(
       root,
-      { kicker: levelKicker(levelId), name: metadata.name },
+      {
+        kicker: levelKicker(levelId),
+        name: metadata.name,
+        equippedIcon: equippedIconName(profile),
+      },
       {
         onJumpHold: (held) => backdrop.setLevelJumpHeld(held),
         onPauseChange: (paused) => backdrop.setLevelPaused(paused),

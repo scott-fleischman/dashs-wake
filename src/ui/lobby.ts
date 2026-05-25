@@ -38,20 +38,35 @@ function levelStatusText(
   return isLevelUnlocked(metadata, profile) ? "Unlocked" : "Locked";
 }
 
-const futureDestinations = [
-  "Generated Levels",
-  "Gauntlets",
-  "Chest Room",
-  "Shop",
-  "Icon Customizer",
-  "Settings",
-] as const;
+interface DestinationConfig {
+  name: string;
+  route: string | null;
+  testId: string;
+}
 
-function destinationButton(name: (typeof futureDestinations)[number]): string {
+const DESTINATIONS: readonly DestinationConfig[] = [
+  { name: "Generated Levels", route: null, testId: "destination-generated-levels" },
+  { name: "Gauntlets", route: null, testId: "destination-gauntlets" },
+  { name: "Chest Room", route: "#chest-room", testId: "destination-chest-room" },
+  { name: "Shop", route: "#shop", testId: "destination-shop" },
+  { name: "Icon Customizer", route: "#customizer", testId: "destination-customizer" },
+  { name: "Settings", route: null, testId: "destination-settings" },
+];
+
+function destinationButton(destination: DestinationConfig): string {
+  if (destination.route === null) {
+    return `
+      <button class="destination future" type="button" aria-label="${destination.name} - Coming later" data-testid="${destination.testId}" disabled>
+        <span>${destination.name}</span>
+        <small>Coming later</small>
+      </button>
+    `;
+  }
+
   return `
-    <button class="destination future" type="button" aria-label="${name} - Coming later" disabled>
-      <span>${name}</span>
-      <small>Coming later</small>
+    <button class="destination" type="button" data-action="navigate" data-route="${destination.route}" data-testid="${destination.testId}">
+      <span>${destination.name}</span>
+      <small>Open</small>
     </button>
   `;
 }
@@ -140,13 +155,13 @@ export function mountLobby(
 
       <nav class="destination-grid" aria-label="Destinations">
         <div class="future-left">
-          ${futureDestinations.slice(0, 3).map(destinationButton).join("")}
+          ${DESTINATIONS.slice(0, 3).map(destinationButton).join("")}
         </div>
 
         ${renderLevelList(profile)}
 
         <div class="future-right">
-          ${futureDestinations.slice(3).map(destinationButton).join("")}
+          ${DESTINATIONS.slice(3).map(destinationButton).join("")}
         </div>
       </nav>
     </main>
@@ -155,20 +170,37 @@ export function mountLobby(
   const playButtons = Array.from(
     root.querySelectorAll<HTMLButtonElement>("[data-action='play']"),
   );
+  const navigateButtons = Array.from(
+    root.querySelectorAll<HTMLButtonElement>("[data-action='navigate']"),
+  );
 
   if (playButtons.length === 0) {
     throw new Error("Lobby controls did not mount correctly.");
   }
 
-  const handlers = playButtons.map((button) => {
+  const playHandlers = playButtons.map((button) => {
     const levelId = button.dataset.levelId ?? "level_1";
     const handler = (): void => onPlay(levelId);
     button.addEventListener("click", handler);
     return { button, handler };
   });
 
+  const navigateHandlers = navigateButtons.map((button) => {
+    const route = button.dataset.route ?? "";
+    const handler = (): void => {
+      if (route) {
+        window.location.hash = route;
+      }
+    };
+    button.addEventListener("click", handler);
+    return { button, handler };
+  });
+
   return () => {
-    for (const { button, handler } of handlers) {
+    for (const { button, handler } of playHandlers) {
+      button.removeEventListener("click", handler);
+    }
+    for (const { button, handler } of navigateHandlers) {
       button.removeEventListener("click", handler);
     }
   };
