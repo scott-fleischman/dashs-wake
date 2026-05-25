@@ -333,14 +333,19 @@ export function mountFirstWake(
       status.textContent = RUN_STATUS_LABELS[snapshot.status];
     }
 
+    const participatesInRewards = metadata.previousBestPercent !== undefined;
+
     if (snapshot.status === "dead") {
       const copy = resultOverlayCopyForDeath(snapshot.deathCause);
       failedHeading.textContent = copy.heading;
       failedMessage.textContent = copy.message;
-      const percent = Math.floor(snapshot.percent);
-      const earned = Math.max(0, percent - runningBest);
-      if (earned > 0) {
-        runningBest = percent;
+      let earned = 0;
+      if (participatesInRewards) {
+        const percent = Math.floor(snapshot.percent);
+        earned = Math.max(0, percent - runningBest);
+        if (earned > 0) {
+          runningBest = percent;
+        }
       }
       setRewardLine(
         failedRewardEl,
@@ -353,10 +358,12 @@ export function mountFirstWake(
     if (snapshot.status === "complete") {
       completeMessage.textContent = completionResultMessage(metadata.name);
       const reward: Reward = {};
-      const earned = Math.max(0, 100 - runningBest);
-      if (earned > 0) {
-        reward.coinsAwarded = earned;
-        runningBest = 100;
+      if (participatesInRewards) {
+        const earned = Math.max(0, 100 - runningBest);
+        if (earned > 0) {
+          reward.coinsAwarded = earned;
+          runningBest = 100;
+        }
       }
       if (metadata.completionKeyReward) {
         if (metadata.completionKeyReward.keysAwarded) {

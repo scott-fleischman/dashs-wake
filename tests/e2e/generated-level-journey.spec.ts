@@ -22,4 +22,5 @@ test("generates, persists, reopens, and completes a placeholder generated level"
   await expect(
     page.getByRole("dialog", { name: "Level complete" }),
   ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("level-complete-reward")).toBeHidden();
 });
