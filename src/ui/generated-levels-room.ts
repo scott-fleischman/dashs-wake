@@ -6,6 +6,7 @@ import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
 interface GeneratedLevelsRoomActions {
   onGenerate: () => void;
+  onImportAudio: (file: File) => void;
   onPlay: (recordId: string) => void;
   onReturnToLobby: () => void;
 }
@@ -18,6 +19,24 @@ function buildGenerateButton(onGenerate: () => void): HTMLButtonElement {
   button.textContent = "Generate Level";
   button.addEventListener("click", onGenerate);
   return button;
+}
+
+function buildAudioUploadInput(
+  onImportAudio: (file: File) => void,
+): HTMLInputElement {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.className = "audio-upload";
+  input.accept = "audio/*";
+  input.setAttribute("data-testid", "upload-audio");
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (file) {
+      onImportAudio(file);
+      input.value = "";
+    }
+  });
+  return input;
 }
 
 export function mountGeneratedLevelsRoom(
@@ -38,6 +57,7 @@ export function mountGeneratedLevelsRoom(
 
     const header = main.querySelector("header");
     header?.appendChild(buildGenerateButton(actions.onGenerate));
+    header?.appendChild(buildAudioUploadInput(actions.onImportAudio));
 
     if (profile.generatedLevels.length === 0) {
       const empty = document.createElement("p");
@@ -50,15 +70,20 @@ export function mountGeneratedLevelsRoom(
 
     for (const record of profile.generatedLevels) {
       const testId = safeTestId(record.id);
+      const isAudio = record.audioFileName !== undefined;
+      const displayName = isAudio
+        ? `${record.audioFileName} (Audio)`
+        : record.name;
       list.appendChild(
         buildRoomRow({
           actionDisabled: false,
           actionLabel: "Play",
           actionTestId: `${testId}-play`,
-          detail: `Seed ${record.seed}`,
-          name: record.name,
+          detail: isAudio ? "Synchronized" : `Seed ${record.seed}`,
+          name: displayName,
+          nameTestId: isAudio ? `${testId}-name` : undefined,
           onAction: () => actions.onPlay(record.id),
-          statusLabel: "Generated",
+          statusLabel: isAudio ? "Imported" : "Generated",
           statusTestId: `${testId}-status`,
           statusVisible: true,
         }),
@@ -83,6 +108,22 @@ export function buildPlaceholderGeneratedLevel(
     difficulty: "easy",
     id: `generated-level-${index}`,
     name: `Generated Level ${index}`,
+    seed,
+  };
+}
+
+export function buildAudioDerivedLevel(
+  index: number,
+  fileName: string,
+): GeneratedLevelRecord {
+  const seed = 2000 + index;
+  return {
+    audioFileName: fileName,
+    beatIntensities: ["quiet", "quiet", "quiet"],
+    beatMap: { beats: [0, 600, 1200], durationMs: 1800 },
+    difficulty: "easy",
+    id: `audio-derived-level-${index}`,
+    name: fileName,
     seed,
   };
 }

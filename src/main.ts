@@ -9,6 +9,7 @@ import {
 } from "./ui/first-wake";
 import { mountGauntletsRoom } from "./ui/gauntlets-room";
 import {
+  buildAudioDerivedLevel,
   buildPlaceholderGeneratedLevel,
   mountGeneratedLevelsRoom,
 } from "./ui/generated-levels-room";
@@ -200,8 +201,23 @@ function renderRoute(): void {
     backdrop.showLobby();
     disposeView = mountGeneratedLevelsRoom(root, profileRef, {
       onGenerate: () => {
-        const nextIndex = profile.generatedLevels.length + 1;
+        const nextIndex =
+          profile.generatedLevels.filter(
+            (entry) => entry.audioFileName === undefined,
+          ).length + 1;
         const record = buildPlaceholderGeneratedLevel(nextIndex);
+        updateProfile({
+          ...profile,
+          generatedLevels: [...profile.generatedLevels, record],
+        });
+        renderRoute();
+      },
+      onImportAudio: (file) => {
+        const nextIndex =
+          profile.generatedLevels.filter(
+            (entry) => entry.audioFileName !== undefined,
+          ).length + 1;
+        const record = buildAudioDerivedLevel(nextIndex, file.name);
         updateProfile({
           ...profile,
           generatedLevels: [...profile.generatedLevels, record],

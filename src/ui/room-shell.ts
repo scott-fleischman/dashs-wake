@@ -36,6 +36,7 @@ export interface RoomRowOptions {
   actionTestId: string;
   detail?: string;
   name: string;
+  nameTestId?: string;
   onAction: () => void;
   statusLabel: string;
   statusTestId: string;
@@ -49,6 +50,9 @@ export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
   const nameEl = document.createElement("span");
   nameEl.className = "cosmetic-name";
   nameEl.textContent = options.name;
+  if (options.nameTestId) {
+    nameEl.setAttribute("data-testid", options.nameTestId);
+  }
   li.appendChild(nameEl);
 
   if (options.detail) {
