@@ -75,8 +75,16 @@ function coinsText(coins: number): string {
   return `${coins} Coin${coins === 1 ? "" : "s"}`;
 }
 
-function keysText(count: number): string {
-  return `${count} Easy Key${count === 1 ? "" : "s"}`;
+const KEY_TYPE_LABELS: Record<string, string> = {
+  easy: "Easy",
+  normal: "Normal",
+  hard: "Hard",
+};
+
+const KEY_TYPE_ORDER: readonly string[] = ["easy", "normal", "hard"];
+
+function keysText(label: string, count: number): string {
+  return `${count} ${label} Key${count === 1 ? "" : "s"}`;
 }
 
 function renderLevelCard(
@@ -111,12 +119,18 @@ function renderLevelCard(
   `;
 }
 
+function renderKeyChip(keyType: string, count: number): string {
+  const label = KEY_TYPE_LABELS[keyType] ?? keyType;
+  if (count > 0) {
+    return `<span class="profile-stat" data-testid="profile-keys-${keyType}">${keysText(label, count)}</span>`;
+  }
+  return `<span class="profile-stat" data-testid="profile-keys-${keyType}" hidden></span>`;
+}
+
 function renderProfileStats(profile: PlayerProfile): string {
-  const easyKeys = profile.keys["easy"] ?? 0;
-  const keysHtml =
-    easyKeys > 0
-      ? `<span class="profile-stat" data-testid="profile-keys-easy">${keysText(easyKeys)}</span>`
-      : `<span class="profile-stat" data-testid="profile-keys-easy" hidden></span>`;
+  const keysHtml = KEY_TYPE_ORDER.map((keyType) =>
+    renderKeyChip(keyType, profile.keys[keyType] ?? 0),
+  ).join("");
 
   return `
     <div class="profile-stats" aria-label="Profile stats">
