@@ -88,6 +88,11 @@ Do not merge or hand off a branch whose tip is a red commit. If review finds
 that no refactor is justified in a cycle, record that in the slice verification
 notes rather than creating empty commits or unnecessary code movement.
 
+The committed `docs/` directory is the GitHub Pages distribution for this
+branch. Before every commit, run `npm run build` and stage the regenerated
+`docs/` output with the source change, including red test commits. Do not edit
+files in `docs/` directly.
+
 At the end of each playable chunk, run the full unit/integration suite and its
 browser smoke journey, then create a small checkpoint commit only when it adds
 useful content such as updated fixtures or acceptance notes. The ordinary green
@@ -310,6 +315,9 @@ npm test
 npm run test:e2e
 npm run build
 ```
+
+`npm run build` regenerates the tracked `docs/` site with relative asset URLs
+so the result can be served directly by GitHub Pages from the branch.
 
 Browser journeys should use deterministic fixtures and reset profile storage.
 Manual checks supplement rather than replace automated tests: play the newly

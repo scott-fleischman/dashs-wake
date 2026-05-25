@@ -12,10 +12,14 @@ export interface OfficialTrack {
   title: string;
 }
 
+function officialAudioPath(filename: string): string {
+  return `${import.meta.env.BASE_URL}audio/official/${filename}`;
+}
+
 export const officialSoundtrack: readonly OfficialTrack[] = [
   {
     artist: "Fupi",
-    audioPath: "/audio/official/level-1-brightmelodicedm.ogg",
+    audioPath: officialAudioPath("level-1-brightmelodicedm.ogg"),
     bpm: 140,
     durationMs: 20_625,
     id: "track-bright-melodic-edm",
@@ -26,7 +30,7 @@ export const officialSoundtrack: readonly OfficialTrack[] = [
   },
   {
     artist: "Fupi",
-    audioPath: "/audio/official/level-2-brightmelodicloopyedm.ogg",
+    audioPath: officialAudioPath("level-2-brightmelodicloopyedm.ogg"),
     bpm: 140,
     durationMs: 20_625,
     id: "track-bright-melodic-loopy-edm",
@@ -37,7 +41,7 @@ export const officialSoundtrack: readonly OfficialTrack[] = [
   },
   {
     artist: "Fupi",
-    audioPath: "/audio/official/level-3-brightmelodicskippyedm.ogg",
+    audioPath: officialAudioPath("level-3-brightmelodicskippyedm.ogg"),
     bpm: 140,
     durationMs: 27_464,
     id: "track-bright-melodic-skippy-edm",
@@ -48,7 +52,7 @@ export const officialSoundtrack: readonly OfficialTrack[] = [
   },
   {
     artist: "Fupi",
-    audioPath: "/audio/official/level-4-melodicloopyedm.ogg",
+    audioPath: officialAudioPath("level-4-melodicloopyedm.ogg"),
     bpm: 140,
     durationMs: 27_500,
     id: "track-melodic-loopy-edm",
@@ -59,7 +63,7 @@ export const officialSoundtrack: readonly OfficialTrack[] = [
   },
   {
     artist: "Fupi",
-    audioPath: "/audio/official/level-5-melodicskippyedm.ogg",
+    audioPath: officialAudioPath("level-5-melodicskippyedm.ogg"),
     bpm: 140,
     durationMs: 27_464,
     id: "track-melodic-skippy-edm",
