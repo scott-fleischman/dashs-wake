@@ -134,11 +134,12 @@ export function buildAudioDerivedLevel(
   analyzed?: AnalyzedAudio | null,
 ): GeneratedLevelRecord {
   const seed = 2000 + index;
-  const synced = analyzed != null;
-  const beats = analyzed?.beats ?? PLACEHOLDER_BEATS;
-  const durationMs = analyzed?.durationMs ?? PLACEHOLDER_DURATION_MS;
-  const beatIntensities =
-    analyzed?.beatIntensities ?? PLACEHOLDER_INTENSITIES;
+  const synced = analyzed != null && analyzed.beats.length > 0;
+  const beats = synced ? analyzed!.beats : PLACEHOLDER_BEATS;
+  const durationMs = synced ? analyzed!.durationMs : PLACEHOLDER_DURATION_MS;
+  const beatIntensities = synced
+    ? analyzed!.beatIntensities
+    : PLACEHOLDER_INTENSITIES;
   return {
     ...(audioBlobKey ? { audioBlobKey } : {}),
     audioFileName: fileName,

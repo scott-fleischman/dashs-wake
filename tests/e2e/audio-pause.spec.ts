@@ -10,7 +10,10 @@ test("pausing a generated audio run also pauses the audio", async ({
   await page.getByTestId("upload-audio").setInputFiles({
     name: "fixture.wav",
     mimeType: "audio/wav",
-    buffer: generateSilentWav(2),
+    buffer: generateSilentWav({
+      durationSec: 2,
+      impulseTimesMs: [0, 500, 1000, 1500],
+    }),
   });
 
   await page.getByTestId("audio-derived-level-1-play").click();

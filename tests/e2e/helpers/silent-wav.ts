@@ -1,4 +1,10 @@
-export function generateSilentWav(durationSec = 1): Buffer {
+export interface WavOptions {
+  durationSec?: number;
+  impulseTimesMs?: readonly number[];
+}
+
+export function generateSilentWav(options: WavOptions = {}): Buffer {
+  const durationSec = options.durationSec ?? 1;
   const sampleRate = 8000;
   const numSamples = Math.floor(sampleRate * durationSec);
   const dataSize = numSamples * 2;
@@ -18,6 +24,14 @@ export function generateSilentWav(durationSec = 1): Buffer {
   buf.writeUInt16LE(16, 34);
   buf.write("data", 36);
   buf.writeUInt32LE(dataSize, 40);
+
+  const PEAK_AMPLITUDE = 30000;
+  for (const ms of options.impulseTimesMs ?? []) {
+    const sampleIndex = Math.floor((ms / 1000) * sampleRate);
+    if (sampleIndex >= 0 && sampleIndex < numSamples) {
+      buf.writeInt16LE(PEAK_AMPLITUDE, 44 + sampleIndex * 2);
+    }
+  }
 
   return buf;
 }

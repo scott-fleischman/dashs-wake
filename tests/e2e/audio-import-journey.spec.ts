@@ -13,7 +13,10 @@ test("imports a local audio fixture and plays a synchronized generated level", a
   await page.getByTestId("upload-audio").setInputFiles({
     name: "fixture.wav",
     mimeType: "audio/wav",
-    buffer: generateSilentWav(2),
+    buffer: generateSilentWav({
+      durationSec: 2,
+      impulseTimesMs: [0, 500, 1000, 1500],
+    }),
   });
 
   const playButton = page.getByTestId("audio-derived-level-1-play");
