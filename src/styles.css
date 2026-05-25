@@ -588,3 +588,14 @@ kbd {
     top: 14.8rem;
   }
 }
+
+.cosmetic-swatch {
+  border: 1px solid rgba(236, 252, 255, 0.55);
+  border-radius: 0.32rem;
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.5);
+  display: inline-block;
+  height: 1.6rem;
+  margin-right: 0.7rem;
+  vertical-align: middle;
+  width: 1.6rem;
+}

@@ -51,6 +51,8 @@ export function mountShop(
           statusLabel: "Owned",
           statusTestId: `cosmetic-${testId}-owned`,
           statusVisible: owned,
+          swatchColor: item.appearance.fillRunning,
+          swatchTestId: `cosmetic-${testId}-swatch`,
         }),
       );
     }

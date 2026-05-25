@@ -50,6 +50,8 @@ export function mountCustomizer(
           statusLabel: "Equipped",
           statusTestId: `cosmetic-${testId}-equipped`,
           statusVisible: selectedId === item.id,
+          swatchColor: item.appearance.fillRunning,
+          swatchTestId: `cosmetic-${testId}-swatch`,
         }),
       );
     }

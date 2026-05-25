@@ -41,11 +41,27 @@ export interface RoomRowOptions {
   statusLabel: string;
   statusTestId: string;
   statusVisible: boolean;
+  swatchColor?: number;
+  swatchTestId?: string;
+}
+
+function formatSwatchColor(color: number): string {
+  return `#${color.toString(16).padStart(6, "0")}`;
 }
 
 export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
   const li = document.createElement("li");
   li.className = "cosmetic-row";
+
+  if (options.swatchColor !== undefined) {
+    const swatch = document.createElement("span");
+    swatch.className = "cosmetic-swatch";
+    swatch.style.background = formatSwatchColor(options.swatchColor);
+    if (options.swatchTestId) {
+      swatch.setAttribute("data-testid", options.swatchTestId);
+    }
+    li.appendChild(swatch);
+  }
 
   const nameEl = document.createElement("span");
   nameEl.className = "cosmetic-name";
