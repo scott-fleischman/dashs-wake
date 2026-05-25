@@ -78,6 +78,25 @@ export function restartGauntletAtActiveStage(
   return { ...state, status: "running" };
 }
 
+export function decideGauntletEntryState(
+  current: GauntletRunState | null,
+  definition: GauntletDefinition,
+): GauntletRunState {
+  if (!current || current.gauntletId !== definition.id) {
+    return startGauntletRun(definition);
+  }
+
+  if (current.status === "complete") {
+    return startGauntletRun(definition);
+  }
+
+  if (current.status === "failed") {
+    return restartGauntletAtActiveStage(current);
+  }
+
+  return current;
+}
+
 export const gauntletCatalog: readonly GauntletEntry[] = [
   {
     id: "electric-wake",

@@ -25,9 +25,9 @@ import { cosmeticCatalog } from "./core/inventory";
 import {
   applyGauntletCompletion,
   applyStageOutcome,
+  decideGauntletEntryState,
   gauntletCatalog,
   restartGauntletAtActiveStage,
-  startGauntletRun,
   type GauntletRunState,
 } from "./core/gauntlet";
 import { putAudioBlob } from "./persistence/audio-storage";
@@ -309,13 +309,7 @@ function renderRoute(): void {
       return;
     }
 
-    if (
-      !activeGauntletRun ||
-      activeGauntletRun.gauntletId !== gauntletId ||
-      activeGauntletRun.status === "complete"
-    ) {
-      activeGauntletRun = startGauntletRun(gauntlet);
-    }
+    activeGauntletRun = decideGauntletEntryState(activeGauntletRun, gauntlet);
 
     const stageId = activeGauntletRun.stages[activeGauntletRun.currentStageIndex];
     const stageContent = stageId ? getGauntletStageContent(stageId) : undefined;
