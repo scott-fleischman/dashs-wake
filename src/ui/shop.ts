@@ -33,7 +33,13 @@ function buildPurchaseConfirmation(
   overlay.appendChild(heading);
 
   const swatch = document.createElement("span");
-  swatch.className = "cosmetic-swatch confirm-swatch";
+  const shapeClass =
+    item.appearance.cubeShape === "circle"
+      ? " shape-circle"
+      : item.appearance.cubeShape === "diamond"
+        ? " shape-diamond"
+        : "";
+  swatch.className = `cosmetic-swatch confirm-swatch${shapeClass}`;
   swatch.style.background = `#${item.appearance.fillRunning
     .toString(16)
     .padStart(6, "0")}`;
@@ -124,6 +130,7 @@ export function mountShop(
           statusTestId: `cosmetic-${testId}-owned`,
           statusVisible: owned,
           swatchColor: item.appearance.fillRunning,
+          swatchShape: item.appearance.cubeShape,
           swatchTestId: `cosmetic-${testId}-swatch`,
         }),
       );

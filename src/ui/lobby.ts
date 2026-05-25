@@ -149,7 +149,13 @@ function renderEquippedIconChip(profile: PlayerProfile): string {
   const color = `#${equipped.appearance.fillRunning
     .toString(16)
     .padStart(6, "0")}`;
-  return `<span class="profile-stat profile-equipped-icon" data-testid="profile-equipped-icon"><span class="cosmetic-swatch" style="background: ${color}"></span>${equipped.name}</span>`;
+  const shapeClass =
+    equipped.appearance.cubeShape === "circle"
+      ? " shape-circle"
+      : equipped.appearance.cubeShape === "diamond"
+        ? " shape-diamond"
+        : "";
+  return `<span class="profile-stat profile-equipped-icon" data-testid="profile-equipped-icon"><span class="cosmetic-swatch${shapeClass}" style="background: ${color}"></span>${equipped.name}</span>`;
 }
 
 function renderProfileStats(profile: PlayerProfile): string {

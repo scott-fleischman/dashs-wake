@@ -605,3 +605,11 @@ kbd {
   margin: 0.4rem auto 0.6rem;
   width: 3.2rem;
 }
+
+.cosmetic-swatch.shape-circle {
+  border-radius: 50%;
+}
+
+.cosmetic-swatch.shape-diamond {
+  transform: rotate(45deg);
+}

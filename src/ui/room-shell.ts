@@ -42,6 +42,7 @@ export interface RoomRowOptions {
   statusTestId: string;
   statusVisible: boolean;
   swatchColor?: number;
+  swatchShape?: "rectangle" | "diamond" | "circle";
   swatchTestId?: string;
 }
 
@@ -55,7 +56,13 @@ export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
 
   if (options.swatchColor !== undefined) {
     const swatch = document.createElement("span");
-    swatch.className = "cosmetic-swatch";
+    const shapeClass =
+      options.swatchShape === "circle"
+        ? " shape-circle"
+        : options.swatchShape === "diamond"
+          ? " shape-diamond"
+          : "";
+    swatch.className = `cosmetic-swatch${shapeClass}`;
     swatch.style.background = formatSwatchColor(options.swatchColor);
     if (options.swatchTestId) {
       swatch.setAttribute("data-testid", options.swatchTestId);
