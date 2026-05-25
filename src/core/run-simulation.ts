@@ -46,8 +46,15 @@ export interface PadEntity extends RectangularEntity {
   type: "pad";
 }
 
+export interface OrbEntity extends RectangularEntity {
+  id: string;
+  impulse: number;
+  type: "orb";
+}
+
 export type LevelEntity =
   | GapEntity
+  | OrbEntity
   | PadEntity
   | PlatformEntity
   | PortalEntity
@@ -64,6 +71,7 @@ export interface PlayerState {
 }
 
 export interface RunState {
+  consumedOrbIds: ReadonlySet<string>;
   consumedPadIds: ReadonlySet<string>;
   deathCause?: DeathCause;
   elapsedMs: number;
@@ -73,6 +81,7 @@ export interface RunState {
 
 export function createRunState(rules: RunRules): RunState {
   return {
+    consumedOrbIds: new Set(),
     consumedPadIds: new Set(),
     elapsedMs: 0,
     player: {
@@ -196,11 +205,13 @@ function gatherImpulses(
   state: RunState,
   input: RunInput,
   activatablePads: readonly PadEntity[],
+  activatedOrbs: readonly OrbEntity[],
   rules: RunRules,
 ): readonly UpwardImpulse[] {
-  const impulses: UpwardImpulse[] = activatablePads.map((pad) => ({
-    magnitude: pad.impulse,
-  }));
+  const impulses: UpwardImpulse[] = [
+    ...activatablePads.map((pad) => ({ magnitude: pad.impulse })),
+    ...activatedOrbs.map((orb) => ({ magnitude: orb.impulse })),
+  ];
 
   if (
     state.player.mode === "cube" &&
@@ -261,6 +272,20 @@ function findActivatablePads(
   );
 }
 
+function findActivatableOrbs(
+  player: PlayerState,
+  consumedOrbIds: ReadonlySet<string>,
+  entities: readonly LevelEntity[],
+  rules: RunRules,
+): readonly OrbEntity[] {
+  return entities.filter(
+    (entity): entity is OrbEntity =>
+      entity.type === "orb" &&
+      !consumedOrbIds.has(entity.id) &&
+      playerOverlapsRect(player.x, player.y, entity, rules),
+  );
+}
+
 export function tickRun(
   state: RunState,
   input: RunInput,
@@ -283,7 +308,21 @@ export function tickRun(
     entities,
     rules,
   );
-  const impulses = gatherImpulses(state, input, activatablePads, rules);
+  const activatedOrbs = input.jumpPressed
+    ? findActivatableOrbs(
+        state.player,
+        state.consumedOrbIds,
+        entities,
+        rules,
+      )
+    : [];
+  const impulses = gatherImpulses(
+    state,
+    input,
+    activatablePads,
+    activatedOrbs,
+    rules,
+  );
   const playerForVelocity = applyStrongestImpulse(state.player, impulses);
   const velocityY = computeNextVelocityY(
     playerForVelocity,
@@ -324,6 +363,13 @@ export function tickRun(
           ...activatablePads.map((pad) => pad.id),
         ])
       : state.consumedPadIds;
+  const nextConsumedOrbIds: ReadonlySet<string> =
+    activatedOrbs.length > 0
+      ? new Set([
+          ...state.consumedOrbIds,
+          ...activatedOrbs.map((orb) => orb.id),
+        ])
+      : state.consumedOrbIds;
   const deathCause = entities.some(
     (entity) =>
       entity.type === "spike" &&
@@ -335,6 +381,7 @@ export function tickRun(
       : undefined;
 
   return {
+    consumedOrbIds: nextConsumedOrbIds,
     consumedPadIds: nextConsumedPadIds,
     ...(deathCause ? { deathCause } : {}),
     elapsedMs: state.elapsedMs + elapsedMs,

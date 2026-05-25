@@ -60,6 +60,7 @@ describe("cube run simulation", () => {
       y: 92,
     };
     const fallingState: RunState = {
+      consumedOrbIds: new Set(),
       consumedPadIds: new Set(),
       elapsedMs: 400,
       player: {
@@ -144,6 +145,7 @@ describe("ship mode portals and motion", () => {
 
   it("rises while jump is held in ship mode and falls when released", () => {
     const flying: RunState = {
+      consumedOrbIds: new Set(),
       consumedPadIds: new Set(),
       elapsedMs: 0,
       player: {
@@ -178,6 +180,7 @@ describe("ship mode portals and motion", () => {
     };
 
     let state: RunState = {
+      consumedOrbIds: new Set(),
       consumedPadIds: new Set(),
       elapsedMs: 0,
       player: {
@@ -210,6 +213,7 @@ describe("launch pad impulses", () => {
       y: 95,
     };
     const onPad: RunState = {
+      consumedOrbIds: new Set(),
       consumedPadIds: new Set(),
       elapsedMs: 0,
       player: { grounded: true, mode: "cube", velocityY: 0, x: 8, y: 100 },
@@ -234,6 +238,7 @@ describe("launch pad impulses", () => {
       y: 95,
     };
     const afterFirstHit: RunState = {
+      consumedOrbIds: new Set(),
       consumedPadIds: new Set(["pad-a"]),
       elapsedMs: 100,
       player: { grounded: false, mode: "cube", velocityY: -28, x: 9, y: 97.2 },
