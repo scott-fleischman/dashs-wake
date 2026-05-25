@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceSyncedRun,
+  createManualClock,
   startSyncedRun,
   type ClockState,
 } from "../../src/core/synced-run";
@@ -55,6 +56,29 @@ describe("synced run lifecycle", () => {
 
     run = advanceSyncedRun(run, clockAt(0), STEADY_INPUT, RULES, []);
 
+    expect(run.state.elapsedMs).toBe(0);
+  });
+
+  it("drives the synced run through a manual playable clock", () => {
+    const clock = createManualClock();
+    let run = startSyncedRun(RULES);
+
+    clock.advance(200);
+    run = advanceSyncedRun(run, clock.read(), STEADY_INPUT, RULES, []);
+    expect(run.state.elapsedMs).toBe(200);
+
+    clock.pause();
+    clock.advance(500);
+    run = advanceSyncedRun(run, clock.read(), STEADY_INPUT, RULES, []);
+    expect(run.state.elapsedMs).toBe(200);
+
+    clock.resume();
+    clock.advance(150);
+    run = advanceSyncedRun(run, clock.read(), STEADY_INPUT, RULES, []);
+    expect(run.state.elapsedMs).toBe(350);
+
+    clock.reset();
+    run = advanceSyncedRun(run, clock.read(), STEADY_INPUT, RULES, []);
     expect(run.state.elapsedMs).toBe(0);
   });
 });

@@ -12,6 +12,47 @@ export interface ClockState {
   paused: boolean;
 }
 
+export interface PlayableClock {
+  pause(): void;
+  read(): ClockState;
+  reset(): void;
+  resume(): void;
+}
+
+export interface ManualClock extends PlayableClock {
+  advance(deltaMs: number): void;
+  setElapsedMs(elapsedMs: number): void;
+}
+
+export function createManualClock(
+  initial: ClockState = { elapsedMs: 0, paused: false },
+): ManualClock {
+  let state: ClockState = { ...initial };
+
+  return {
+    advance(deltaMs) {
+      if (!state.paused) {
+        state = { ...state, elapsedMs: state.elapsedMs + deltaMs };
+      }
+    },
+    pause() {
+      state = { ...state, paused: true };
+    },
+    read() {
+      return { ...state };
+    },
+    reset() {
+      state = { elapsedMs: 0, paused: false };
+    },
+    resume() {
+      state = { ...state, paused: false };
+    },
+    setElapsedMs(elapsedMs) {
+      state = { ...state, elapsedMs };
+    },
+  };
+}
+
 export interface SyncedRun {
   lastSeenMs: number;
   state: RunState;
