@@ -114,6 +114,9 @@ async function startAudioPlayback(blobKey: string): Promise<void> {
   if (!blob || blob.size < MIN_PLAYABLE_AUDIO_BYTES) {
     return;
   }
+  if (!window.location.hash.startsWith("#generated/")) {
+    return;
+  }
   if (activeAudioPlayback) {
     return;
   }
