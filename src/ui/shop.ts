@@ -80,7 +80,8 @@ export function mountShop(
 
     root.appendChild(main);
 
-    for (const item of cosmeticCatalog) {
+    const purchasable = cosmeticCatalog.filter((item) => item.price > 0);
+    for (const item of purchasable) {
       const owned = profile.ownedCosmetics.includes(item.id);
       const testId = safeTestId(item.id);
 
