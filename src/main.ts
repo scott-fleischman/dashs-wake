@@ -110,6 +110,15 @@ function stopAudioPlayback(): void {
   activeAudioPlayback = null;
 }
 
+function setAudioPlaybackPaused(paused: boolean): void {
+  if (!activeAudioPlayback) return;
+  if (paused) {
+    activeAudioPlayback.audio.pause();
+  } else {
+    activeAudioPlayback.audio.play().catch(() => undefined);
+  }
+}
+
 const MIN_PLAYABLE_AUDIO_BYTES = 1024;
 
 async function startAudioPlayback(blobKey: string): Promise<void> {
@@ -176,7 +185,10 @@ function launchLevelRun(
 
   return mountFirstWake(root, metadata, {
     onJumpHold: (held) => backdrop.setLevelJumpHeld(held),
-    onPauseChange: (paused) => backdrop.setLevelPaused(paused),
+    onPauseChange: (paused) => {
+      backdrop.setLevelPaused(paused);
+      setAudioPlaybackPaused(paused);
+    },
     onRestart: () => {
       attemptResolved = false;
       backdrop.restartLevel();
