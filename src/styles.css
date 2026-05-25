@@ -159,6 +159,8 @@ button {
   align-items: center;
   background: rgba(12, 28, 46, 0.86);
   border: 1px solid rgba(25, 217, 243, 0.34);
+  border-left-color: rgba(25, 217, 243, 0.34);
+  border-left-width: 4px;
   border-radius: 1rem;
   box-shadow: 0 0 28px rgba(7, 17, 29, 0.55);
   display: flex;
@@ -172,7 +174,7 @@ button {
 }
 
 .level-card.level-complete {
-  border-left: 4px solid #6cf2c5;
+  border-left-color: #6cf2c5;
 }
 
 .level-card-info {
@@ -637,6 +639,8 @@ kbd {
   align-items: center;
   background: rgba(12, 28, 46, 0.86);
   border: 1px solid rgba(25, 217, 243, 0.34);
+  border-left-color: rgba(25, 217, 243, 0.34);
+  border-left-width: 4px;
   border-radius: 0.75rem;
   box-shadow: 0 0 22px rgba(7, 17, 29, 0.55);
   display: flex;
@@ -645,7 +649,7 @@ kbd {
 }
 
 .cosmetic-row.row-complete {
-  border-left: 4px solid #6cf2c5;
+  border-left-color: #6cf2c5;
 }
 
 .cosmetic-name {
