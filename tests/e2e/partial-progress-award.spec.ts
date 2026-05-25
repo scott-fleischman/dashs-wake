@@ -21,6 +21,10 @@ test("dying after partial progress awards coins for the new best percent", async
   expect(partialPercent).toBeGreaterThan(0);
   expect(partialPercent).toBeLessThan(100);
 
+  await expect(page.getByTestId("failed-attempt-reward")).toHaveText(
+    `Earned: ${partialPercent} Coin${partialPercent === 1 ? "" : "s"}`,
+  );
+
   await failedDialog
     .getByRole("button", { name: "Return to Lobby" })
     .click();

@@ -1,10 +1,13 @@
 import type { LevelSnapshot } from "../game/lobby-backdrop";
+import type { Reward } from "../core/profile";
+import { formatCoinAmount, formatRewardSummary } from "../core/reward-summary";
 
 export interface LevelRunMetadata {
-  completionRewardSummary?: string;
+  completionKeyReward?: Reward;
   equippedIcon: string;
   kicker: string;
   name: string;
+  previousBestPercent?: number;
 }
 
 interface LevelRunActions {
@@ -125,6 +128,7 @@ export function mountFirstWake(
         <p class="kicker">Attempt Ended</p>
         <h2>Crash</h2>
         <p class="result-message">Hazard collision. Restart from 0%.</p>
+        <p class="result-reward" data-testid="failed-attempt-reward" hidden></p>
         <div class="overlay-actions">
           <button class="primary-button" type="button" data-action="restart">Restart</button>
           <button class="utility-button" type="button" data-action="failed-lobby">Return to Lobby</button>
@@ -167,6 +171,10 @@ export function mountFirstWake(
   const failedOverlay = root.querySelector<HTMLElement>("[aria-label='Run failed']");
   const failedHeading = failedOverlay?.querySelector<HTMLElement>("h2") ?? null;
   const failedMessage = failedOverlay?.querySelector<HTMLElement>(".result-message") ?? null;
+  const failedRewardEl =
+    failedOverlay?.querySelector<HTMLElement>(
+      "[data-testid='failed-attempt-reward']",
+    ) ?? null;
   const completeOverlay = root.querySelector<HTMLElement>("[aria-label='Level complete']");
   const completeMessage =
     completeOverlay?.querySelector<HTMLElement>(".result-message") ?? null;
@@ -209,6 +217,7 @@ export function mountFirstWake(
   let paused = false;
   let feedbackTimer: number | undefined;
   let runStatus: LevelSnapshot["status"] = "running";
+  let runningBest = metadata.previousBestPercent ?? 0;
 
   const setPaused = (nextPaused: boolean): void => {
     if (runStatus !== "running") {
@@ -223,6 +232,20 @@ export function mountFirstWake(
 
     if (paused) {
       resumeButton.focus();
+    }
+  };
+
+  const setRewardLine = (
+    el: HTMLElement | null,
+    summary: string,
+  ): void => {
+    if (!el) return;
+    if (summary.length === 0) {
+      el.textContent = "";
+      el.hidden = true;
+    } else {
+      el.textContent = `Earned: ${summary}`;
+      el.hidden = false;
     }
   };
 
@@ -314,22 +337,36 @@ export function mountFirstWake(
       const copy = resultOverlayCopyForDeath(snapshot.deathCause);
       failedHeading.textContent = copy.heading;
       failedMessage.textContent = copy.message;
+      const percent = Math.floor(snapshot.percent);
+      const earned = Math.max(0, percent - runningBest);
+      if (earned > 0) {
+        runningBest = percent;
+      }
+      setRewardLine(
+        failedRewardEl,
+        earned > 0 ? formatCoinAmount(earned) : "",
+      );
       setFeedback(deathMessage(snapshot.deathCause));
       restartButton.focus();
     }
 
     if (snapshot.status === "complete") {
       completeMessage.textContent = completionResultMessage(metadata.name);
-      const rewardSummary = metadata.completionRewardSummary ?? "";
-      if (completeRewardEl) {
-        if (rewardSummary.length > 0) {
-          completeRewardEl.textContent = `Earned: ${rewardSummary}`;
-          completeRewardEl.hidden = false;
-        } else {
-          completeRewardEl.textContent = "";
-          completeRewardEl.hidden = true;
+      const reward: Reward = {};
+      const earned = Math.max(0, 100 - runningBest);
+      if (earned > 0) {
+        reward.coinsAwarded = earned;
+        runningBest = 100;
+      }
+      if (metadata.completionKeyReward) {
+        if (metadata.completionKeyReward.keysAwarded) {
+          reward.keysAwarded = metadata.completionKeyReward.keysAwarded;
+        }
+        if (metadata.completionKeyReward.cosmeticsAwarded) {
+          reward.cosmeticsAwarded = metadata.completionKeyReward.cosmeticsAwarded;
         }
       }
+      setRewardLine(completeRewardEl, formatRewardSummary(reward));
       setFeedback(RUN_MESSAGES.courseComplete);
     }
   };

@@ -455,15 +455,16 @@ function renderRoute(): void {
       return;
     }
 
-    const completionRewardSummary = formatRewardSummary(
-      previewLevelCompletionReward(profile, levelId),
-    );
+    const completionKeyReward = previewLevelCompletionReward(profile, levelId);
+    delete completionKeyReward.coinsAwarded;
+    const previousBestPercent = profile.bestPercents[levelId] ?? 0;
 
     disposeView = launchLevelRun(
       content,
       {
         ...buildLevelRunMetadata(levelKicker(levelId), metadata.name),
-        completionRewardSummary,
+        completionKeyReward,
+        previousBestPercent,
       },
       {
         onAttemptResolved: (snapshot) => {
