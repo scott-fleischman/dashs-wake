@@ -4,6 +4,9 @@ import {
   applyCosmeticPurchase,
   applyCosmeticSelection,
   cosmeticCatalog,
+  cosmeticCategories,
+  getCatalogByCategory,
+  getSelectedCosmetic,
 } from "../../src/core/inventory";
 
 const SPARK_ICON = "icon-spark";
@@ -81,5 +84,35 @@ describe("cosmetic inventory", () => {
     const result = applyCosmeticSelection(profile, SPARK_ICON);
 
     expect(result.profile).toBe(profile);
+  });
+
+  it("derives the set of inventory categories from the catalog", () => {
+    expect(cosmeticCategories.length).toBeGreaterThan(0);
+
+    for (const category of cosmeticCategories) {
+      const items = getCatalogByCategory(category);
+      expect(items.length).toBeGreaterThan(0);
+      for (const item of items) {
+        expect(item.category).toBe(category);
+      }
+    }
+  });
+
+  it("resolves the currently selected cosmetic for a category", () => {
+    const profile = {
+      ...createProfile(),
+      ownedCosmetics: [SPARK_ICON],
+      selectedCosmetics: { icon: SPARK_ICON },
+    };
+
+    const selected = getSelectedCosmetic(profile, "icon");
+
+    expect(selected?.id).toBe(SPARK_ICON);
+  });
+
+  it("returns undefined when no cosmetic is selected for a category", () => {
+    const profile = createProfile();
+
+    expect(getSelectedCosmetic(profile, "icon")).toBeUndefined();
   });
 });
