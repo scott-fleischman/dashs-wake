@@ -106,6 +106,7 @@ export function mountShop(
           actionTestId: `cosmetic-${testId}-buy`,
           detail: `${item.price} Coins`,
           name: item.name,
+          rowExtraClass: owned ? "row-complete" : undefined,
           onAction: () => {
             const overlay = buildPurchaseConfirmation(
               item,

@@ -63,6 +63,7 @@ export function mountChestRoom(
               render();
             }
           },
+          rowExtraClass: opened ? "row-complete" : undefined,
           statusLabel: "Opened",
           statusTestId: `chest-${testId}-opened`,
           statusVisible: opened,
