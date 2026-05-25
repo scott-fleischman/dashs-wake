@@ -1,6 +1,7 @@
 import {
   applyCosmeticPurchase,
   cosmeticCatalog,
+  type CosmeticItem,
 } from "../core/inventory";
 import type { PlayerProfile } from "../core/profile";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
@@ -8,6 +9,55 @@ import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 interface ShopActions {
   onProfileChange: (next: PlayerProfile) => void;
   onReturnToLobby: () => void;
+}
+
+function buildPurchaseConfirmation(
+  item: CosmeticItem,
+  testId: string,
+  onConfirm: () => void,
+  onCancel: () => void,
+): HTMLElement {
+  const overlay = document.createElement("section");
+  overlay.className = "pause-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-label", "Confirm purchase");
+  overlay.setAttribute("data-testid", `cosmetic-${testId}-confirm`);
+
+  const kicker = document.createElement("p");
+  kicker.className = "kicker";
+  kicker.textContent = "Confirm Purchase";
+  overlay.appendChild(kicker);
+
+  const heading = document.createElement("h2");
+  heading.textContent = `Buy ${item.name}?`;
+  overlay.appendChild(heading);
+
+  const message = document.createElement("p");
+  message.className = "result-message";
+  message.textContent = `${item.price} Coins`;
+  overlay.appendChild(message);
+
+  const actionsRow = document.createElement("div");
+  actionsRow.className = "overlay-actions";
+  overlay.appendChild(actionsRow);
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "button";
+  confirmBtn.className = "primary-button";
+  confirmBtn.textContent = "Buy";
+  confirmBtn.setAttribute("data-testid", `cosmetic-${testId}-confirm-buy`);
+  confirmBtn.addEventListener("click", onConfirm);
+  actionsRow.appendChild(confirmBtn);
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "utility-button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.setAttribute("data-testid", `cosmetic-${testId}-confirm-cancel`);
+  cancelBtn.addEventListener("click", onCancel);
+  actionsRow.appendChild(cancelBtn);
+
+  return overlay;
 }
 
 export function mountShop(
@@ -42,11 +92,24 @@ export function mountShop(
           detail: `${item.price} Coins`,
           name: item.name,
           onAction: () => {
-            const result = applyCosmeticPurchase(profileRef.current, item.id);
-            if (result.profile !== profileRef.current) {
-              actions.onProfileChange(result.profile);
-              render();
-            }
+            const overlay = buildPurchaseConfirmation(
+              item,
+              testId,
+              () => {
+                const result = applyCosmeticPurchase(
+                  profileRef.current,
+                  item.id,
+                );
+                if (result.profile !== profileRef.current) {
+                  actions.onProfileChange(result.profile);
+                }
+                render();
+              },
+              () => {
+                overlay.remove();
+              },
+            );
+            main.appendChild(overlay);
           },
           statusLabel: "Owned",
           statusTestId: `cosmetic-${testId}-owned`,

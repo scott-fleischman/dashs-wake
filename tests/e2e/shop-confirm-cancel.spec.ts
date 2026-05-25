@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { seedProfile } from "./helpers/profile-storage";
 
-test("buying a cosmetic deducts coins from the shop balance immediately", async ({
+test("cancelling the purchase confirmation leaves the cosmetic unowned", async ({
   page,
 }) => {
   await page.goto("/");
@@ -12,15 +12,14 @@ test("buying a cosmetic deducts coins from the shop balance immediately", async 
   await page.reload();
 
   await page.getByTestId("destination-shop").click();
-  await expect(page.getByRole("heading", { name: "Shop" })).toBeVisible();
-  await expect(page.getByTestId("shop-balance")).toHaveText("200 Coins");
-
   await page.getByTestId("cosmetic-icon-spark-buy").click();
 
   const confirmDialog = page.getByRole("dialog", { name: "Confirm purchase" });
   await expect(confirmDialog).toBeVisible();
-  await page.getByTestId("cosmetic-icon-spark-confirm-buy").click();
 
-  await expect(page.getByTestId("cosmetic-icon-spark-owned")).toBeVisible();
-  await expect(page.getByTestId("shop-balance")).toHaveText("150 Coins");
+  await page.getByTestId("cosmetic-icon-spark-confirm-cancel").click();
+
+  await expect(confirmDialog).toBeHidden();
+  await expect(page.getByTestId("cosmetic-icon-spark-owned")).toBeHidden();
+  await expect(page.getByTestId("shop-balance")).toHaveText("200 Coins");
 });

@@ -23,6 +23,7 @@ test("opens customizer, shop, and chest room and equips a cosmetic visible in ga
   await page.getByTestId("destination-shop").click();
   await expect(page.getByRole("heading", { name: "Shop" })).toBeVisible();
   await page.getByTestId("cosmetic-icon-pulse-buy").click();
+  await page.getByTestId("cosmetic-icon-pulse-confirm-buy").click();
   await expect(page.getByTestId("cosmetic-icon-pulse-owned")).toBeVisible();
   await page.getByTestId("room-back").click();
 
