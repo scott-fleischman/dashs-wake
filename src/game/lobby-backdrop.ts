@@ -90,6 +90,7 @@ class LobbyBackdropScene extends Phaser.Scene {
 export interface FirstWakeSnapshot {
   attempt: number;
   deathCause?: "fall" | "spike";
+  mode: "cube" | "ship";
   percent: number;
   status: "complete" | "dead" | "running";
 }
@@ -103,12 +104,14 @@ class FirstWakeScene extends Phaser.Scene {
   private accumulator = 0;
   private attempt = 1;
   private courseLayer?: Phaser.GameObjects.Container;
+  private cubeJumpPending = false;
   private floorY = 0;
-  private jumpQueued = false;
+  private jumpHeld = false;
   private lastSnapshotKey = "";
   private onSnapshot?: (snapshot: FirstWakeSnapshot) => void;
   private paused = false;
-  private player?: Phaser.GameObjects.Rectangle;
+  private playerCube?: Phaser.GameObjects.Rectangle;
+  private playerShip?: Phaser.GameObjects.Triangle;
   private state: RunState = createRunState(FIRST_WAKE_RULES);
   private status: FirstWakeSnapshot["status"] = "running";
 
@@ -119,7 +122,8 @@ class FirstWakeScene extends Phaser.Scene {
   create(): void {
     this.accumulator = 0;
     this.attempt = 1;
-    this.jumpQueued = false;
+    this.cubeJumpPending = false;
+    this.jumpHeld = false;
     this.paused = false;
     this.state = createRunState(FIRST_WAKE_RULES);
     this.status = "running";
@@ -139,14 +143,18 @@ class FirstWakeScene extends Phaser.Scene {
     this.accumulator += Math.min(delta, 100);
 
     while (this.accumulator >= SIMULATION_STEP_MS) {
+      const jumpPressed =
+        this.state.player.mode === "ship"
+          ? this.jumpHeld
+          : this.cubeJumpPending;
       this.state = tickRun(
         this.state,
-        { jumpPressed: this.jumpQueued },
+        { jumpPressed },
         SIMULATION_STEP_MS,
         FIRST_WAKE_RULES,
         FIRST_WAKE_ENTITIES,
       );
-      this.jumpQueued = false;
+      this.cubeJumpPending = false;
       this.accumulator -= SIMULATION_STEP_MS;
 
       if (this.state.status === "dead") {
@@ -168,24 +176,37 @@ class FirstWakeScene extends Phaser.Scene {
     this.paused = paused;
   }
 
-  jump(): boolean {
-    if (
-      this.paused ||
-      this.status !== "running" ||
-      this.jumpQueued ||
-      !this.state.player.grounded
-    ) {
+  setJumpHeld(held: boolean): boolean {
+    if (this.paused || this.status !== "running") {
+      this.cubeJumpPending = false;
+      this.jumpHeld = false;
       return false;
     }
 
-    this.jumpQueued = true;
+    const wasHeld = this.jumpHeld;
+    this.jumpHeld = held;
+
+    if (!held || wasHeld) {
+      return true;
+    }
+
+    if (this.state.player.mode === "ship") {
+      return true;
+    }
+
+    if (this.cubeJumpPending || !this.state.player.grounded) {
+      return false;
+    }
+
+    this.cubeJumpPending = true;
     return true;
   }
 
   restart(): void {
     this.accumulator = 0;
     this.attempt += 1;
-    this.jumpQueued = false;
+    this.cubeJumpPending = false;
+    this.jumpHeld = false;
     this.paused = false;
     this.state = resetRunState(this.state, FIRST_WAKE_RULES);
     this.status = "running";
@@ -249,6 +270,21 @@ class FirstWakeScene extends Phaser.Scene {
     }
     this.courseLayer.add(hazards);
 
+    const portals = this.add.graphics();
+    for (const entity of FIRST_WAKE_ENTITIES) {
+      if (entity.type !== "portal") {
+        continue;
+      }
+
+      const y = this.floorY + entity.y - FIRST_WAKE_RULES.groundY;
+      const portalColor = entity.mode === "ship" ? 0xffc857 : 0x6cf2c5;
+      portals.fillStyle(portalColor, 0.18);
+      portals.fillRect(entity.x, y, entity.width, entity.height);
+      portals.lineStyle(3, portalColor, 0.95);
+      portals.strokeRect(entity.x, y, entity.width, entity.height);
+    }
+    this.courseLayer.add(portals);
+
     const finishGate = this.add.graphics();
     finishGate.lineStyle(4, 0x19d9f3, 0.85);
     finishGate.lineBetween(FIRST_WAKE_FINISH_X, this.floorY - 132, FIRST_WAKE_FINISH_X, this.floorY);
@@ -264,18 +300,38 @@ class FirstWakeScene extends Phaser.Scene {
       }),
     );
 
-    this.player = this.add
+    const playerScreenX = width * 0.22;
+    const playerScreenY = this.floorY - FIRST_WAKE_RULES.playerHeight / 2;
+    const halfWidth = FIRST_WAKE_RULES.playerWidth / 2;
+    const halfHeight = FIRST_WAKE_RULES.playerHeight / 2;
+
+    this.playerCube = this.add
       .rectangle(
-        width * 0.22,
-        this.floorY - FIRST_WAKE_RULES.playerHeight / 2,
+        playerScreenX,
+        playerScreenY,
         FIRST_WAKE_RULES.playerWidth,
         FIRST_WAKE_RULES.playerHeight,
         0x19d9f3,
       )
       .setStrokeStyle(3, 0xecfcff, 0.85);
 
+    this.playerShip = this.add
+      .triangle(
+        playerScreenX,
+        playerScreenY,
+        -halfWidth,
+        -halfHeight,
+        halfWidth,
+        0,
+        -halfWidth,
+        halfHeight,
+        0x19d9f3,
+      )
+      .setStrokeStyle(3, 0xecfcff, 0.85)
+      .setVisible(false);
+
     this.add
-      .rectangle(width * 0.22, this.floorY + 2, 80, 3, 0x19d9f3, 0.28)
+      .rectangle(playerScreenX, this.floorY + 2, 80, 3, 0x19d9f3, 0.28)
       .setOrigin(0.5, 0);
 
     this.updatePresentation();
@@ -288,12 +344,20 @@ class FirstWakeScene extends Phaser.Scene {
       this.state.player.y -
       FIRST_WAKE_RULES.groundY -
       FIRST_WAKE_RULES.playerHeight / 2;
+    const isShip = this.state.player.mode === "ship";
+    const fillColor = this.status === "dead" ? 0xff437d : 0x19d9f3;
 
     this.courseLayer?.setX(playerScreenX - this.state.player.x);
-    this.player
-      ?.setY(playerScreenY)
-      .setRotation(this.state.player.x / 62)
-      .setFillStyle(this.status === "dead" ? 0xff437d : 0x19d9f3);
+    this.playerCube
+      ?.setVisible(!isShip)
+      .setY(playerScreenY)
+      .setRotation(isShip ? 0 : this.state.player.x / 62)
+      .setFillStyle(fillColor);
+    this.playerShip
+      ?.setVisible(isShip)
+      .setY(playerScreenY)
+      .setRotation(this.state.player.velocityY * 0.0006)
+      .setFillStyle(fillColor);
   }
 
   private publishSnapshot(force = false): void {
@@ -304,6 +368,7 @@ class FirstWakeScene extends Phaser.Scene {
     const snapshot: FirstWakeSnapshot = {
       attempt: this.attempt,
       ...(this.state.deathCause ? { deathCause: this.state.deathCause } : {}),
+      mode: this.state.player.mode,
       percent,
       status: this.status,
     };
@@ -320,7 +385,7 @@ class FirstWakeScene extends Phaser.Scene {
 
 export interface BackdropController {
   destroy(removeCanvas?: boolean): void;
-  jumpFirstWake(): boolean;
+  setFirstWakeJumpHeld(held: boolean): boolean;
   restartFirstWake(): void;
   setFirstWakeSnapshotListener(
     listener: ((snapshot: FirstWakeSnapshot) => void) | undefined,
@@ -375,9 +440,11 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
 
   return {
     destroy: (removeCanvas = false) => game.destroy(removeCanvas),
-    jumpFirstWake: () => {
+    setFirstWakeJumpHeld: (held: boolean) => {
       if (game.scene.isActive(FIRST_WAKE_SCENE_KEY)) {
-        return (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).jump();
+        return (
+          game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene
+        ).setJumpHeld(held);
       }
 
       return false;

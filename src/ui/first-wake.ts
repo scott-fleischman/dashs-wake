@@ -1,7 +1,7 @@
 import type { FirstWakeSnapshot } from "../game/lobby-backdrop";
 
 interface FirstWakeActions {
-  onInput: () => boolean;
+  onJumpHold: (held: boolean) => boolean;
   onPauseChange: (paused: boolean) => void;
   onRestart: () => void;
   onReturnToLobby: () => void;
@@ -11,6 +11,10 @@ interface FirstWakeActions {
 }
 
 const JUMP_KEYS = new Set(["Space", "ArrowUp"]);
+const MODE_LABELS: Record<FirstWakeSnapshot["mode"], string> = {
+  cube: "Cube",
+  ship: "Ship",
+};
 
 export function mountFirstWake(
   root: HTMLElement,
@@ -28,11 +32,12 @@ export function mountFirstWake(
         <p class="hud-label">Progress</p>
         <strong class="hud-value" data-testid="run-progress">0%</strong>
         <p class="attempt-count" data-testid="attempt-count">Attempt 1</p>
+        <p class="run-mode" data-testid="run-mode">Cube</p>
       </section>
 
       <section class="input-deck" aria-label="First Wake controls">
         <button class="pulse-pad" type="button" data-action="pulse" disabled>
-          <span>Jump Cube</span>
+          <span>Jump</span>
           <small>Space / Click</small>
         </button>
         <p class="input-feedback" aria-live="polite">Input ready</p>
@@ -79,6 +84,7 @@ export function mountFirstWake(
   const feedback = root.querySelector<HTMLElement>(".input-feedback");
   const progress = root.querySelector<HTMLElement>("[data-testid='run-progress']");
   const attempts = root.querySelector<HTMLElement>("[data-testid='attempt-count']");
+  const modeReadout = root.querySelector<HTMLElement>("[data-testid='run-mode']");
   const pulseButton = root.querySelector<HTMLButtonElement>("[data-action='pulse']");
   const pauseButton = root.querySelector<HTMLButtonElement>("[data-action='pause']");
   const resumeButton = root.querySelector<HTMLButtonElement>("[data-action='resume']");
@@ -98,6 +104,7 @@ export function mountFirstWake(
     !feedback ||
     !progress ||
     !attempts ||
+    !modeReadout ||
     !pulseButton ||
     !pauseButton ||
     !resumeButton ||
@@ -133,12 +140,14 @@ export function mountFirstWake(
     }
   };
 
-  const pulse = (): void => {
+  const registerHold = (): void => {
     if (paused) {
       return;
     }
 
-    if (!actions.onInput()) {
+    const accepted = actions.onJumpHold(true);
+
+    if (!accepted) {
       feedback.textContent = "Airborne - jump ignored";
       return;
     }
@@ -150,6 +159,10 @@ export function mountFirstWake(
       pulseButton.classList.remove("active");
       feedback.textContent = "Input ready";
     }, 280);
+  };
+
+  const releaseHold = (): void => {
+    actions.onJumpHold(false);
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
@@ -167,7 +180,14 @@ export function mountFirstWake(
 
     if (JUMP_KEYS.has(event.code) && !event.repeat) {
       event.preventDefault();
-      pulse();
+      registerHold();
+    }
+  };
+
+  const onKeyUp = (event: KeyboardEvent): void => {
+    if (JUMP_KEYS.has(event.code)) {
+      event.preventDefault();
+      releaseHold();
     }
   };
 
@@ -184,6 +204,7 @@ export function mountFirstWake(
     runStatus = snapshot.status;
     progress.textContent = `${snapshot.percent}%`;
     attempts.textContent = `Attempt ${snapshot.attempt}`;
+    modeReadout.textContent = MODE_LABELS[snapshot.mode];
     failedOverlay.hidden = snapshot.status !== "dead";
     completeOverlay.hidden = snapshot.status !== "complete";
     pulseButton.disabled = snapshot.status !== "running";
@@ -211,7 +232,10 @@ export function mountFirstWake(
   };
 
   actions.onSnapshotChange(renderSnapshot);
-  pulseButton.addEventListener("click", pulse);
+  pulseButton.addEventListener("pointerdown", registerHold);
+  pulseButton.addEventListener("pointerup", releaseHold);
+  pulseButton.addEventListener("pointerleave", releaseHold);
+  pulseButton.addEventListener("pointercancel", releaseHold);
   pauseButton.addEventListener("click", () => setPaused(true));
   resumeButton.addEventListener("click", () => setPaused(false));
   lobbyButton.addEventListener("click", actions.onReturnToLobby);
@@ -220,10 +244,13 @@ export function mountFirstWake(
   restartButton.addEventListener("click", restart);
   replayButton.addEventListener("click", restart);
   window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keyup", onKeyUp);
 
   return () => {
     window.clearTimeout(feedbackTimer);
     window.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("keyup", onKeyUp);
+    releaseHold();
     actions.onSnapshotChange(undefined);
     root.classList.remove("first-wake-paused");
     actions.onPauseChange(false);

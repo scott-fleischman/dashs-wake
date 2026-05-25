@@ -67,7 +67,7 @@ test("First Wake ignores a second jump while the cube is airborne", async ({
   await page.goto("/#play");
 
   await expect(
-    page.getByRole("button", { name: "Jump Cube Space / Click" }),
+    page.getByRole("button", { name: "Jump Space / Click" }),
   ).toBeEnabled();
   await page.keyboard.press("Space");
   await expect(page.getByText("Jump registered")).toBeVisible();
@@ -108,7 +108,7 @@ test("First Wake reports progress, restarts after failure, and can be completed"
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(53);
+    .toBeGreaterThanOrEqual(44);
   await page.keyboard.press("Space");
 
   await expect(

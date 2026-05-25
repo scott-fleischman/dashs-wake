@@ -63,7 +63,7 @@ function renderRoute(): void {
     };
 
     disposeView = mountFirstWake(root, {
-      onInput: () => backdrop.jumpFirstWake(),
+      onJumpHold: (held) => backdrop.setFirstWakeJumpHeld(held),
       onPauseChange: (paused) => backdrop.setFirstWakePaused(paused),
       onRestart: () => {
         attemptHandled = false;

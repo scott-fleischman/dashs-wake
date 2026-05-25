@@ -336,7 +336,8 @@ button {
 }
 
 .hud-label,
-.attempt-count {
+.attempt-count,
+.run-mode {
   color: #84a8bb;
   font-size: 0.69rem;
   font-weight: 700;
@@ -351,9 +352,14 @@ button {
   letter-spacing: 0.1em;
 }
 
-.attempt-count {
+.attempt-count,
+.run-mode {
   border-left: 1px solid rgba(142, 170, 189, 0.3);
   padding-left: 0.8rem;
+}
+
+.run-mode {
+  color: #ffc857;
 }
 
 .input-deck {
