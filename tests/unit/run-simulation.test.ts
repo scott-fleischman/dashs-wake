@@ -251,9 +251,8 @@ describe("safe orb activations", () => {
   it("applies a safe orb's impulse when jump is pressed during contact", () => {
     const orb: LevelEntity = {
       type: "orb",
-      kind: "safe",
       id: "orb-a",
-      impulse: 30,
+      effect: { kind: "impulse", magnitude: 30 },
       height: 20,
       width: 10,
       x: 5,
@@ -275,9 +274,8 @@ describe("safe orb activations", () => {
   it("ignores an overlapping orb when no jump input is pressed", () => {
     const orb: LevelEntity = {
       type: "orb",
-      kind: "safe",
       id: "orb-a",
-      impulse: 30,
+      effect: { kind: "impulse", magnitude: 30 },
       height: 20,
       width: 10,
       x: 5,
@@ -299,9 +297,8 @@ describe("safe orb activations", () => {
   it("ignores jump input when the player is not overlapping any orb", () => {
     const orb: LevelEntity = {
       type: "orb",
-      kind: "safe",
       id: "orb-a",
-      impulse: 30,
+      effect: { kind: "impulse", magnitude: 30 },
       height: 20,
       width: 10,
       x: 90,
@@ -323,9 +320,8 @@ describe("safe orb activations", () => {
   it("activates an orb only once per run even when input repeats during contact", () => {
     const orb: LevelEntity = {
       type: "orb",
-      kind: "safe",
       id: "orb-a",
-      impulse: 30,
+      effect: { kind: "impulse", magnitude: 30 },
       height: 20,
       width: 10,
       x: 5,
@@ -348,8 +344,8 @@ describe("trap orb activations", () => {
   it("kills the player when jump fires during contact with a trap orb", () => {
     const trapOrb: LevelEntity = {
       type: "orb",
-      kind: "trap",
       id: "trap-1",
+      effect: { kind: "kill" },
       height: 20,
       width: 10,
       x: 5,
@@ -371,8 +367,8 @@ describe("trap orb activations", () => {
   it("leaves the player alive when bypassing a trap orb without input", () => {
     const trapOrb: LevelEntity = {
       type: "orb",
-      kind: "trap",
       id: "trap-1",
+      effect: { kind: "kill" },
       height: 20,
       width: 10,
       x: 5,
@@ -394,8 +390,8 @@ describe("trap orb activations", () => {
   it("does not kill the player when jump fires outside a trap orb's contact window", () => {
     const trapOrb: LevelEntity = {
       type: "orb",
-      kind: "trap",
       id: "trap-1",
+      effect: { kind: "kill" },
       height: 20,
       width: 10,
       x: 90,

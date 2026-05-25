@@ -9,9 +9,8 @@ const ORBITAL_LOOP_ENTITIES: readonly LevelEntity[] = [
   { type: "spike", height: 30, width: 30, x: 160, y: 270 },
   {
     type: "orb",
-    kind: "safe",
     id: REQUIRED_ORB_ID,
-    impulse: 720,
+    effect: { kind: "impulse", magnitude: 720 },
     height: 30,
     width: 30,
     x: 400,

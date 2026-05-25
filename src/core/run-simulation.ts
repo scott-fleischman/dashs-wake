@@ -46,21 +46,15 @@ export interface PadEntity extends RectangularEntity {
   type: "pad";
 }
 
-interface BaseOrbEntity extends RectangularEntity {
+export type OrbEffect =
+  | { kind: "impulse"; magnitude: number }
+  | { kind: "kill" };
+
+export interface OrbEntity extends RectangularEntity {
+  effect: OrbEffect;
   id: string;
   type: "orb";
 }
-
-export interface SafeOrbEntity extends BaseOrbEntity {
-  impulse: number;
-  kind: "safe";
-}
-
-export interface TrapOrbEntity extends BaseOrbEntity {
-  kind: "trap";
-}
-
-export type OrbEntity = SafeOrbEntity | TrapOrbEntity;
 
 export type LevelEntity =
   | GapEntity
@@ -218,9 +212,11 @@ function gatherImpulses(
 ): readonly UpwardImpulse[] {
   const impulses: UpwardImpulse[] = [
     ...activatablePads.map((pad) => ({ magnitude: pad.impulse })),
-    ...activatedOrbs
-      .filter((orb): orb is SafeOrbEntity => orb.kind === "safe")
-      .map((orb) => ({ magnitude: orb.impulse })),
+    ...activatedOrbs.flatMap((orb) =>
+      orb.effect.kind === "impulse"
+        ? [{ magnitude: orb.effect.magnitude }]
+        : [],
+    ),
   ];
 
   if (
@@ -384,7 +380,9 @@ export function tickRun(
     triggeredIds.length > 0
       ? new Set([...state.consumedTriggerIds, ...triggeredIds])
       : state.consumedTriggerIds;
-  const trapActivated = activatedOrbs.some((orb) => orb.kind === "trap");
+  const trapActivated = activatedOrbs.some(
+    (orb) => orb.effect.kind === "kill",
+  );
   const deathCause: DeathCause | undefined = trapActivated
     ? "trap"
     : entities.some(
