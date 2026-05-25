@@ -35,8 +35,10 @@ test("unlocks Level 2 and completes the launch pad sequence", async ({
     .toBeGreaterThanOrEqual(70);
   await page.keyboard.press("Space");
 
-  await expect(
-    page.getByRole("dialog", { name: "Level complete" }),
-  ).toBeVisible({ timeout: 5_000 });
+  const completeDialog = page.getByRole("dialog", { name: "Level complete" });
+  await expect(completeDialog).toBeVisible({ timeout: 5_000 });
   await expect(progress).toHaveText("100%");
+  await expect(completeDialog.locator(".result-message")).toContainText(
+    "Launch Sequence",
+  );
 });
