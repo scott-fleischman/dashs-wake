@@ -644,6 +644,10 @@ kbd {
   padding: 0.85rem 1rem;
 }
 
+.cosmetic-row.row-complete {
+  border-left: 4px solid #6cf2c5;
+}
+
 .cosmetic-name {
   color: #ecfcff;
   flex: 1;

@@ -38,6 +38,7 @@ export interface RoomRowOptions {
   name: string;
   nameTestId?: string;
   onAction: () => void;
+  rowExtraClass?: string;
   statusLabel: string;
   statusTestId: string;
   statusVisible: boolean;
@@ -52,7 +53,9 @@ function formatSwatchColor(color: number): string {
 
 export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
   const li = document.createElement("li");
-  li.className = "cosmetic-row";
+  li.className = options.rowExtraClass
+    ? `cosmetic-row ${options.rowExtraClass}`
+    : "cosmetic-row";
 
   if (options.swatchColor !== undefined) {
     const swatch = document.createElement("span");

@@ -90,6 +90,7 @@ export function mountGauntletsRoom(
           detail,
           name: gauntlet.name,
           onAction: () => actions.onStartGauntlet(gauntlet.id),
+          rowExtraClass: completed ? "row-complete" : undefined,
           statusLabel: completed ? "Cleared" : "Available",
           statusTestId: `gauntlet-${testId}-status`,
           statusVisible: completed || unlocked,
