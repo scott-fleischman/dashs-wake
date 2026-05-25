@@ -1,0 +1,108 @@
+import {
+  gauntletCatalog,
+  isGauntletUnlocked,
+  type GauntletEntry,
+} from "../core/gauntlet";
+import type { PlayerProfile } from "../core/profile";
+import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
+
+interface GauntletsRoomActions {
+  onReturnToLobby: () => void;
+  onStartGauntlet: (gauntletId: string) => void;
+}
+
+interface GauntletsRoomOptions {
+  completedGauntletId: string | null;
+}
+
+function completionDialogFor(
+  gauntlet: GauntletEntry,
+  onAcknowledge: () => void,
+): HTMLElement {
+  const overlay = document.createElement("section");
+  overlay.className = "pause-overlay result-overlay gauntlet-complete";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-label", "Gauntlet complete");
+
+  const kicker = document.createElement("p");
+  kicker.className = "kicker";
+  kicker.textContent = "Gauntlet Cleared";
+  overlay.appendChild(kicker);
+
+  const heading = document.createElement("h2");
+  heading.textContent = gauntlet.name;
+  overlay.appendChild(heading);
+
+  const message = document.createElement("p");
+  message.className = "result-message";
+  message.textContent = "All stages cleared. Reward granted.";
+  overlay.appendChild(message);
+
+  const actions = document.createElement("div");
+  actions.className = "overlay-actions";
+  overlay.appendChild(actions);
+
+  const ackButton = document.createElement("button");
+  ackButton.type = "button";
+  ackButton.className = "primary-button";
+  ackButton.setAttribute("data-testid", "gauntlet-complete-acknowledge");
+  ackButton.textContent = "Continue";
+  ackButton.addEventListener("click", onAcknowledge);
+  actions.appendChild(ackButton);
+
+  return overlay;
+}
+
+export function mountGauntletsRoom(
+  root: HTMLElement,
+  profileRef: { current: PlayerProfile },
+  actions: GauntletsRoomActions,
+  options: GauntletsRoomOptions,
+): () => void {
+  function render(showCompletionFor: string | null): void {
+    const profile = profileRef.current;
+
+    root.replaceChildren();
+
+    const { list, main } = buildRoomShell("Gauntlets", actions.onReturnToLobby);
+    root.appendChild(main);
+
+    for (const gauntlet of gauntletCatalog) {
+      const unlocked = isGauntletUnlocked(profile, gauntlet.id);
+      const completed = profile.completedGauntletIds.includes(gauntlet.id);
+      const testId = safeTestId(gauntlet.id);
+
+      list.appendChild(
+        buildRoomRow({
+          actionDisabled: !unlocked,
+          actionLabel: unlocked ? "Start" : "Locked",
+          actionTestId: `gauntlet-${testId}-start`,
+          detail: `${gauntlet.stages.length} stages`,
+          name: gauntlet.name,
+          onAction: () => actions.onStartGauntlet(gauntlet.id),
+          statusLabel: completed ? "Cleared" : "Available",
+          statusTestId: `gauntlet-${testId}-status`,
+          statusVisible: completed || unlocked,
+        }),
+      );
+    }
+
+    if (showCompletionFor) {
+      const gauntlet = gauntletCatalog.find(
+        (entry) => entry.id === showCompletionFor,
+      );
+
+      if (gauntlet) {
+        main.appendChild(
+          completionDialogFor(gauntlet, () => render(null)),
+        );
+      }
+    }
+  }
+
+  render(options.completedGauntletId);
+
+  return () => {
+    root.replaceChildren();
+  };
+}
