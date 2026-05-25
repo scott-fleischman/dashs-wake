@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAudio, type AnalyzerInput } from "../../src/core/audio-analyzer";
+import {
+  analyzeAudio,
+  type AnalyzerInput,
+} from "../../src/core/audio-analyzer";
+import { analysisToGeneratorInput } from "../../src/core/audio-bridge";
 
 const SAMPLE_RATE_HZ = 44100;
 
@@ -75,6 +79,28 @@ describe("audio analyzer", () => {
 
     expect(strong).toBeDefined();
     expect(weak).toBeDefined();
+  });
+
+  it("bridges its analysis into a generator input that preserves beats and durations", () => {
+    const input = makeFixture({
+      durationMs: 2000,
+      impulses: [
+        { amplitude: 0.9, ms: 500 },
+        { amplitude: 0.5, ms: 1000 },
+      ],
+    });
+
+    const analysis = analyzeAudio(input);
+    const generatorInput = analysisToGeneratorInput(analysis, {
+      difficulty: "normal",
+      seed: 42,
+    });
+
+    expect(generatorInput.beatMap.durationMs).toBe(analysis.durationMs);
+    expect(generatorInput.beatMap.beats.length).toBe(analysis.beats.length);
+    expect(generatorInput.beatIntensities?.length).toBe(analysis.beats.length);
+    expect(generatorInput.difficulty).toBe("normal");
+    expect(generatorInput.seed).toBe(42);
   });
 
   it("classifies sections as quiet or intense from impulse density", () => {
