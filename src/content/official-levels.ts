@@ -1,5 +1,5 @@
-import type { LevelEntity, RunRules } from "../core/run-simulation";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
+import { launchSequenceLevel } from "./launch-sequence";
 
 export type OfficialLevelDifficulty =
   | "easy"
@@ -42,50 +42,6 @@ export const officialLevelCatalog: readonly OfficialLevelMetadata[] = [
     unlockedBy: "level_4",
   },
 ];
-
-const LEVEL_2_RULES: RunRules = firstWakeLevel.rules;
-
-const LEVEL_2_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 160, y: 270 },
-  {
-    type: "pad",
-    id: "level-2-pad-1",
-    impulse: 720,
-    height: 18,
-    width: 40,
-    x: 380,
-    y: 290,
-  },
-  { type: "spike", height: 30, width: 30, x: 620, y: 270 },
-];
-
-const LEVEL_2_FINISH_X = 820;
-
-function buildPlaceholderBeatMap(
-  finishX: number,
-  horizontalSpeed: number,
-): LevelContent["beatMap"] {
-  const traversalMs = Math.ceil((finishX / horizontalSpeed) * 1000);
-  const durationMs = traversalMs + 600;
-  const intervalMs = 600;
-  const beats: number[] = [];
-
-  for (let timeMs = 0; timeMs <= durationMs; timeMs += intervalMs) {
-    beats.push(timeMs);
-  }
-
-  return { beats, durationMs };
-}
-
-const launchSequenceLevel: LevelContent = {
-  beatMap: buildPlaceholderBeatMap(
-    LEVEL_2_FINISH_X,
-    LEVEL_2_RULES.horizontalSpeed,
-  ),
-  entities: LEVEL_2_ENTITIES,
-  finishX: LEVEL_2_FINISH_X,
-  rules: LEVEL_2_RULES,
-};
 
 const LEVEL_CONTENT_BY_ID: Readonly<Record<string, LevelContent>> = {
   level_1: firstWakeLevel,
