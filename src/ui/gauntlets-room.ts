@@ -5,6 +5,7 @@ import {
 } from "../core/gauntlet";
 import { formatLevelClearList } from "../content/official-levels";
 import type { PlayerProfile } from "../core/profile";
+import { formatRewardSummary } from "../core/reward-summary";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
 function gauntletUnlockHint(gauntlet: GauntletEntry): string {
@@ -42,8 +43,17 @@ function completionDialogFor(
 
   const message = document.createElement("p");
   message.className = "result-message";
-  message.textContent = "All stages cleared. Reward granted.";
+  message.textContent = "All stages cleared.";
   overlay.appendChild(message);
+
+  const rewardSummary = formatRewardSummary(gauntlet.reward);
+  if (rewardSummary.length > 0) {
+    const earned = document.createElement("p");
+    earned.className = "result-message";
+    earned.setAttribute("data-testid", "gauntlet-complete-reward");
+    earned.textContent = `Earned: ${rewardSummary}`;
+    overlay.appendChild(earned);
+  }
 
   const actions = document.createElement("div");
   actions.className = "overlay-actions";

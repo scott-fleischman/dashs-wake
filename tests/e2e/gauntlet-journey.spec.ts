@@ -47,6 +47,9 @@ test("enters and completes the electric wake gauntlet", async ({ page }) => {
   await expect(
     page.getByRole("dialog", { name: "Gauntlet complete" }),
   ).toBeVisible({ timeout: 6_000 });
+  await expect(page.getByTestId("gauntlet-complete-reward")).toHaveText(
+    "Earned: 150 Coins + 1 Hard Key",
+  );
 
   await page.getByTestId("gauntlet-complete-acknowledge").click();
   await expect(page.getByTestId("gauntlet-electric-wake-status")).toHaveText(
