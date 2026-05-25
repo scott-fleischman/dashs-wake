@@ -60,8 +60,7 @@ describe("cube run simulation", () => {
       y: 92,
     };
     const fallingState: RunState = {
-      consumedOrbIds: new Set(),
-      consumedPadIds: new Set(),
+      consumedTriggerIds: new Set(),
       elapsedMs: 400,
       player: {
         grounded: false,
@@ -145,8 +144,7 @@ describe("ship mode portals and motion", () => {
 
   it("rises while jump is held in ship mode and falls when released", () => {
     const flying: RunState = {
-      consumedOrbIds: new Set(),
-      consumedPadIds: new Set(),
+      consumedTriggerIds: new Set(),
       elapsedMs: 0,
       player: {
         grounded: false,
@@ -180,8 +178,7 @@ describe("ship mode portals and motion", () => {
     };
 
     let state: RunState = {
-      consumedOrbIds: new Set(),
-      consumedPadIds: new Set(),
+      consumedTriggerIds: new Set(),
       elapsedMs: 0,
       player: {
         grounded: false,
@@ -213,8 +210,7 @@ describe("launch pad impulses", () => {
       y: 95,
     };
     const onPad: RunState = {
-      consumedOrbIds: new Set(),
-      consumedPadIds: new Set(),
+      consumedTriggerIds: new Set(),
       elapsedMs: 0,
       player: { grounded: true, mode: "cube", velocityY: 0, x: 8, y: 100 },
       status: "running",
@@ -224,7 +220,7 @@ describe("launch pad impulses", () => {
 
     expect(after.player.velocityY).toBeCloseTo(-30 + rules.gravity * 0.1);
     expect(after.player.grounded).toBe(false);
-    expect(after.consumedPadIds.has("pad-a")).toBe(true);
+    expect(after.consumedTriggerIds.has("pad-a")).toBe(true);
   });
 
   it("does not re-apply a pad's impulse while the player remains in contact", () => {
@@ -238,8 +234,7 @@ describe("launch pad impulses", () => {
       y: 95,
     };
     const afterFirstHit: RunState = {
-      consumedOrbIds: new Set(),
-      consumedPadIds: new Set(["pad-a"]),
+      consumedTriggerIds: new Set(["pad-a"]),
       elapsedMs: 100,
       player: { grounded: false, mode: "cube", velocityY: -28, x: 9, y: 97.2 },
       status: "running",
@@ -248,7 +243,7 @@ describe("launch pad impulses", () => {
     const after = tickRun(afterFirstHit, { jumpPressed: false }, 100, rules, [pad]);
 
     expect(after.player.velocityY).toBeCloseTo(-28 + rules.gravity * 0.1);
-    expect(after.consumedPadIds.has("pad-a")).toBe(true);
+    expect(after.consumedTriggerIds.has("pad-a")).toBe(true);
   });
 });
 
@@ -264,8 +259,7 @@ describe("safe orb activations", () => {
       y: 40,
     };
     const inContact: RunState = {
-      consumedOrbIds: new Set(),
-      consumedPadIds: new Set(),
+      consumedTriggerIds: new Set(),
       elapsedMs: 0,
       player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
       status: "running",
@@ -274,7 +268,7 @@ describe("safe orb activations", () => {
     const after = tickRun(inContact, { jumpPressed: true }, 100, rules, [orb]);
 
     expect(after.player.velocityY).toBeCloseTo(-30 + rules.gravity * 0.1);
-    expect(after.consumedOrbIds.has("orb-a")).toBe(true);
+    expect(after.consumedTriggerIds.has("orb-a")).toBe(true);
   });
 
   it("ignores an overlapping orb when no jump input is pressed", () => {
@@ -288,8 +282,7 @@ describe("safe orb activations", () => {
       y: 40,
     };
     const inContact: RunState = {
-      consumedOrbIds: new Set(),
-      consumedPadIds: new Set(),
+      consumedTriggerIds: new Set(),
       elapsedMs: 0,
       player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
       status: "running",
@@ -298,7 +291,7 @@ describe("safe orb activations", () => {
     const after = tickRun(inContact, { jumpPressed: false }, 100, rules, [orb]);
 
     expect(after.player.velocityY).toBeCloseTo(rules.gravity * 0.1);
-    expect(after.consumedOrbIds.has("orb-a")).toBe(false);
+    expect(after.consumedTriggerIds.has("orb-a")).toBe(false);
   });
 
   it("ignores jump input when the player is not overlapping any orb", () => {
@@ -312,8 +305,7 @@ describe("safe orb activations", () => {
       y: 40,
     };
     const farAway: RunState = {
-      consumedOrbIds: new Set(),
-      consumedPadIds: new Set(),
+      consumedTriggerIds: new Set(),
       elapsedMs: 0,
       player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
       status: "running",
@@ -322,7 +314,7 @@ describe("safe orb activations", () => {
     const after = tickRun(farAway, { jumpPressed: true }, 100, rules, [orb]);
 
     expect(after.player.velocityY).toBeCloseTo(rules.gravity * 0.1);
-    expect(after.consumedOrbIds.has("orb-a")).toBe(false);
+    expect(after.consumedTriggerIds.has("orb-a")).toBe(false);
   });
 
   it("activates an orb only once per run even when input repeats during contact", () => {
@@ -336,8 +328,7 @@ describe("safe orb activations", () => {
       y: 40,
     };
     const alreadyConsumed: RunState = {
-      consumedOrbIds: new Set(["orb-a"]),
-      consumedPadIds: new Set(),
+      consumedTriggerIds: new Set(["orb-a"]),
       elapsedMs: 100,
       player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
       status: "running",

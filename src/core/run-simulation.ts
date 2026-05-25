@@ -71,8 +71,7 @@ export interface PlayerState {
 }
 
 export interface RunState {
-  consumedOrbIds: ReadonlySet<string>;
-  consumedPadIds: ReadonlySet<string>;
+  consumedTriggerIds: ReadonlySet<string>;
   deathCause?: DeathCause;
   elapsedMs: number;
   player: PlayerState;
@@ -81,8 +80,7 @@ export interface RunState {
 
 export function createRunState(rules: RunRules): RunState {
   return {
-    consumedOrbIds: new Set(),
-    consumedPadIds: new Set(),
+    consumedTriggerIds: new Set(),
     elapsedMs: 0,
     player: {
       grounded: true,
@@ -258,31 +256,41 @@ function resolvePortalMode(
   return currentMode;
 }
 
+function isTriggerInContact<T extends RectangularEntity & { id: string }>(
+  entity: T,
+  player: PlayerState,
+  consumedTriggerIds: ReadonlySet<string>,
+  rules: RunRules,
+): boolean {
+  return (
+    !consumedTriggerIds.has(entity.id) &&
+    playerOverlapsRect(player.x, player.y, entity, rules)
+  );
+}
+
 function findActivatablePads(
   player: PlayerState,
-  consumedPadIds: ReadonlySet<string>,
+  consumedTriggerIds: ReadonlySet<string>,
   entities: readonly LevelEntity[],
   rules: RunRules,
 ): readonly PadEntity[] {
   return entities.filter(
     (entity): entity is PadEntity =>
       entity.type === "pad" &&
-      !consumedPadIds.has(entity.id) &&
-      playerOverlapsRect(player.x, player.y, entity, rules),
+      isTriggerInContact(entity, player, consumedTriggerIds, rules),
   );
 }
 
 function findActivatableOrbs(
   player: PlayerState,
-  consumedOrbIds: ReadonlySet<string>,
+  consumedTriggerIds: ReadonlySet<string>,
   entities: readonly LevelEntity[],
   rules: RunRules,
 ): readonly OrbEntity[] {
   return entities.filter(
     (entity): entity is OrbEntity =>
       entity.type === "orb" &&
-      !consumedOrbIds.has(entity.id) &&
-      playerOverlapsRect(player.x, player.y, entity, rules),
+      isTriggerInContact(entity, player, consumedTriggerIds, rules),
   );
 }
 
@@ -304,14 +312,14 @@ export function tickRun(
   const elapsedSeconds = elapsedMs / 1000;
   const activatablePads = findActivatablePads(
     state.player,
-    state.consumedPadIds,
+    state.consumedTriggerIds,
     entities,
     rules,
   );
   const activatedOrbs = input.jumpPressed
     ? findActivatableOrbs(
         state.player,
-        state.consumedOrbIds,
+        state.consumedTriggerIds,
         entities,
         rules,
       )
@@ -356,20 +364,14 @@ export function tickRun(
     x: proposedX,
     y: placedY,
   };
-  const nextConsumedPadIds: ReadonlySet<string> =
-    activatablePads.length > 0
-      ? new Set([
-          ...state.consumedPadIds,
-          ...activatablePads.map((pad) => pad.id),
-        ])
-      : state.consumedPadIds;
-  const nextConsumedOrbIds: ReadonlySet<string> =
-    activatedOrbs.length > 0
-      ? new Set([
-          ...state.consumedOrbIds,
-          ...activatedOrbs.map((orb) => orb.id),
-        ])
-      : state.consumedOrbIds;
+  const triggeredIds = [
+    ...activatablePads.map((pad) => pad.id),
+    ...activatedOrbs.map((orb) => orb.id),
+  ];
+  const nextConsumedTriggerIds: ReadonlySet<string> =
+    triggeredIds.length > 0
+      ? new Set([...state.consumedTriggerIds, ...triggeredIds])
+      : state.consumedTriggerIds;
   const deathCause = entities.some(
     (entity) =>
       entity.type === "spike" &&
@@ -381,8 +383,7 @@ export function tickRun(
       : undefined;
 
   return {
-    consumedOrbIds: nextConsumedOrbIds,
-    consumedPadIds: nextConsumedPadIds,
+    consumedTriggerIds: nextConsumedTriggerIds,
     ...(deathCause ? { deathCause } : {}),
     elapsedMs: state.elapsedMs + elapsedMs,
     player,
