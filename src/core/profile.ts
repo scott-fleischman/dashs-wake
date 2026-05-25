@@ -1,6 +1,7 @@
 export interface PlayerProfile {
   bestPercents: Readonly<Record<string, number>>;
   coins: number;
+  completedGauntletIds: readonly string[];
   completedLevels: readonly string[];
   keys: Readonly<Record<string, number>>;
   openedChestIds: readonly string[];
@@ -123,6 +124,7 @@ export function createProfile(): PlayerProfile {
   return {
     bestPercents: {},
     coins: 0,
+    completedGauntletIds: [],
     completedLevels: [],
     keys: {},
     openedChestIds: [],

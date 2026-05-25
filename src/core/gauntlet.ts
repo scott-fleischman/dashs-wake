@@ -1,10 +1,22 @@
+import { applyReward, type PlayerProfile, type Reward } from "./profile";
+
 export type GauntletStatus = "complete" | "failed" | "running";
 
 export type StageOutcome = "completed" | "failed";
 
+export interface GauntletUnlockRequirement {
+  requiredCompletedLevels: readonly string[];
+}
+
 export interface GauntletDefinition {
   id: string;
   stages: readonly string[];
+}
+
+export interface GauntletEntry extends GauntletDefinition {
+  name: string;
+  reward: Reward;
+  unlockRequirement: GauntletUnlockRequirement;
 }
 
 export interface GauntletRunState {
@@ -62,4 +74,64 @@ export function restartGauntletAtActiveStage(
   }
 
   return { ...state, status: "running" };
+}
+
+export const gauntletCatalog: readonly GauntletEntry[] = [
+  {
+    id: "electric-wake",
+    name: "Electric Wake Gauntlet",
+    stages: ["electric-wake-1", "electric-wake-2", "electric-wake-3"],
+    unlockRequirement: {
+      requiredCompletedLevels: ["level_1", "level_2"],
+    },
+    reward: {
+      coinsAwarded: 150,
+      keysAwarded: { hard: 1 },
+    },
+  },
+];
+
+function findGauntlet(gauntletId: string): GauntletEntry | undefined {
+  return gauntletCatalog.find((entry) => entry.id === gauntletId);
+}
+
+export function isGauntletUnlocked(
+  profile: PlayerProfile,
+  gauntletId: string,
+): boolean {
+  const gauntlet = findGauntlet(gauntletId);
+
+  if (!gauntlet) {
+    return false;
+  }
+
+  return gauntlet.unlockRequirement.requiredCompletedLevels.every((levelId) =>
+    profile.completedLevels.includes(levelId),
+  );
+}
+
+export interface GauntletCompletionResult {
+  granted: Reward;
+  profile: PlayerProfile;
+}
+
+export function applyGauntletCompletion(
+  profile: PlayerProfile,
+  gauntletId: string,
+): GauntletCompletionResult {
+  const gauntlet = findGauntlet(gauntletId);
+
+  if (!gauntlet || profile.completedGauntletIds.includes(gauntletId)) {
+    return { granted: {}, profile };
+  }
+
+  const rewarded = applyReward(profile, gauntlet.reward);
+
+  return {
+    granted: gauntlet.reward,
+    profile: {
+      ...rewarded,
+      completedGauntletIds: [...rewarded.completedGauntletIds, gauntlet.id],
+    },
+  };
 }
