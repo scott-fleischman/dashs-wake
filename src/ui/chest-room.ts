@@ -1,10 +1,29 @@
-import { applyOpenChest, chestCatalog } from "../core/chests";
+import {
+  applyOpenChest,
+  chestCatalog,
+  type ChestReward,
+} from "../core/chests";
+import { cosmeticCatalog } from "../core/inventory";
 import type { PlayerProfile } from "../core/profile";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
 interface ChestRoomActions {
   onProfileChange: (next: PlayerProfile) => void;
   onReturnToLobby: () => void;
+}
+
+function chestRewardSummary(reward: ChestReward): string {
+  const parts: string[] = [];
+  if (reward.coinsAwarded && reward.coinsAwarded > 0) {
+    parts.push(`${reward.coinsAwarded} coins`);
+  }
+  if (reward.cosmeticAwarded) {
+    const item = cosmeticCatalog.find(
+      (entry) => entry.id === reward.cosmeticAwarded,
+    );
+    parts.push(item?.name ?? reward.cosmeticAwarded);
+  }
+  return parts.join(" + ");
 }
 
 export function mountChestRoom(
@@ -30,7 +49,7 @@ export function mountChestRoom(
           actionDisabled: opened || keyCount < 1,
           actionLabel: "Open",
           actionTestId: `chest-${testId}-open`,
-          detail: `1 ${chest.keyType} Key`,
+          detail: `1 ${chest.keyType} Key → ${chestRewardSummary(chest.reward)}`,
           name: chest.id,
           onAction: () => {
             const result = applyOpenChest(profileRef.current, chest.id);
