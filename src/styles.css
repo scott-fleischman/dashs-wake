@@ -644,6 +644,7 @@ kbd {
   border-radius: 0.75rem;
   box-shadow: 0 0 22px rgba(7, 17, 29, 0.55);
   display: flex;
+  flex-wrap: wrap;
   gap: 0.85rem;
   padding: 0.85rem 1rem;
 }
@@ -681,6 +682,18 @@ kbd {
 }
 
 .cosmetic-equipped[hidden] {
+  display: none;
+}
+
+.room-row-hint {
+  color: #ffc857;
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  margin-top: -0.15rem;
+}
+
+.room-row-hint[hidden] {
   display: none;
 }
 

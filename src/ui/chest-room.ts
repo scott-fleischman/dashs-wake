@@ -4,6 +4,7 @@ import {
   type ChestReward,
 } from "../core/chests";
 import { cosmeticCatalog } from "../core/inventory";
+import { describeKeySource } from "../core/key-sources";
 import type { PlayerProfile } from "../core/profile";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
@@ -54,12 +55,17 @@ export function mountChestRoom(
           )
         : undefined;
 
+      const hintText = describeKeySource(chest.keyType);
+
       list.appendChild(
         buildRoomRow({
           actionDisabled: opened || keyCount < 1,
           actionLabel: "Open",
           actionTestId: `chest-${testId}-open`,
           detail: `1 ${capitalize(chest.keyType)} Key → ${chestRewardSummary(chest.reward)}`,
+          hintTestId: `chest-${testId}-key-hint`,
+          hintText,
+          hintVisible: !opened && keyCount < 1 && hintText.length > 0,
           name: chest.name,
           onAction: () => {
             const result = applyOpenChest(profileRef.current, chest.id);

@@ -35,6 +35,9 @@ export interface RoomRowOptions {
   actionLabel: string;
   actionTestId: string;
   detail?: string;
+  hintText?: string;
+  hintTestId?: string;
+  hintVisible?: boolean;
   name: string;
   nameTestId?: string;
   onAction: () => void;
@@ -108,6 +111,15 @@ export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
   status.textContent = options.statusLabel;
   status.hidden = !options.statusVisible;
   li.appendChild(status);
+
+  if (options.hintTestId) {
+    const hint = document.createElement("span");
+    hint.className = "room-row-hint";
+    hint.setAttribute("data-testid", options.hintTestId);
+    hint.textContent = options.hintText ?? "";
+    hint.hidden = !options.hintVisible;
+    li.appendChild(hint);
+  }
 
   return li;
 }
