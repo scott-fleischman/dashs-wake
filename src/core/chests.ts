@@ -31,6 +31,11 @@ export const chestCatalog: readonly ChestDefinition[] = [
     keyType: "normal",
     reward: { coinsAwarded: 120, cosmeticAwarded: "icon-spark" },
   },
+  {
+    id: "chest-hard",
+    keyType: "hard",
+    reward: { coinsAwarded: 200, cosmeticAwarded: "icon-pulse" },
+  },
 ];
 
 export interface OpenChestResult {
