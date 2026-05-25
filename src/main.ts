@@ -10,7 +10,8 @@ import {
 import { loadProfile, saveProfile } from "./persistence/profile-repository";
 import {
   getOfficialLevelContent,
-  officialLevelCatalog,
+  getOfficialLevelMetadata,
+  levelKicker,
 } from "./content/official-levels";
 
 function requiredElement(id: string): HTMLElement {
@@ -31,10 +32,6 @@ function parseLevelIdFromHash(hash: string): string | null {
     return hash.slice("#play/".length) || null;
   }
   return null;
-}
-
-function kickerFor(index: number): string {
-  return `Official Level ${String(index + 1).padStart(2, "0")}`;
 }
 
 function applyAttemptResult(
@@ -65,10 +62,7 @@ function renderRoute(): void {
   const levelId = parseLevelIdFromHash(window.location.hash);
 
   if (levelId) {
-    const metadataIndex = officialLevelCatalog.findIndex(
-      (level) => level.id === levelId,
-    );
-    const metadata = officialLevelCatalog[metadataIndex];
+    const metadata = getOfficialLevelMetadata(levelId);
 
     if (!metadata) {
       window.location.hash = "";
@@ -100,7 +94,7 @@ function renderRoute(): void {
 
     disposeView = mountFirstWake(
       root,
-      { kicker: kickerFor(metadataIndex), name: metadata.name },
+      { kicker: levelKicker(levelId), name: metadata.name },
       {
         onJumpHold: (held) => backdrop.setLevelJumpHeld(held),
         onPauseChange: (paused) => backdrop.setLevelPaused(paused),

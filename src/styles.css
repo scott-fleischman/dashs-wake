@@ -222,6 +222,15 @@ button {
   color: #19d9f3;
 }
 
+.level-difficulty {
+  color: #ffc857;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
 .play-button {
   align-items: center;
   aspect-ratio: 1;

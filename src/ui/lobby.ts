@@ -1,4 +1,5 @@
 import {
+  levelKicker,
   officialLevelCatalog,
   type OfficialLevelDifficulty,
   type OfficialLevelMetadata,
@@ -15,10 +16,6 @@ const DIFFICULTY_LABELS: Record<OfficialLevelDifficulty, string> = {
 
 function testIdFor(levelId: string): string {
   return levelId.replace(/_/g, "-");
-}
-
-function kickerFor(index: number): string {
-  return `Official Level ${String(index + 1).padStart(2, "0")}`;
 }
 
 function isLevelUnlocked(
@@ -69,14 +66,13 @@ function keysText(count: number): string {
 
 function renderLevelCard(
   metadata: OfficialLevelMetadata,
-  index: number,
   profile: PlayerProfile,
 ): string {
   const testId = testIdFor(metadata.id);
   const unlocked = isLevelUnlocked(metadata, profile);
   const status = levelStatusText(metadata, profile);
   const difficulty = DIFFICULTY_LABELS[metadata.difficulty];
-  const kicker = kickerFor(index);
+  const kicker = levelKicker(metadata.id);
   const best = profile.bestPercents[metadata.id];
   const bestHidden = best === undefined ? "hidden" : "";
   const bestText = best === undefined ? "" : `${best}%`;
@@ -117,7 +113,7 @@ function renderProfileStats(profile: PlayerProfile): string {
 
 function renderLevelList(profile: PlayerProfile): string {
   const cards = officialLevelCatalog
-    .map((metadata, index) => renderLevelCard(metadata, index, profile))
+    .map((metadata) => renderLevelCard(metadata, profile))
     .join("");
 
   return `

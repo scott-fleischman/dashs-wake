@@ -63,3 +63,19 @@ export function getOfficialLevelContent(id: string): LevelContent {
 
   return content;
 }
+
+export function getOfficialLevelMetadata(
+  id: string,
+): OfficialLevelMetadata | undefined {
+  return officialLevelCatalog.find((level) => level.id === id);
+}
+
+export function levelKicker(id: string): string {
+  const index = officialLevelCatalog.findIndex((level) => level.id === id);
+
+  if (index < 0) {
+    return "";
+  }
+
+  return `Official Level ${String(index + 1).padStart(2, "0")}`;
+}
