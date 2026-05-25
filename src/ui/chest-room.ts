@@ -12,7 +12,7 @@ interface ChestRoomActions {
   onReturnToLobby: () => void;
 }
 
-function chestRewardSummary(reward: ChestReward): string {
+export function chestRewardSummary(reward: ChestReward): string {
   const parts: string[] = [];
   if (reward.coinsAwarded && reward.coinsAwarded > 0) {
     parts.push(`${reward.coinsAwarded} coins`);
