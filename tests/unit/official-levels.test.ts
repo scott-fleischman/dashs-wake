@@ -7,6 +7,7 @@ import {
   firstWakeLevel,
   validateLevelReachability,
 } from "../../src/content/first-wake";
+import { OFFICIAL_LEVEL_COMPLETION_RULES } from "../../src/core/profile";
 import type { OrbEntity } from "../../src/core/run-simulation";
 
 describe("Official level catalog", () => {
@@ -90,5 +91,62 @@ describe("Official level catalog", () => {
 
     expect(result.ok).toBe(false);
     expect(result.issues.join(" ")).toMatch(/required trigger/i);
+  });
+
+  it("authors Level 4 by combining cube, ship portal, and launch pad mechanics", () => {
+    const level4 = getOfficialLevelContent("level_4");
+
+    const hasSpike = level4.entities.some((entity) => entity.type === "spike");
+    const hasPortal = level4.entities.some(
+      (entity) => entity.type === "portal",
+    );
+    const hasPad = level4.entities.some((entity) => entity.type === "pad");
+
+    expect(hasSpike).toBe(true);
+    expect(hasPortal).toBe(true);
+    expect(hasPad).toBe(true);
+  });
+
+  it("authors Level 5 with trap orbs alongside earlier mechanics", () => {
+    const level5 = getOfficialLevelContent("level_5");
+
+    const hasPad = level5.entities.some((entity) => entity.type === "pad");
+    const hasTrapOrb = level5.entities.some(
+      (entity): entity is OrbEntity =>
+        entity.type === "orb" && entity.effect.kind === "kill",
+    );
+
+    expect(hasPad).toBe(true);
+    expect(hasTrapOrb).toBe(true);
+  });
+
+  it("validates Level 4 and Level 5 content as reachable", () => {
+    expect(
+      validateLevelReachability(getOfficialLevelContent("level_4")).ok,
+    ).toBe(true);
+    expect(
+      validateLevelReachability(getOfficialLevelContent("level_5")).ok,
+    ).toBe(true);
+  });
+
+  it("preserves the unlock chain so each level unlocks its successor", () => {
+    const ids = officialLevelCatalog.map((level) => level.id);
+
+    for (let i = 0; i < ids.length - 1; i += 1) {
+      const current = ids[i]!;
+      const next = ids[i + 1]!;
+      const rule = OFFICIAL_LEVEL_COMPLETION_RULES[current];
+
+      expect(rule?.unlocks).toContain(next);
+    }
+  });
+
+  it("awards a key on first completion of every official level", () => {
+    for (const meta of officialLevelCatalog) {
+      const rule = OFFICIAL_LEVEL_COMPLETION_RULES[meta.id];
+
+      expect(rule?.keyAwarded).toBeDefined();
+      expect(rule?.keyAwarded?.amount ?? 0).toBeGreaterThan(0);
+    }
   });
 });
