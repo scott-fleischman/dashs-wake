@@ -7,6 +7,7 @@ export interface ChestReward {
 
 export interface ChestDefinition {
   id: string;
+  name: string;
   keyType: string;
   reward: ChestReward;
 }
@@ -23,16 +24,19 @@ function rewardFromChestReward(chestReward: ChestReward): Reward {
 export const chestCatalog: readonly ChestDefinition[] = [
   {
     id: "chest-starter",
+    name: "Starter Chest",
     keyType: "easy",
     reward: { coinsAwarded: 50 },
   },
   {
     id: "chest-normal",
+    name: "Wake Chest",
     keyType: "normal",
     reward: { coinsAwarded: 120, cosmeticAwarded: "icon-spark" },
   },
   {
     id: "chest-hard",
+    name: "Surge Chest",
     keyType: "hard",
     reward: { coinsAwarded: 200, cosmeticAwarded: "icon-pulse" },
   },

@@ -14,6 +14,14 @@ describe("chest rewards", () => {
     }
   });
 
+  it("gives every chest a human-readable display name distinct from its id", () => {
+    for (const chest of chestCatalog) {
+      expect(chest.name.length).toBeGreaterThan(0);
+      expect(chest.name).not.toBe(chest.id);
+      expect(chest.name).not.toMatch(/^chest-/);
+    }
+  });
+
   it("offers a chest for every key type levels can award", () => {
     const keyTypes = new Set(chestCatalog.map((chest) => chest.keyType));
 
