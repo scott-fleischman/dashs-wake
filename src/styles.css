@@ -171,6 +171,10 @@ button {
   box-shadow: none;
 }
 
+.level-card.level-complete {
+  border-left: 4px solid #6cf2c5;
+}
+
 .level-card-info {
   display: flex;
   flex: 1;

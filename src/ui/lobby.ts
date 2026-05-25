@@ -107,9 +107,14 @@ function renderLevelCard(
   const best = profile.bestPercents[metadata.id];
   const bestHidden = best === undefined ? "hidden" : "";
   const bestText = best === undefined ? "" : `${best}%`;
+  const completed = profile.completedLevels.includes(metadata.id);
   const buttonLabel = unlocked ? "Play" : "Locked";
   const buttonDisabledAttr = unlocked ? "" : "disabled";
-  const cardClasses = unlocked ? "level-card" : "level-card level-locked";
+  const cardClasses = completed
+    ? "level-card level-complete"
+    : unlocked
+      ? "level-card"
+      : "level-card level-locked";
   const hintText = unlocked ? "" : unlockHintText(metadata);
   const hintHidden = hintText === "" ? "hidden" : "";
 
