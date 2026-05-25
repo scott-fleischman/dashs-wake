@@ -108,7 +108,7 @@ function renderLevelCard(
   const bestHidden = best === undefined ? "hidden" : "";
   const bestText = best === undefined ? "" : `${best}%`;
   const completed = profile.completedLevels.includes(metadata.id);
-  const buttonLabel = unlocked ? "Play" : "Locked";
+  const buttonLabel = !unlocked ? "Locked" : completed ? "Replay" : "Play";
   const buttonDisabledAttr = unlocked ? "" : "disabled";
   const cardClasses = completed
     ? "level-card level-complete"
