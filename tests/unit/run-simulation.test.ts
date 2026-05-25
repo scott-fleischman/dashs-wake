@@ -246,3 +246,100 @@ describe("launch pad impulses", () => {
     expect(after.consumedPadIds.has("pad-a")).toBe(true);
   });
 });
+
+describe("safe orb activations", () => {
+  it("applies a safe orb's impulse when jump is pressed during contact", () => {
+    const orb: LevelEntity = {
+      type: "orb",
+      id: "orb-a",
+      impulse: 30,
+      height: 20,
+      width: 10,
+      x: 5,
+      y: 40,
+    };
+    const inContact: RunState = {
+      consumedOrbIds: new Set(),
+      consumedPadIds: new Set(),
+      elapsedMs: 0,
+      player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
+      status: "running",
+    };
+
+    const after = tickRun(inContact, { jumpPressed: true }, 100, rules, [orb]);
+
+    expect(after.player.velocityY).toBeCloseTo(-30 + rules.gravity * 0.1);
+    expect(after.consumedOrbIds.has("orb-a")).toBe(true);
+  });
+
+  it("ignores an overlapping orb when no jump input is pressed", () => {
+    const orb: LevelEntity = {
+      type: "orb",
+      id: "orb-a",
+      impulse: 30,
+      height: 20,
+      width: 10,
+      x: 5,
+      y: 40,
+    };
+    const inContact: RunState = {
+      consumedOrbIds: new Set(),
+      consumedPadIds: new Set(),
+      elapsedMs: 0,
+      player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
+      status: "running",
+    };
+
+    const after = tickRun(inContact, { jumpPressed: false }, 100, rules, [orb]);
+
+    expect(after.player.velocityY).toBeCloseTo(rules.gravity * 0.1);
+    expect(after.consumedOrbIds.has("orb-a")).toBe(false);
+  });
+
+  it("ignores jump input when the player is not overlapping any orb", () => {
+    const orb: LevelEntity = {
+      type: "orb",
+      id: "orb-a",
+      impulse: 30,
+      height: 20,
+      width: 10,
+      x: 90,
+      y: 40,
+    };
+    const farAway: RunState = {
+      consumedOrbIds: new Set(),
+      consumedPadIds: new Set(),
+      elapsedMs: 0,
+      player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
+      status: "running",
+    };
+
+    const after = tickRun(farAway, { jumpPressed: true }, 100, rules, [orb]);
+
+    expect(after.player.velocityY).toBeCloseTo(rules.gravity * 0.1);
+    expect(after.consumedOrbIds.has("orb-a")).toBe(false);
+  });
+
+  it("activates an orb only once per run even when input repeats during contact", () => {
+    const orb: LevelEntity = {
+      type: "orb",
+      id: "orb-a",
+      impulse: 30,
+      height: 20,
+      width: 10,
+      x: 5,
+      y: 40,
+    };
+    const alreadyConsumed: RunState = {
+      consumedOrbIds: new Set(["orb-a"]),
+      consumedPadIds: new Set(),
+      elapsedMs: 100,
+      player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
+      status: "running",
+    };
+
+    const after = tickRun(alreadyConsumed, { jumpPressed: true }, 100, rules, [orb]);
+
+    expect(after.player.velocityY).toBeCloseTo(rules.gravity * 0.1);
+  });
+});
