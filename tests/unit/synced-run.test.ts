@@ -60,6 +60,17 @@ describe("synced run lifecycle", () => {
     expect(run.state.elapsedMs).toBe(0);
   });
 
+  it("resets the simulation even when the clock rewinds while paused", () => {
+    let run = startSyncedRun(RULES);
+    run = advanceSyncedRun(run, clockAt(500), STEADY_INPUT, RULES, []);
+    expect(run.state.elapsedMs).toBe(500);
+
+    run = advanceSyncedRun(run, clockAt(0, true), STEADY_INPUT, RULES, []);
+    run = advanceSyncedRun(run, clockAt(10), STEADY_INPUT, RULES, []);
+
+    expect(run.state.elapsedMs).toBe(10);
+  });
+
   it("wraps an audio element into a playable clock", () => {
     const calls: string[] = [];
     const audio = {

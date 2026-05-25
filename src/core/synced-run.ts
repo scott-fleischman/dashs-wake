@@ -99,12 +99,12 @@ export function advanceSyncedRun(
   rules: RunRules,
   entities: readonly LevelEntity[],
 ): SyncedRun {
-  if (clock.paused) {
-    return { ...run, lastSeenMs: clock.elapsedMs };
-  }
-
   if (clock.elapsedMs < run.lastSeenMs) {
     return startSyncedRun(rules);
+  }
+
+  if (clock.paused) {
+    return { ...run, lastSeenMs: clock.elapsedMs };
   }
 
   const deltaMs = clock.elapsedMs - run.lastSeenMs;
