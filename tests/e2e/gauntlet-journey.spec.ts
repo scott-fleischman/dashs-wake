@@ -16,4 +16,12 @@ test("enters and completes the electric wake gauntlet", async ({ page }) => {
   await expect(
     page.getByRole("dialog", { name: "Gauntlet complete" }),
   ).toBeVisible({ timeout: 15_000 });
+
+  await page.getByTestId("gauntlet-complete-acknowledge").click();
+  await expect(page.getByTestId("gauntlet-electric-wake-status")).toHaveText(
+    "Cleared",
+  );
+
+  await page.getByTestId("room-back").click();
+  await expect(page.getByTestId("profile-coins")).toHaveText("150 Coins");
 });
