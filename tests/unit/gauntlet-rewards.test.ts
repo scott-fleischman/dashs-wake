@@ -44,11 +44,23 @@ describe("electric wake gauntlet rewards", () => {
 
   it("grants the final reward and marks the gauntlet completed on first finish", () => {
     const profile = createProfile();
+    const gauntlet = gauntletById(ELECTRIC_WAKE_ID)!;
 
     const result = applyGauntletCompletion(profile, ELECTRIC_WAKE_ID);
 
     expect(result.profile.completedGauntletIds).toContain(ELECTRIC_WAKE_ID);
     expect(result.profile).not.toBe(profile);
+    expect(result.profile.coins).toBe(
+      profile.coins + (gauntlet.reward.coinsAwarded ?? 0),
+    );
+    for (const [keyType, amount] of Object.entries(
+      gauntlet.reward.keysAwarded ?? {},
+    )) {
+      expect(result.profile.keys[keyType]).toBe(
+        (profile.keys[keyType] ?? 0) + amount,
+      );
+    }
+    expect(result.granted).toBe(gauntlet.reward);
   });
 
   it("does not re-grant the reward when the gauntlet is completed again", () => {
