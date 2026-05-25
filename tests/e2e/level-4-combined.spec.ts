@@ -27,12 +27,17 @@ test("unlocks Level 4 and completes the combined run", async ({ page }) => {
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(10);
+    .toBeGreaterThanOrEqual(7);
   await page.keyboard.press("Space");
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 8_000 })
-    .toBeGreaterThanOrEqual(82);
+    .toBeGreaterThanOrEqual(57);
+  await page.keyboard.press("Space");
+
+  await expect
+    .poll(readPercent, { intervals: [20], timeout: 8_000 })
+    .toBeGreaterThanOrEqual(87);
   await page.keyboard.press("Space");
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
