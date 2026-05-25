@@ -73,7 +73,9 @@ function maxJumpDistance(rules: RunRules): number {
   return rules.horizontalSpeed * airtimeSeconds;
 }
 
-export function validateLevelReachability(level: LevelContent): ValidationResult {
+type LevelValidator = (level: LevelContent) => readonly string[];
+
+const validateHazardReachability: LevelValidator = (level) => {
   const issues: string[] = [];
   const maxJump = maxJumpDistance(level.rules);
 
@@ -89,17 +91,27 @@ export function validateLevelReachability(level: LevelContent): ValidationResult
         `Spike at x=${entity.x} is wider than the max jump (${entity.width} >= ${maxJump.toFixed(2)}).`,
       );
     }
+  }
 
-    const right =
-      entity.type === "gap" ? entity.x + entity.width : entity.x + entity.width;
+  return issues;
+};
 
-    if (right > level.finishX) {
+const validateEntityBounds: LevelValidator = (level) => {
+  const issues: string[] = [];
+
+  for (const entity of level.entities) {
+    if (entity.x + entity.width > level.finishX) {
       issues.push(
         `Entity at x=${entity.x} extends past the finish line x=${level.finishX}.`,
       );
     }
   }
 
+  return issues;
+};
+
+const validateShipCorridors: LevelValidator = (level) => {
+  const issues: string[] = [];
   const minCorridorWidth =
     MIN_SHIP_CORRIDOR_WIDTH_RATIO * level.rules.playerWidth;
   const shipPortals = level.entities
@@ -137,6 +149,18 @@ export function validateLevelReachability(level: LevelContent): ValidationResult
       );
     }
   }
+
+  return issues;
+};
+
+const LEVEL_VALIDATORS: readonly LevelValidator[] = [
+  validateHazardReachability,
+  validateEntityBounds,
+  validateShipCorridors,
+];
+
+export function validateLevelReachability(level: LevelContent): ValidationResult {
+  const issues = LEVEL_VALIDATORS.flatMap((validator) => validator(level));
 
   return { issues, ok: issues.length === 0 };
 }
