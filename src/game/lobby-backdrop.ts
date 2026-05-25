@@ -1,6 +1,10 @@
 import Phaser from "phaser";
 import { firstWakeLevel, type LevelContent } from "../content/first-wake";
-import type { CosmeticAppearance } from "../core/inventory";
+import type {
+  CosmeticAppearance,
+  CubeShapeKind,
+  ShipShapeKind,
+} from "../core/inventory";
 import {
   createRunState,
   resetRunState,
@@ -99,8 +103,10 @@ export interface LevelSnapshot {
 const SIMULATION_STEP_MS = 1000 / 60;
 
 const DEFAULT_PLAYER_APPEARANCE: CosmeticAppearance = {
+  cubeShape: "rectangle",
   fillDead: 0xff437d,
   fillRunning: 0x19d9f3,
+  shipShape: "triangle",
 };
 
 const PLAYER_STYLE = {
@@ -131,15 +137,98 @@ function playerFillFor(
   return status === "dead" ? appearance.fillDead : appearance.fillRunning;
 }
 
-function applyPlayerStrokeStyle<
-  T extends Phaser.GameObjects.Rectangle | Phaser.GameObjects.Triangle,
->(shape: T): T {
+function applyPlayerStrokeStyle<T extends Phaser.GameObjects.Shape>(
+  shape: T,
+): T {
   shape.setStrokeStyle(
     PLAYER_STYLE.strokeWidth,
     PLAYER_STYLE.stroke,
     PLAYER_STYLE.strokeAlpha,
   );
   return shape;
+}
+
+function createPlayerCube(
+  scene: Phaser.Scene,
+  kind: CubeShapeKind,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fill: number,
+): Phaser.GameObjects.Shape {
+  if (kind === "circle") {
+    return scene.add.circle(x, y, Math.min(width, height) / 2, fill);
+  }
+  if (kind === "diamond") {
+    const halfW = width / 2;
+    const halfH = height / 2;
+    return scene.add.polygon(
+      x,
+      y,
+      [0, -halfH, halfW, 0, 0, halfH, -halfW, 0],
+      fill,
+    );
+  }
+  return scene.add.rectangle(x, y, width, height, fill);
+}
+
+function createPlayerShip(
+  scene: Phaser.Scene,
+  kind: ShipShapeKind,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fill: number,
+): Phaser.GameObjects.Shape {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  if (kind === "arrow") {
+    return scene.add.polygon(
+      x,
+      y,
+      [
+        -halfWidth,
+        -halfHeight,
+        halfWidth,
+        0,
+        -halfWidth * 0.4,
+        0,
+        -halfWidth,
+        halfHeight,
+      ],
+      fill,
+    );
+  }
+  if (kind === "dart") {
+    return scene.add.polygon(
+      x,
+      y,
+      [
+        -halfWidth,
+        -halfHeight * 0.7,
+        halfWidth,
+        0,
+        -halfWidth,
+        halfHeight * 0.7,
+        -halfWidth * 0.3,
+        0,
+      ],
+      fill,
+    );
+  }
+  return scene.add.triangle(
+    x,
+    y,
+    -halfWidth,
+    -halfHeight,
+    halfWidth,
+    0,
+    -halfWidth,
+    halfHeight,
+    fill,
+  );
 }
 
 interface LevelSceneInitData {
@@ -159,8 +248,8 @@ class LevelScene extends Phaser.Scene {
   private levelContent: LevelContent = firstWakeLevel;
   private onSnapshot?: (snapshot: LevelSnapshot) => void;
   private paused = false;
-  private playerCube?: Phaser.GameObjects.Rectangle;
-  private playerShip?: Phaser.GameObjects.Triangle;
+  private playerCube?: Phaser.GameObjects.Shape;
+  private playerShip?: Phaser.GameObjects.Shape;
   private state: RunState = createRunState(firstWakeLevel.rules);
   private status: LevelSnapshot["status"] = "running";
 
@@ -398,12 +487,12 @@ class LevelScene extends Phaser.Scene {
 
     const playerScreenX = width * 0.22;
     const playerScreenY = this.floorY - rules.playerHeight / 2;
-    const halfWidth = rules.playerWidth / 2;
-    const halfHeight = rules.playerHeight / 2;
     const initialFill = playerFillFor(this.status, this.appearance);
 
     this.playerCube = applyPlayerStrokeStyle(
-      this.add.rectangle(
+      createPlayerCube(
+        this,
+        this.appearance.cubeShape,
         playerScreenX,
         playerScreenY,
         rules.playerWidth,
@@ -413,15 +502,13 @@ class LevelScene extends Phaser.Scene {
     );
 
     this.playerShip = applyPlayerStrokeStyle(
-      this.add.triangle(
+      createPlayerShip(
+        this,
+        this.appearance.shipShape,
         playerScreenX,
         playerScreenY,
-        -halfWidth,
-        -halfHeight,
-        halfWidth,
-        0,
-        -halfWidth,
-        halfHeight,
+        rules.playerWidth,
+        rules.playerHeight,
         initialFill,
       ),
     ).setVisible(false);

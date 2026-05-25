@@ -2,9 +2,14 @@ import type { PlayerProfile } from "./profile";
 
 export type CosmeticCategory = "icon";
 
+export type CubeShapeKind = "rectangle" | "diamond" | "circle";
+export type ShipShapeKind = "triangle" | "arrow" | "dart";
+
 export interface CosmeticAppearance {
+  cubeShape: CubeShapeKind;
   fillDead: number;
   fillRunning: number;
+  shipShape: ShipShapeKind;
 }
 
 export interface CosmeticItem {
@@ -16,18 +21,24 @@ export interface CosmeticItem {
 }
 
 const DEFAULT_APPEARANCE: CosmeticAppearance = {
+  cubeShape: "rectangle",
   fillDead: 0xff437d,
   fillRunning: 0x19d9f3,
+  shipShape: "triangle",
 };
 
 const SPARK_APPEARANCE: CosmeticAppearance = {
+  cubeShape: "diamond",
   fillDead: 0xff8c42,
   fillRunning: 0xffc857,
+  shipShape: "arrow",
 };
 
 const PULSE_APPEARANCE: CosmeticAppearance = {
+  cubeShape: "circle",
   fillDead: 0xff437d,
   fillRunning: 0xa45bff,
+  shipShape: "dart",
 };
 
 export const cosmeticCatalog: readonly CosmeticItem[] = [
