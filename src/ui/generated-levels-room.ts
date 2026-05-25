@@ -1,3 +1,4 @@
+import type { AnalyzedAudio } from "../core/audio-decoder";
 import type {
   GeneratedLevelRecord,
   PlayerProfile,
@@ -112,17 +113,30 @@ export function buildPlaceholderGeneratedLevel(
   };
 }
 
+const PLACEHOLDER_BEATS: readonly number[] = [0, 600, 1200];
+const PLACEHOLDER_DURATION_MS = 1800;
+const PLACEHOLDER_INTENSITIES: readonly ("intense" | "quiet")[] = [
+  "quiet",
+  "quiet",
+  "quiet",
+];
+
 export function buildAudioDerivedLevel(
   index: number,
   fileName: string,
   audioBlobKey?: string,
+  analyzed?: AnalyzedAudio | null,
 ): GeneratedLevelRecord {
   const seed = 2000 + index;
+  const beats = analyzed?.beats ?? PLACEHOLDER_BEATS;
+  const durationMs = analyzed?.durationMs ?? PLACEHOLDER_DURATION_MS;
+  const beatIntensities =
+    analyzed?.beatIntensities ?? PLACEHOLDER_INTENSITIES;
   return {
     ...(audioBlobKey ? { audioBlobKey } : {}),
     audioFileName: fileName,
-    beatIntensities: ["quiet", "quiet", "quiet"],
-    beatMap: { beats: [0, 600, 1200], durationMs: 1800 },
+    beatIntensities,
+    beatMap: { beats, durationMs },
     difficulty: "easy",
     id: `audio-derived-level-${index}`,
     name: fileName,

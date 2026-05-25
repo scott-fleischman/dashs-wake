@@ -30,6 +30,7 @@ import {
   restartGauntletAtActiveStage,
   type GauntletRunState,
 } from "./core/gauntlet";
+import { analyzeAudioFile, type AnalyzedAudio } from "./core/audio-decoder";
 import { putAudioBlob } from "./persistence/audio-storage";
 import { loadProfile, saveProfile } from "./persistence/profile-repository";
 import {
@@ -217,7 +218,10 @@ function renderRoute(): void {
         renderRoute();
       },
       onImportAudio: (file) => {
-        const finalize = (audioBlobKey?: string): void => {
+        const finalize = (
+          audioBlobKey: string | undefined,
+          analyzed: AnalyzedAudio | null,
+        ): void => {
           const nextIndex =
             profile.generatedLevels.filter(
               (entry) => entry.audioFileName !== undefined,
@@ -226,6 +230,7 @@ function renderRoute(): void {
             nextIndex,
             file.name,
             audioBlobKey,
+            analyzed,
           );
           updateProfile({
             ...profile,
@@ -234,7 +239,10 @@ function renderRoute(): void {
           renderRoute();
         };
 
-        putAudioBlob(file).then(finalize).catch(() => finalize(undefined));
+        Promise.all([
+          putAudioBlob(file).catch(() => undefined),
+          analyzeAudioFile(file).catch(() => null),
+        ]).then(([audioBlobKey, analyzed]) => finalize(audioBlobKey, analyzed));
       },
       onPlay: (recordId) => {
         window.location.hash = `#generated/${recordId}`;
