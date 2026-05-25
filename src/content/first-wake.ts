@@ -46,9 +46,11 @@ const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
   { type: "spike", height: 30, width: 30, x: 425, y: 270 },
   { type: "portal", mode: "ship", height: 80, width: 12, x: 500, y: 220 },
   { type: "portal", mode: "cube", height: 80, width: 12, x: 740, y: 220 },
+  { type: "spike", height: 30, width: 30, x: 880, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 1180, y: 270 },
 ];
 
-const FIRST_WAKE_FINISH_X = 820;
+const FIRST_WAKE_FINISH_X = 1340;
 
 export const firstWakeLevel: LevelContent = {
   beatMap: buildPlaceholderBeatMap(

@@ -18,12 +18,22 @@ test("completing a level updates lobby status, unlocks, and coins", async ({
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(14);
+    .toBeGreaterThanOrEqual(8);
   await page.keyboard.press("Space");
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(44);
+    .toBeGreaterThanOrEqual(27);
+  await page.keyboard.press("Space");
+
+  await expect
+    .poll(readPercent, { intervals: [20], timeout: 5_000 })
+    .toBeGreaterThanOrEqual(61);
+  await page.keyboard.press("Space");
+
+  await expect
+    .poll(readPercent, { intervals: [20], timeout: 4_000 })
+    .toBeGreaterThanOrEqual(84);
   await page.keyboard.press("Space");
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
