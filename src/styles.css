@@ -545,6 +545,18 @@ kbd {
   text-transform: uppercase;
 }
 
+.result-reward {
+  color: #ffc857;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.6rem;
+  text-transform: uppercase;
+}
+
+.result-reward[hidden] {
+  display: none;
+}
+
 .first-wake-paused .input-deck,
 .first-wake-paused .run-controls {
   opacity: 0.35;

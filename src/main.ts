@@ -19,8 +19,10 @@ import { generateLevel } from "./core/generator";
 import {
   applyCompletionAward,
   applyProgressAward,
+  previewLevelCompletionReward,
   type PlayerProfile,
 } from "./core/profile";
+import { formatRewardSummary } from "./core/reward-summary";
 import { cosmeticCatalog, selectedAppearance } from "./core/inventory";
 import {
   applyGauntletCompletion,
@@ -453,9 +455,16 @@ function renderRoute(): void {
       return;
     }
 
+    const completionRewardSummary = formatRewardSummary(
+      previewLevelCompletionReward(profile, levelId),
+    );
+
     disposeView = launchLevelRun(
       content,
-      buildLevelRunMetadata(levelKicker(levelId), metadata.name),
+      {
+        ...buildLevelRunMetadata(levelKicker(levelId), metadata.name),
+        completionRewardSummary,
+      },
       {
         onAttemptResolved: (snapshot) => {
           profile = applyAttemptResult(profile, levelId, snapshot);

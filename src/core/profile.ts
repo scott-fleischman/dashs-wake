@@ -235,3 +235,28 @@ export function applyCompletionAward(
     unlockedLevels: newlyUnlocked,
   };
 }
+
+export function previewLevelCompletionReward(
+  profile: PlayerProfile,
+  levelId: string,
+  rules: LevelCompletionRules = OFFICIAL_LEVEL_COMPLETION_RULES,
+): Reward {
+  const storedBest = profile.bestPercents[levelId] ?? 0;
+  const coinsFromProgress = Math.max(0, MAX_PERCENT_PER_LEVEL - storedBest);
+  const reward: Reward = {};
+
+  if (coinsFromProgress > 0) {
+    reward.coinsAwarded = coinsFromProgress;
+  }
+
+  if (!profile.completedLevels.includes(levelId)) {
+    const rule = rules[levelId];
+    if (rule?.keyAwarded && rule.keyAwarded.amount > 0) {
+      reward.keysAwarded = {
+        [rule.keyAwarded.type]: rule.keyAwarded.amount,
+      };
+    }
+  }
+
+  return reward;
+}

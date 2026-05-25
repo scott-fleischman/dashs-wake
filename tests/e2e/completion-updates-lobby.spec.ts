@@ -38,6 +38,9 @@ test("completing a level updates lobby status, unlocks, and coins", async ({
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
   await expect(completeDialog).toBeVisible({ timeout: 6_000 });
+  await expect(page.getByTestId("level-complete-reward")).toHaveText(
+    "Earned: 100 Coins + 1 Easy Key",
+  );
 
   await completeDialog.getByRole("button", { name: "Return to Lobby" }).click();
 

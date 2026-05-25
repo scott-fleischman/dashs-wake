@@ -1,6 +1,7 @@
 import type { LevelSnapshot } from "../game/lobby-backdrop";
 
 export interface LevelRunMetadata {
+  completionRewardSummary?: string;
   equippedIcon: string;
   kicker: string;
   name: string;
@@ -134,6 +135,7 @@ export function mountFirstWake(
         <p class="kicker">Course Cleared</p>
         <h2>Complete</h2>
         <p class="result-message">First Wake cleared at 100%.</p>
+        <p class="result-reward" data-testid="level-complete-reward" hidden></p>
         <div class="overlay-actions">
           <button class="primary-button" type="button" data-action="replay">Replay</button>
           <button class="utility-button" type="button" data-action="complete-lobby">Return to Lobby</button>
@@ -168,6 +170,10 @@ export function mountFirstWake(
   const completeOverlay = root.querySelector<HTMLElement>("[aria-label='Level complete']");
   const completeMessage =
     completeOverlay?.querySelector<HTMLElement>(".result-message") ?? null;
+  const completeRewardEl =
+    completeOverlay?.querySelector<HTMLElement>(
+      "[data-testid='level-complete-reward']",
+    ) ?? null;
   const restartButton = root.querySelector<HTMLButtonElement>("[data-action='restart']");
   const replayButton = root.querySelector<HTMLButtonElement>("[data-action='replay']");
   const failedLobbyButton = root.querySelector<HTMLButtonElement>("[data-action='failed-lobby']");
@@ -314,6 +320,16 @@ export function mountFirstWake(
 
     if (snapshot.status === "complete") {
       completeMessage.textContent = completionResultMessage(metadata.name);
+      const rewardSummary = metadata.completionRewardSummary ?? "";
+      if (completeRewardEl) {
+        if (rewardSummary.length > 0) {
+          completeRewardEl.textContent = `Earned: ${rewardSummary}`;
+          completeRewardEl.hidden = false;
+        } else {
+          completeRewardEl.textContent = "";
+          completeRewardEl.hidden = true;
+        }
+      }
       setFeedback(RUN_MESSAGES.courseComplete);
     }
   };
