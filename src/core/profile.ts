@@ -145,6 +145,9 @@ export const OFFICIAL_LEVEL_COMPLETION_RULES: LevelCompletionRules = {
   },
 };
 
+const DEFAULT_OWNED_COSMETIC = "icon-default";
+const DEFAULT_COSMETIC_CATEGORY = "icon";
+
 export function createProfile(): PlayerProfile {
   return {
     bestPercents: {},
@@ -154,8 +157,8 @@ export function createProfile(): PlayerProfile {
     generatedLevels: [],
     keys: {},
     openedChestIds: [],
-    ownedCosmetics: [],
-    selectedCosmetics: {},
+    ownedCosmetics: [DEFAULT_OWNED_COSMETIC],
+    selectedCosmetics: { [DEFAULT_COSMETIC_CATEGORY]: DEFAULT_OWNED_COSMETIC },
     unlockedLevels: [],
   };
 }

@@ -74,7 +74,7 @@ describe("applyReward", () => {
 
     expect(next.coins).toBe(100);
     expect(next.keys).toEqual({ easy: 1 });
-    expect(next.ownedCosmetics).toEqual(["icon-spark"]);
+    expect(next.ownedCosmetics).toContain("icon-spark");
     expect(next.unlockedLevels).toEqual(["level_2"]);
   });
 });

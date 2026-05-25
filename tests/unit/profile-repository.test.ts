@@ -79,7 +79,7 @@ describe("profile repository", () => {
     expect(loaded.coins).toBe(100);
     expect(loaded.completedLevels).toEqual(["level_1"]);
     expect(loaded.generatedLevels).toEqual([]);
-    expect(loaded.ownedCosmetics).toEqual([]);
+    expect(loaded.ownedCosmetics).toEqual(["icon-default"]);
     expect(loaded.openedChestIds).toEqual([]);
     expect(loaded.completedGauntletIds).toEqual([]);
   });

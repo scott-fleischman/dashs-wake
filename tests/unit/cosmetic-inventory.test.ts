@@ -111,7 +111,7 @@ describe("cosmetic inventory", () => {
   });
 
   it("returns undefined when no cosmetic is selected for a category", () => {
-    const profile = createProfile();
+    const profile = { ...createProfile(), selectedCosmetics: {} };
 
     expect(getSelectedCosmetic(profile, "icon")).toBeUndefined();
   });
