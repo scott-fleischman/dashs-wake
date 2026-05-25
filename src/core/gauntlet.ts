@@ -1,12 +1,14 @@
-import { applyReward, type PlayerProfile, type Reward } from "./profile";
+import {
+  applyReward,
+  isUnlockMet,
+  type PlayerProfile,
+  type Reward,
+  type UnlockRequirement,
+} from "./profile";
 
 export type GauntletStatus = "complete" | "failed" | "running";
 
 export type StageOutcome = "completed" | "failed";
-
-export interface GauntletUnlockRequirement {
-  requiredCompletedLevels: readonly string[];
-}
 
 export interface GauntletDefinition {
   id: string;
@@ -16,7 +18,7 @@ export interface GauntletDefinition {
 export interface GauntletEntry extends GauntletDefinition {
   name: string;
   reward: Reward;
-  unlockRequirement: GauntletUnlockRequirement;
+  unlockRequirement: UnlockRequirement;
 }
 
 export interface GauntletRunState {
@@ -105,9 +107,7 @@ export function isGauntletUnlocked(
     return false;
   }
 
-  return gauntlet.unlockRequirement.requiredCompletedLevels.every((levelId) =>
-    profile.completedLevels.includes(levelId),
-  );
+  return isUnlockMet(profile, gauntlet.unlockRequirement);
 }
 
 export interface GauntletCompletionResult {

@@ -4,7 +4,7 @@ import {
   type OfficialLevelDifficulty,
   type OfficialLevelMetadata,
 } from "../content/official-levels";
-import type { PlayerProfile } from "../core/profile";
+import { isUnlockMet, type PlayerProfile } from "../core/profile";
 
 const DIFFICULTY_LABELS: Record<OfficialLevelDifficulty, string> = {
   easy: "Easy",
@@ -22,10 +22,10 @@ function isLevelUnlocked(
   metadata: OfficialLevelMetadata,
   profile: PlayerProfile,
 ): boolean {
-  if (metadata.unlockedBy === null) {
-    return true;
-  }
-  return profile.unlockedLevels.includes(metadata.id);
+  return (
+    isUnlockMet(profile, metadata.unlockRequirement) ||
+    profile.unlockedLevels.includes(metadata.id)
+  );
 }
 
 function levelStatusText(

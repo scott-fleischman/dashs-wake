@@ -49,6 +49,19 @@ export interface Reward {
   unlocks?: readonly string[];
 }
 
+export interface UnlockRequirement {
+  requiredCompletedLevels: readonly string[];
+}
+
+export function isUnlockMet(
+  profile: PlayerProfile,
+  requirement: UnlockRequirement,
+): boolean {
+  return requirement.requiredCompletedLevels.every((levelId) =>
+    profile.completedLevels.includes(levelId),
+  );
+}
+
 function mergeKeys(
   current: Readonly<Record<string, number>>,
   added: Readonly<Record<string, number>>,

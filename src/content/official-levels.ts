@@ -3,6 +3,7 @@ import { firstWakeLevel, type LevelContent } from "./first-wake";
 import { launchSequenceLevel } from "./launch-sequence";
 import { orbitalLoopLevel } from "./orbital-loop";
 import { trapLaneLevel } from "./trap-lane";
+import type { UnlockRequirement } from "../core/profile";
 
 export type OfficialLevelDifficulty =
   | "easy"
@@ -15,34 +16,39 @@ export interface OfficialLevelMetadata {
   difficulty: OfficialLevelDifficulty;
   id: string;
   name: string;
-  unlockedBy: string | null;
+  unlockRequirement: UnlockRequirement;
 }
 
 export const officialLevelCatalog: readonly OfficialLevelMetadata[] = [
-  { id: "level_1", name: "First Wake", difficulty: "easy", unlockedBy: null },
+  {
+    id: "level_1",
+    name: "First Wake",
+    difficulty: "easy",
+    unlockRequirement: { requiredCompletedLevels: [] },
+  },
   {
     id: "level_2",
     name: "Launch Sequence",
     difficulty: "easy",
-    unlockedBy: "level_1",
+    unlockRequirement: { requiredCompletedLevels: ["level_1"] },
   },
   {
     id: "level_3",
     name: "Orbital Loop",
     difficulty: "normal",
-    unlockedBy: "level_2",
+    unlockRequirement: { requiredCompletedLevels: ["level_2"] },
   },
   {
     id: "level_4",
     name: "Combined Run",
     difficulty: "normal",
-    unlockedBy: "level_3",
+    unlockRequirement: { requiredCompletedLevels: ["level_3"] },
   },
   {
     id: "level_5",
     name: "Trap Lane",
     difficulty: "hard",
-    unlockedBy: "level_4",
+    unlockRequirement: { requiredCompletedLevels: ["level_4"] },
   },
 ];
 

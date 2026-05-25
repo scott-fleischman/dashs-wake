@@ -27,11 +27,21 @@ describe("Official level catalog", () => {
       officialLevelCatalog.map((level) => [level.id, level]),
     );
 
-    expect(byId.get("level_1")?.unlockedBy).toBeNull();
-    expect(byId.get("level_2")?.unlockedBy).toBe("level_1");
-    expect(byId.get("level_3")?.unlockedBy).toBe("level_2");
-    expect(byId.get("level_4")?.unlockedBy).toBe("level_3");
-    expect(byId.get("level_5")?.unlockedBy).toBe("level_4");
+    expect(
+      byId.get("level_1")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual([]);
+    expect(
+      byId.get("level_2")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_1"]);
+    expect(
+      byId.get("level_3")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_2"]);
+    expect(
+      byId.get("level_4")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_3"]);
+    expect(
+      byId.get("level_5")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_4"]);
   });
 
   it("names every level with a non-empty display string and difficulty", () => {
