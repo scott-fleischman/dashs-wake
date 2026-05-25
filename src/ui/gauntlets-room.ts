@@ -3,18 +3,14 @@ import {
   isGauntletUnlocked,
   type GauntletEntry,
 } from "../core/gauntlet";
-import { officialLevelCatalog } from "../content/official-levels";
+import { formatLevelClearList } from "../content/official-levels";
 import type { PlayerProfile } from "../core/profile";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
 function gauntletUnlockHint(gauntlet: GauntletEntry): string {
-  const required = gauntlet.unlockRequirement.requiredCompletedLevels;
-  if (required.length === 0) return "";
-  const names = required.map((id) => {
-    const meta = officialLevelCatalog.find((entry) => entry.id === id);
-    return meta?.name ?? id;
-  });
-  return `Clear ${names.join(", ")}`;
+  return formatLevelClearList(
+    gauntlet.unlockRequirement.requiredCompletedLevels,
+  );
 }
 
 interface GauntletsRoomActions {

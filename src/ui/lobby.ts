@@ -1,4 +1,5 @@
 import {
+  formatLevelClearList,
   levelKicker,
   officialLevelCatalog,
   type OfficialLevelDifficulty,
@@ -40,13 +41,9 @@ function levelStatusText(
 }
 
 function unlockHintText(metadata: OfficialLevelMetadata): string {
-  const required = metadata.unlockRequirement.requiredCompletedLevels;
-  if (required.length === 0) return "";
-  const names = required.map((id) => {
-    const meta = officialLevelCatalog.find((entry) => entry.id === id);
-    return meta?.name ?? id;
-  });
-  return `Clear ${names.join(", ")}`;
+  return formatLevelClearList(
+    metadata.unlockRequirement.requiredCompletedLevels,
+  );
 }
 
 interface DestinationConfig {

@@ -85,3 +85,16 @@ export function levelKicker(id: string): string {
 
   return `Official Level ${String(index + 1).padStart(2, "0")}`;
 }
+
+export function formatLevelClearList(
+  requiredLevelIds: readonly string[],
+): string {
+  if (requiredLevelIds.length === 0) {
+    return "";
+  }
+  const names = requiredLevelIds.map((id) => {
+    const meta = officialLevelCatalog.find((entry) => entry.id === id);
+    return meta?.name ?? id;
+  });
+  return `Clear ${names.join(", ")}`;
+}

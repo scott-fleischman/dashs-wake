@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatLevelClearList,
   getOfficialLevelContent,
   officialLevelCatalog,
 } from "../../src/content/official-levels";
@@ -158,5 +159,23 @@ describe("Official level catalog", () => {
       expect(rule?.keyAwarded).toBeDefined();
       expect(rule?.keyAwarded?.amount ?? 0).toBeGreaterThan(0);
     }
+  });
+
+  it("formats an empty unlock requirement list as the empty string", () => {
+    expect(formatLevelClearList([])).toBe("");
+  });
+
+  it("formats a single required level using its display name", () => {
+    expect(formatLevelClearList(["level_1"])).toBe("Clear First Wake");
+  });
+
+  it("formats multiple required levels joined by commas", () => {
+    expect(formatLevelClearList(["level_1", "level_2"])).toBe(
+      "Clear First Wake, Launch Sequence",
+    );
+  });
+
+  it("falls back to the raw id when a level is not in the catalog", () => {
+    expect(formatLevelClearList(["level_missing"])).toBe("Clear level_missing");
   });
 });
