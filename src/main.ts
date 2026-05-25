@@ -96,6 +96,7 @@ let profile: PlayerProfile = loadProfile();
 let activeGauntletRun: GauntletRunState | null = null;
 let pendingGauntletCompletion: string | null = null;
 let activeAudioPlayback: { audio: HTMLAudioElement; url: string } | null = null;
+let audioPlaybackToken = 0;
 
 function stopAudioPlayback(): void {
   if (!activeAudioPlayback) return;
@@ -110,7 +111,11 @@ function stopAudioPlayback(): void {
 const MIN_PLAYABLE_AUDIO_BYTES = 1024;
 
 async function startAudioPlayback(blobKey: string): Promise<void> {
+  const token = ++audioPlaybackToken;
   const blob = await getAudioBlob(blobKey).catch(() => undefined);
+  if (token !== audioPlaybackToken) {
+    return;
+  }
   if (!blob || blob.size < MIN_PLAYABLE_AUDIO_BYTES) {
     return;
   }
