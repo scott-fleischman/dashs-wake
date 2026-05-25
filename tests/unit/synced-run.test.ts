@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceSyncedRun,
+  createAudioClock,
   createManualClock,
   startSyncedRun,
   type ClockState,
@@ -57,6 +58,39 @@ describe("synced run lifecycle", () => {
     run = advanceSyncedRun(run, clockAt(0), STEADY_INPUT, RULES, []);
 
     expect(run.state.elapsedMs).toBe(0);
+  });
+
+  it("wraps an audio element into a playable clock", () => {
+    const calls: string[] = [];
+    const audio = {
+      currentTime: 0,
+      paused: true,
+      pause: () => {
+        calls.push("pause");
+        audio.paused = true;
+      },
+      play: async () => {
+        calls.push("play");
+        audio.paused = false;
+      },
+    };
+
+    const clock = createAudioClock(audio);
+
+    audio.currentTime = 0.5;
+    audio.paused = false;
+    expect(clock.read()).toEqual({ elapsedMs: 500, paused: false });
+
+    clock.pause();
+    expect(audio.paused).toBe(true);
+    expect(calls).toContain("pause");
+
+    clock.resume();
+    expect(calls).toContain("play");
+
+    audio.currentTime = 2.5;
+    clock.reset();
+    expect(audio.currentTime).toBe(0);
   });
 
   it("drives the synced run through a manual playable clock", () => {
