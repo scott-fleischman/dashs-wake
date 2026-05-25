@@ -55,7 +55,3 @@ export async function getAudioBlob(key: string): Promise<Blob | undefined> {
   );
   return record?.blob;
 }
-
-export async function deleteAudioBlob(key: string): Promise<void> {
-  await runTransaction("readwrite", (store) => store.delete(key));
-}
