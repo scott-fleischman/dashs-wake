@@ -27,6 +27,28 @@ const MODE_CUES: Record<LevelSnapshot["mode"], ModeCue> = {
   ship: { label: "Ship", hint: "Hold to rise" },
 };
 
+const RUN_MESSAGES = {
+  inputReady: "Input ready",
+  jumpRegistered: "Jump registered",
+  airborneIgnored: "Airborne - jump ignored",
+  restarted: "Restarted - 0%",
+  courseComplete: "Course complete",
+  fellDeath: "Fell - restart from 0%",
+  crashDeath: "Crash - restart from 0%",
+} as const;
+
+const RUN_STATUS_LABELS: Record<LevelSnapshot["status"], string> = {
+  complete: "Complete",
+  dead: "Crashed",
+  running: "Running",
+};
+
+function deathMessage(deathCause: LevelSnapshot["deathCause"]): string {
+  return deathCause === "fall"
+    ? RUN_MESSAGES.fellDeath
+    : RUN_MESSAGES.crashDeath;
+}
+
 export function mountFirstWake(
   root: HTMLElement,
   metadata: LevelRunMetadata,
@@ -160,6 +182,20 @@ export function mountFirstWake(
     }
   };
 
+  const setFeedback = (message: string, revertAfterMs?: number): void => {
+    feedback.textContent = message;
+    window.clearTimeout(feedbackTimer);
+
+    if (revertAfterMs === undefined) {
+      return;
+    }
+
+    feedbackTimer = window.setTimeout(() => {
+      pulseButton.classList.remove("active");
+      feedback.textContent = RUN_MESSAGES.inputReady;
+    }, revertAfterMs);
+  };
+
   const registerHold = (): void => {
     if (paused) {
       return;
@@ -168,17 +204,12 @@ export function mountFirstWake(
     const accepted = actions.onJumpHold(true);
 
     if (!accepted) {
-      feedback.textContent = "Airborne - jump ignored";
+      setFeedback(RUN_MESSAGES.airborneIgnored);
       return;
     }
 
     pulseButton.classList.add("active");
-    feedback.textContent = "Jump registered";
-    window.clearTimeout(feedbackTimer);
-    feedbackTimer = window.setTimeout(() => {
-      pulseButton.classList.remove("active");
-      feedback.textContent = "Input ready";
-    }, 280);
+    setFeedback(RUN_MESSAGES.jumpRegistered, 280);
   };
 
   const releaseHold = (): void => {
@@ -217,7 +248,7 @@ export function mountFirstWake(
     root.classList.remove("first-wake-paused");
     actions.onPauseChange(false);
     actions.onRestart();
-    feedback.textContent = "Restarted - 0%";
+    setFeedback(RUN_MESSAGES.restarted);
   };
 
   const renderSnapshot = (snapshot: LevelSnapshot): void => {
@@ -232,24 +263,16 @@ export function mountFirstWake(
     pulseButton.disabled = snapshot.status !== "running";
 
     if (!paused) {
-      status.textContent =
-        snapshot.status === "dead"
-          ? "Crashed"
-          : snapshot.status === "complete"
-            ? "Complete"
-            : "Running";
+      status.textContent = RUN_STATUS_LABELS[snapshot.status];
     }
 
     if (snapshot.status === "dead") {
-      feedback.textContent =
-        snapshot.deathCause === "fall"
-          ? "Fell - restart from 0%"
-          : "Crash - restart from 0%";
+      setFeedback(deathMessage(snapshot.deathCause));
       restartButton.focus();
     }
 
     if (snapshot.status === "complete") {
-      feedback.textContent = "Course complete";
+      setFeedback(RUN_MESSAGES.courseComplete);
     }
   };
 
