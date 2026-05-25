@@ -9,6 +9,9 @@ test("lobby shows zero coins and locked Level 2 with no stored profile", async (
   await expect(page.getByTestId("profile-coins")).toHaveText("0 Coins");
   await expect(page.getByTestId("level-2-status")).toHaveText("Locked");
   await expect(page.getByTestId("profile-keys-easy")).not.toBeVisible();
+  await expect(page.getByTestId("profile-equipped-icon")).toContainText(
+    "Default",
+  );
 });
 
 test("persisted profile shows best percent, completion, key, and Level 2 unlock across reload", async ({
