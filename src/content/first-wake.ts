@@ -5,6 +5,7 @@ import type {
   PortalEntity,
   RunRules,
 } from "../core/run-simulation";
+import { buildPlaceholderBeatMap } from "./beat-maps";
 
 export interface BeatMap {
   beats: readonly number[];
@@ -48,22 +49,6 @@ const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
 ];
 
 const FIRST_WAKE_FINISH_X = 820;
-
-function buildPlaceholderBeatMap(
-  finishX: number,
-  horizontalSpeed: number,
-): BeatMap {
-  const traversalMs = Math.ceil((finishX / horizontalSpeed) * 1000);
-  const durationMs = traversalMs + 600;
-  const intervalMs = 600;
-  const beats: number[] = [];
-
-  for (let timeMs = 0; timeMs <= durationMs; timeMs += intervalMs) {
-    beats.push(timeMs);
-  }
-
-  return { beats, durationMs };
-}
 
 export const firstWakeLevel: LevelContent = {
   beatMap: buildPlaceholderBeatMap(

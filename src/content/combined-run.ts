@@ -1,4 +1,5 @@
 import type { LevelEntity, RunRules } from "../core/run-simulation";
+import { buildPlaceholderBeatMap } from "./beat-maps";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
 
 const COMBINED_RUN_RULES: RunRules = firstWakeLevel.rules;
@@ -20,22 +21,6 @@ const COMBINED_RUN_ENTITIES: readonly LevelEntity[] = [
 ];
 
 const COMBINED_RUN_FINISH_X = 1080;
-
-function buildPlaceholderBeatMap(
-  finishX: number,
-  horizontalSpeed: number,
-): LevelContent["beatMap"] {
-  const traversalMs = Math.ceil((finishX / horizontalSpeed) * 1000);
-  const durationMs = traversalMs + 600;
-  const intervalMs = 600;
-  const beats: number[] = [];
-
-  for (let timeMs = 0; timeMs <= durationMs; timeMs += intervalMs) {
-    beats.push(timeMs);
-  }
-
-  return { beats, durationMs };
-}
 
 export const combinedRunLevel: LevelContent = {
   beatMap: buildPlaceholderBeatMap(

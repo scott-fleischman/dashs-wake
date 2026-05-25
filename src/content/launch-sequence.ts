@@ -1,4 +1,5 @@
 import type { LevelEntity, RunRules } from "../core/run-simulation";
+import { buildPlaceholderBeatMap } from "./beat-maps";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
 
 const LAUNCH_SEQUENCE_RULES: RunRules = firstWakeLevel.rules;
@@ -18,22 +19,6 @@ const LAUNCH_SEQUENCE_ENTITIES: readonly LevelEntity[] = [
 ];
 
 const LAUNCH_SEQUENCE_FINISH_X = 880;
-
-function buildPlaceholderBeatMap(
-  finishX: number,
-  horizontalSpeed: number,
-): LevelContent["beatMap"] {
-  const traversalMs = Math.ceil((finishX / horizontalSpeed) * 1000);
-  const durationMs = traversalMs + 600;
-  const intervalMs = 600;
-  const beats: number[] = [];
-
-  for (let timeMs = 0; timeMs <= durationMs; timeMs += intervalMs) {
-    beats.push(timeMs);
-  }
-
-  return { beats, durationMs };
-}
 
 export const launchSequenceLevel: LevelContent = {
   beatMap: buildPlaceholderBeatMap(
