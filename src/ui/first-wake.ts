@@ -50,6 +50,27 @@ function deathMessage(deathCause: LevelSnapshot["deathCause"]): string {
     : RUN_MESSAGES.crashDeath;
 }
 
+export interface ResultOverlayCopy {
+  heading: string;
+  message: string;
+}
+
+const CRASH_COPY: ResultOverlayCopy = {
+  heading: "Crash",
+  message: "Hazard collision. Restart from 0%.",
+};
+
+const FALL_COPY: ResultOverlayCopy = {
+  heading: "Fell",
+  message: "Fell out of bounds. Restart from 0%.",
+};
+
+export function resultOverlayCopyForDeath(
+  deathCause: LevelSnapshot["deathCause"],
+): ResultOverlayCopy {
+  return deathCause === "fall" ? FALL_COPY : CRASH_COPY;
+}
+
 export function mountFirstWake(
   root: HTMLElement,
   metadata: LevelRunMetadata,
@@ -138,6 +159,8 @@ export function mountFirstWake(
   const lobbyButton = root.querySelector<HTMLButtonElement>("[data-action='lobby']");
   const overlay = root.querySelector<HTMLElement>("[aria-label='Paused']");
   const failedOverlay = root.querySelector<HTMLElement>("[aria-label='Run failed']");
+  const failedHeading = failedOverlay?.querySelector<HTMLElement>("h2") ?? null;
+  const failedMessage = failedOverlay?.querySelector<HTMLElement>(".result-message") ?? null;
   const completeOverlay = root.querySelector<HTMLElement>("[aria-label='Level complete']");
   const restartButton = root.querySelector<HTMLButtonElement>("[data-action='restart']");
   const replayButton = root.querySelector<HTMLButtonElement>("[data-action='replay']");
@@ -159,6 +182,8 @@ export function mountFirstWake(
     !lobbyButton ||
     !overlay ||
     !failedOverlay ||
+    !failedHeading ||
+    !failedMessage ||
     !completeOverlay ||
     !restartButton ||
     !replayButton ||
@@ -273,6 +298,9 @@ export function mountFirstWake(
     }
 
     if (snapshot.status === "dead") {
+      const copy = resultOverlayCopyForDeath(snapshot.deathCause);
+      failedHeading.textContent = copy.heading;
+      failedMessage.textContent = copy.message;
       setFeedback(deathMessage(snapshot.deathCause));
       restartButton.focus();
     }
