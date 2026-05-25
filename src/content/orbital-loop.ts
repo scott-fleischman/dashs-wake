@@ -18,9 +18,19 @@ const ORBITAL_LOOP_ENTITIES: readonly LevelEntity[] = [
     y: 280,
   },
   { type: "spike", height: 30, width: 30, x: 720, y: 270 },
+  {
+    type: "orb",
+    id: "level-3-orb-2",
+    effect: { kind: "impulse", magnitude: 720 },
+    height: 30,
+    width: 30,
+    x: 940,
+    y: 280,
+  },
+  { type: "spike", height: 30, width: 30, x: 1300, y: 270 },
 ];
 
-const ORBITAL_LOOP_FINISH_X = 880;
+const ORBITAL_LOOP_FINISH_X = 1460;
 
 export const orbitalLoopLevel: LevelContent = {
   beatMap: buildPlaceholderBeatMap(

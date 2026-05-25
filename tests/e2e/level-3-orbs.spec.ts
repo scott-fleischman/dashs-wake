@@ -27,17 +27,27 @@ test("unlocks Level 3 and completes the safe orb sequence", async ({
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(14);
+    .toBeGreaterThanOrEqual(8);
   await page.keyboard.press("Space");
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 5_000 })
-    .toBeGreaterThanOrEqual(44);
+    .toBeGreaterThanOrEqual(27);
   await page.keyboard.press("Space");
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 6_000 })
-    .toBeGreaterThanOrEqual(73);
+    .toBeGreaterThanOrEqual(47);
+  await page.keyboard.press("Space");
+
+  await expect
+    .poll(readPercent, { intervals: [20], timeout: 6_000 })
+    .toBeGreaterThanOrEqual(64);
+  await page.keyboard.press("Space");
+
+  await expect
+    .poll(readPercent, { intervals: [20], timeout: 6_000 })
+    .toBeGreaterThanOrEqual(86);
   await page.keyboard.press("Space");
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
