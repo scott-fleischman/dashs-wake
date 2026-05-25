@@ -3,8 +3,19 @@ import {
   isGauntletUnlocked,
   type GauntletEntry,
 } from "../core/gauntlet";
+import { officialLevelCatalog } from "../content/official-levels";
 import type { PlayerProfile } from "../core/profile";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
+
+function gauntletUnlockHint(gauntlet: GauntletEntry): string {
+  const required = gauntlet.unlockRequirement.requiredCompletedLevels;
+  if (required.length === 0) return "";
+  const names = required.map((id) => {
+    const meta = officialLevelCatalog.find((entry) => entry.id === id);
+    return meta?.name ?? id;
+  });
+  return `Clear ${names.join(", ")}`;
+}
 
 interface GauntletsRoomActions {
   onReturnToLobby: () => void;
@@ -71,13 +82,16 @@ export function mountGauntletsRoom(
       const unlocked = isGauntletUnlocked(profile, gauntlet.id);
       const completed = profile.completedGauntletIds.includes(gauntlet.id);
       const testId = safeTestId(gauntlet.id);
+      const detail = unlocked
+        ? `${gauntlet.stages.length} stages`
+        : gauntletUnlockHint(gauntlet);
 
       list.appendChild(
         buildRoomRow({
           actionDisabled: !unlocked,
           actionLabel: unlocked ? "Start" : "Locked",
           actionTestId: `gauntlet-${testId}-start`,
-          detail: `${gauntlet.stages.length} stages`,
+          detail,
           name: gauntlet.name,
           onAction: () => actions.onStartGauntlet(gauntlet.id),
           statusLabel: completed ? "Cleared" : "Available",
