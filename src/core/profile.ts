@@ -41,6 +41,60 @@ export interface CompletionAwardResult {
   unlockedLevels: readonly string[];
 }
 
+export interface Reward {
+  coinsAwarded?: number;
+  cosmeticsAwarded?: readonly string[];
+  keysAwarded?: Readonly<Record<string, number>>;
+  unlocks?: readonly string[];
+}
+
+function mergeKeys(
+  current: Readonly<Record<string, number>>,
+  added: Readonly<Record<string, number>>,
+): Readonly<Record<string, number>> {
+  const next: Record<string, number> = { ...current };
+
+  for (const [type, amount] of Object.entries(added)) {
+    next[type] = (next[type] ?? 0) + amount;
+  }
+
+  return next;
+}
+
+function mergeUnique(
+  current: readonly string[],
+  added: readonly string[],
+): readonly string[] {
+  const next = [...current];
+
+  for (const id of added) {
+    if (!next.includes(id)) {
+      next.push(id);
+    }
+  }
+
+  return next;
+}
+
+export function applyReward(
+  profile: PlayerProfile,
+  reward: Reward,
+): PlayerProfile {
+  return {
+    ...profile,
+    coins: profile.coins + (reward.coinsAwarded ?? 0),
+    keys: reward.keysAwarded
+      ? mergeKeys(profile.keys, reward.keysAwarded)
+      : profile.keys,
+    ownedCosmetics: reward.cosmeticsAwarded
+      ? mergeUnique(profile.ownedCosmetics, reward.cosmeticsAwarded)
+      : profile.ownedCosmetics,
+    unlockedLevels: reward.unlocks
+      ? mergeUnique(profile.unlockedLevels, reward.unlocks)
+      : profile.unlockedLevels,
+  };
+}
+
 const MAX_PERCENT_PER_LEVEL = 100;
 
 export const OFFICIAL_LEVEL_COMPLETION_RULES: LevelCompletionRules = {
@@ -124,35 +178,28 @@ export function applyCompletionAward(
 
   const rule = rules[input.levelId];
   const keysAwarded: Record<string, number> = {};
-  let nextKeys = profile.keys;
-  let nextUnlockedLevels = profile.unlockedLevels;
-  const newlyUnlocked: string[] = [];
+  const reward: Reward = {};
 
   if (rule?.keyAwarded && rule.keyAwarded.amount > 0) {
-    const { type, amount } = rule.keyAwarded;
-    keysAwarded[type] = amount;
-    nextKeys = {
-      ...nextKeys,
-      [type]: (nextKeys[type] ?? 0) + amount,
-    };
+    keysAwarded[rule.keyAwarded.type] = rule.keyAwarded.amount;
+    reward.keysAwarded = keysAwarded;
   }
 
-  if (rule?.unlocks) {
-    for (const unlockId of rule.unlocks) {
-      if (!nextUnlockedLevels.includes(unlockId)) {
-        nextUnlockedLevels = [...nextUnlockedLevels, unlockId];
-        newlyUnlocked.push(unlockId);
-      }
-    }
+  const newlyUnlocked = (rule?.unlocks ?? []).filter(
+    (id) => !profile.unlockedLevels.includes(id),
+  );
+
+  if (newlyUnlocked.length > 0) {
+    reward.unlocks = newlyUnlocked;
   }
+
+  const rewarded = applyReward(profile, reward);
 
   return {
     keysAwarded,
     profile: {
-      ...profile,
-      completedLevels: [...profile.completedLevels, input.levelId],
-      keys: nextKeys,
-      unlockedLevels: nextUnlockedLevels,
+      ...rewarded,
+      completedLevels: [...rewarded.completedLevels, input.levelId],
     },
     unlockedLevels: newlyUnlocked,
   };

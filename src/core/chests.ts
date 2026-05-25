@@ -1,4 +1,4 @@
-import type { PlayerProfile } from "./profile";
+import { applyReward, type PlayerProfile, type Reward } from "./profile";
 
 export interface ChestReward {
   coinsAwarded?: number;
@@ -9,6 +9,15 @@ export interface ChestDefinition {
   id: string;
   keyType: string;
   reward: ChestReward;
+}
+
+function rewardFromChestReward(chestReward: ChestReward): Reward {
+  return {
+    coinsAwarded: chestReward.coinsAwarded,
+    cosmeticsAwarded: chestReward.cosmeticAwarded
+      ? [chestReward.cosmeticAwarded]
+      : undefined,
+  };
 }
 
 export const chestCatalog: readonly ChestDefinition[] = [
@@ -49,25 +58,14 @@ export function applyOpenChest(
     return { granted: {}, profile };
   }
 
-  const nextKeys = {
-    ...profile.keys,
-    [chest.keyType]: currentKeyCount - 1,
-  };
-  const nextCoins = profile.coins + (chest.reward.coinsAwarded ?? 0);
-  const nextOwned =
-    chest.reward.cosmeticAwarded &&
-    !profile.ownedCosmetics.includes(chest.reward.cosmeticAwarded)
-      ? [...profile.ownedCosmetics, chest.reward.cosmeticAwarded]
-      : profile.ownedCosmetics;
+  const rewarded = applyReward(profile, rewardFromChestReward(chest.reward));
 
   return {
     granted: chest.reward,
     profile: {
-      ...profile,
-      coins: nextCoins,
-      keys: nextKeys,
-      openedChestIds: [...profile.openedChestIds, chest.id],
-      ownedCosmetics: nextOwned,
+      ...rewarded,
+      keys: { ...rewarded.keys, [chest.keyType]: currentKeyCount - 1 },
+      openedChestIds: [...rewarded.openedChestIds, chest.id],
     },
   };
 }
