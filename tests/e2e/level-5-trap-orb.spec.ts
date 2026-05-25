@@ -31,7 +31,7 @@ test("activating a trap orb crashes the run", async ({ page }) => {
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 10_000 })
-    .toBeGreaterThanOrEqual(85);
+    .toBeGreaterThanOrEqual(61);
   await page.keyboard.press("Space");
 
   const failedDialog = page.getByRole("dialog", { name: "Run failed" });

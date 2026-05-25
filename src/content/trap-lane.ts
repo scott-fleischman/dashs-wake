@@ -35,9 +35,20 @@ const TRAP_LANE_ENTITIES: readonly LevelEntity[] = [
     x: 1100,
     y: 280,
   },
+  { type: "spike", height: 30, width: 30, x: 1300, y: 270 },
+  {
+    type: "orb",
+    id: "level-5-orb-trap-2",
+    effect: { kind: "kill" },
+    height: 30,
+    width: 30,
+    x: 1480,
+    y: 280,
+  },
+  { type: "spike", height: 30, width: 30, x: 1660, y: 270 },
 ];
 
-const TRAP_LANE_FINISH_X = 1280;
+const TRAP_LANE_FINISH_X = 1800;
 
 export const trapLaneLevel: LevelContent = {
   beatMap: buildPlaceholderBeatMap(
