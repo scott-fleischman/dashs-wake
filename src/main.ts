@@ -217,12 +217,11 @@ function renderRoute(): void {
         renderRoute();
       },
       onImportAudio: (file) => {
-        const nextIndex =
-          profile.generatedLevels.filter(
-            (entry) => entry.audioFileName !== undefined,
-          ).length + 1;
-
         const finalize = (audioBlobKey?: string): void => {
+          const nextIndex =
+            profile.generatedLevels.filter(
+              (entry) => entry.audioFileName !== undefined,
+            ).length + 1;
           const record = buildAudioDerivedLevel(
             nextIndex,
             file.name,
