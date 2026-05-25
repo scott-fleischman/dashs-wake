@@ -138,22 +138,7 @@ function resolveLandingY(
   return surfaces.length > 0 ? Math.min(...surfaces) : undefined;
 }
 
-function touchesSpike(
-  player: PlayerState,
-  entity: SpikeEntity,
-  rules: RunRules,
-): boolean {
-  const playerTop = player.y - rules.playerHeight;
-  const playerBottom = player.y;
-
-  return (
-    overlapsHorizontally(player.x, entity, rules) &&
-    playerBottom > entity.y &&
-    playerTop < entity.y + entity.height
-  );
-}
-
-function overlapsBox(
+function playerOverlapsRect(
   playerX: number,
   playerY: number,
   entity: RectangularEntity,
@@ -169,22 +154,34 @@ function overlapsBox(
   );
 }
 
+type VelocityStrategy = (
+  player: PlayerState,
+  input: RunInput,
+  elapsedSeconds: number,
+  rules: RunRules,
+) => number;
+
+const VELOCITY_STRATEGIES: Record<PlayerMode, VelocityStrategy> = {
+  cube: (player, input, elapsedSeconds, rules) => {
+    const launchVelocity =
+      input.jumpPressed && player.grounded
+        ? rules.jumpVelocity
+        : player.velocityY;
+    return launchVelocity + rules.gravity * elapsedSeconds;
+  },
+  ship: (player, input, elapsedSeconds, rules) => {
+    const acceleration = input.jumpPressed ? -rules.gravity : rules.gravity;
+    return player.velocityY + acceleration * elapsedSeconds;
+  },
+};
+
 function computeNextVelocityY(
   player: PlayerState,
   input: RunInput,
   elapsedSeconds: number,
   rules: RunRules,
 ): number {
-  if (player.mode === "ship") {
-    const acceleration = input.jumpPressed ? -rules.gravity : rules.gravity;
-    return player.velocityY + acceleration * elapsedSeconds;
-  }
-
-  const launchVelocity =
-    input.jumpPressed && player.grounded
-      ? rules.jumpVelocity
-      : player.velocityY;
-  return launchVelocity + rules.gravity * elapsedSeconds;
+  return VELOCITY_STRATEGIES[player.mode](player, input, elapsedSeconds, rules);
 }
 
 function resolvePortalMode(
@@ -195,7 +192,10 @@ function resolvePortalMode(
   rules: RunRules,
 ): PlayerMode {
   for (const entity of entities) {
-    if (entity.type === "portal" && overlapsBox(playerX, playerY, entity, rules)) {
+    if (
+      entity.type === "portal" &&
+      playerOverlapsRect(playerX, playerY, entity, rules)
+    ) {
       return entity.mode;
     }
   }
@@ -252,7 +252,9 @@ export function tickRun(
     y: placedY,
   };
   const deathCause = entities.some(
-    (entity) => entity.type === "spike" && touchesSpike(player, entity, rules),
+    (entity) =>
+      entity.type === "spike" &&
+      playerOverlapsRect(player.x, player.y, entity, rules),
   )
     ? "spike"
     : player.y >= rules.fallBoundaryY
