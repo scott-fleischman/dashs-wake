@@ -89,7 +89,7 @@ class LobbyBackdropScene extends Phaser.Scene {
 
 export interface LevelSnapshot {
   attempt: number;
-  deathCause?: "fall" | "spike";
+  deathCause?: "fall" | "spike" | "trap";
   mode: "cube" | "ship";
   percent: number;
   status: "complete" | "dead" | "running";

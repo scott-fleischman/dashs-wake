@@ -251,6 +251,7 @@ describe("safe orb activations", () => {
   it("applies a safe orb's impulse when jump is pressed during contact", () => {
     const orb: LevelEntity = {
       type: "orb",
+      kind: "safe",
       id: "orb-a",
       impulse: 30,
       height: 20,
@@ -274,6 +275,7 @@ describe("safe orb activations", () => {
   it("ignores an overlapping orb when no jump input is pressed", () => {
     const orb: LevelEntity = {
       type: "orb",
+      kind: "safe",
       id: "orb-a",
       impulse: 30,
       height: 20,
@@ -297,6 +299,7 @@ describe("safe orb activations", () => {
   it("ignores jump input when the player is not overlapping any orb", () => {
     const orb: LevelEntity = {
       type: "orb",
+      kind: "safe",
       id: "orb-a",
       impulse: 30,
       height: 20,
@@ -320,6 +323,7 @@ describe("safe orb activations", () => {
   it("activates an orb only once per run even when input repeats during contact", () => {
     const orb: LevelEntity = {
       type: "orb",
+      kind: "safe",
       id: "orb-a",
       impulse: 30,
       height: 20,

@@ -46,11 +46,21 @@ export interface PadEntity extends RectangularEntity {
   type: "pad";
 }
 
-export interface OrbEntity extends RectangularEntity {
+interface BaseOrbEntity extends RectangularEntity {
   id: string;
-  impulse: number;
   type: "orb";
 }
+
+export interface SafeOrbEntity extends BaseOrbEntity {
+  impulse: number;
+  kind: "safe";
+}
+
+export interface TrapOrbEntity extends BaseOrbEntity {
+  kind: "trap";
+}
+
+export type OrbEntity = SafeOrbEntity | TrapOrbEntity;
 
 export type LevelEntity =
   | GapEntity
@@ -59,7 +69,7 @@ export type LevelEntity =
   | PlatformEntity
   | PortalEntity
   | SpikeEntity;
-export type DeathCause = "fall" | "spike";
+export type DeathCause = "fall" | "spike" | "trap";
 export type RunStatus = "dead" | "running";
 
 export interface PlayerState {
@@ -208,7 +218,9 @@ function gatherImpulses(
 ): readonly UpwardImpulse[] {
   const impulses: UpwardImpulse[] = [
     ...activatablePads.map((pad) => ({ magnitude: pad.impulse })),
-    ...activatedOrbs.map((orb) => ({ magnitude: orb.impulse })),
+    ...activatedOrbs
+      .filter((orb): orb is SafeOrbEntity => orb.kind === "safe")
+      .map((orb) => ({ magnitude: orb.impulse })),
   ];
 
   if (
@@ -372,15 +384,18 @@ export function tickRun(
     triggeredIds.length > 0
       ? new Set([...state.consumedTriggerIds, ...triggeredIds])
       : state.consumedTriggerIds;
-  const deathCause = entities.some(
-    (entity) =>
-      entity.type === "spike" &&
-      playerOverlapsRect(player.x, player.y, entity, rules),
-  )
-    ? "spike"
-    : player.y >= rules.fallBoundaryY
-      ? "fall"
-      : undefined;
+  const trapActivated = activatedOrbs.some((orb) => orb.kind === "trap");
+  const deathCause: DeathCause | undefined = trapActivated
+    ? "trap"
+    : entities.some(
+          (entity) =>
+            entity.type === "spike" &&
+            playerOverlapsRect(player.x, player.y, entity, rules),
+        )
+      ? "spike"
+      : player.y >= rules.fallBoundaryY
+        ? "fall"
+        : undefined;
 
   return {
     consumedTriggerIds: nextConsumedTriggerIds,
