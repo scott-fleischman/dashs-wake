@@ -31,7 +31,7 @@ import {
   type GauntletRunState,
 } from "./core/gauntlet";
 import { analyzeAudioFile, type AnalyzedAudio } from "./core/audio-decoder";
-import { putAudioBlob } from "./persistence/audio-storage";
+import { getAudioBlob, putAudioBlob } from "./persistence/audio-storage";
 import { loadProfile, saveProfile } from "./persistence/profile-repository";
 import {
   getOfficialLevelContent,
@@ -95,6 +95,26 @@ let disposeView = (): void => {};
 let profile: PlayerProfile = loadProfile();
 let activeGauntletRun: GauntletRunState | null = null;
 let pendingGauntletCompletion: string | null = null;
+let activeAudioPlayback: { audio: HTMLAudioElement; url: string } | null = null;
+
+function stopAudioPlayback(): void {
+  if (!activeAudioPlayback) return;
+  activeAudioPlayback.audio.pause();
+  URL.revokeObjectURL(activeAudioPlayback.url);
+  activeAudioPlayback = null;
+}
+
+async function startAudioPlayback(blobKey: string): Promise<void> {
+  const blob = await getAudioBlob(blobKey).catch(() => undefined);
+  if (!blob) return;
+  if (activeAudioPlayback) {
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  activeAudioPlayback = { audio, url };
+  audio.play().catch(() => undefined);
+}
 
 interface LaunchLevelRunCallbacks {
   onAttemptResolved: (snapshot: LevelSnapshot) => void;
@@ -156,6 +176,7 @@ function launchLevelRun(
 
 function renderRoute(): void {
   disposeView();
+  stopAudioPlayback();
 
   const hash = window.location.hash;
   const profileRef = {
@@ -271,6 +292,10 @@ function renderRoute(): void {
       difficulty: record.difficulty,
       seed: record.seed,
     });
+
+    if (record.audioBlobKey) {
+      void startAudioPlayback(record.audioBlobKey);
+    }
 
     disposeView = launchLevelRun(
       content,
@@ -425,6 +450,7 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     window.removeEventListener("hashchange", renderRoute);
     disposeView();
+    stopAudioPlayback();
     backdrop.destroy(true);
   });
 }
