@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeSamples } from "../../src/core/audio-decoder";
+import { analyzeAudioFile, analyzeSamples } from "../../src/core/audio-decoder";
 
 const SAMPLE_RATE_HZ = 44100;
 
@@ -41,5 +41,13 @@ describe("audio decoder bridge", () => {
 
     expect(analyzed.beats).toEqual([]);
     expect(analyzed.beatIntensities).toEqual([]);
+  });
+
+  it("returns null when Web Audio is unavailable in the environment", async () => {
+    const blob = new Blob([new Uint8Array(64)]);
+
+    const result = await analyzeAudioFile(blob);
+
+    expect(result).toBeNull();
   });
 });
