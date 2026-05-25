@@ -43,6 +43,7 @@ export interface RoomRowOptions {
   statusTestId: string;
   statusVisible: boolean;
   swatchColor?: number;
+  swatchPlaceholder?: boolean;
   swatchShape?: "rectangle" | "diamond" | "circle";
   swatchTestId?: string;
 }
@@ -57,7 +58,6 @@ export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
     ? `cosmetic-row ${options.rowExtraClass}`
     : "cosmetic-row";
 
-  const swatch = document.createElement("span");
   if (options.swatchColor !== undefined) {
     const shapeClass =
       options.swatchShape === "circle"
@@ -65,15 +65,18 @@ export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
         : options.swatchShape === "diamond"
           ? " shape-diamond"
           : "";
+    const swatch = document.createElement("span");
     swatch.className = `cosmetic-swatch${shapeClass}`;
     swatch.style.background = formatSwatchColor(options.swatchColor);
     if (options.swatchTestId) {
       swatch.setAttribute("data-testid", options.swatchTestId);
     }
-  } else {
+    li.appendChild(swatch);
+  } else if (options.swatchPlaceholder) {
+    const swatch = document.createElement("span");
     swatch.className = "cosmetic-swatch cosmetic-swatch-empty";
+    li.appendChild(swatch);
   }
-  li.appendChild(swatch);
 
   const nameEl = document.createElement("span");
   nameEl.className = "cosmetic-name";
