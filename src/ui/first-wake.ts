@@ -218,6 +218,7 @@ export function mountFirstWake(
   let feedbackTimer: number | undefined;
   let runStatus: LevelSnapshot["status"] = "running";
   let runningBest = metadata.previousBestPercent ?? 0;
+  let completionKeyRewardConsumed = false;
 
   const setPaused = (nextPaused: boolean): void => {
     if (runStatus !== "running") {
@@ -365,13 +366,14 @@ export function mountFirstWake(
           runningBest = 100;
         }
       }
-      if (metadata.completionKeyReward) {
+      if (metadata.completionKeyReward && !completionKeyRewardConsumed) {
         if (metadata.completionKeyReward.keysAwarded) {
           reward.keysAwarded = metadata.completionKeyReward.keysAwarded;
         }
         if (metadata.completionKeyReward.cosmeticsAwarded) {
           reward.cosmeticsAwarded = metadata.completionKeyReward.cosmeticsAwarded;
         }
+        completionKeyRewardConsumed = true;
       }
       setRewardLine(completeRewardEl, formatRewardSummary(reward));
       setFeedback(RUN_MESSAGES.courseComplete);
