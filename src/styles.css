@@ -599,3 +599,9 @@ kbd {
   vertical-align: middle;
   width: 1.6rem;
 }
+
+.cosmetic-swatch.confirm-swatch {
+  height: 3.2rem;
+  margin: 0.4rem auto 0.6rem;
+  width: 3.2rem;
+}

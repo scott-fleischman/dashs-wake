@@ -32,6 +32,14 @@ function buildPurchaseConfirmation(
   heading.textContent = `Buy ${item.name}?`;
   overlay.appendChild(heading);
 
+  const swatch = document.createElement("span");
+  swatch.className = "cosmetic-swatch confirm-swatch";
+  swatch.style.background = `#${item.appearance.fillRunning
+    .toString(16)
+    .padStart(6, "0")}`;
+  swatch.setAttribute("data-testid", `cosmetic-${testId}-confirm-swatch`);
+  overlay.appendChild(swatch);
+
   const message = document.createElement("p");
   message.className = "result-message";
   message.textContent = `${item.price} Coins`;
