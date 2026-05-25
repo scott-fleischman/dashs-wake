@@ -29,4 +29,10 @@ test("lobby renders status, difficulty, and best percent for every official leve
   await expect(page.getByTestId("level-1-best-percent")).toHaveText("100%");
   await expect(page.getByTestId("level-2-best-percent")).toHaveText("80%");
   await expect(page.getByTestId("level-3-best-percent")).toHaveText("30%");
+
+  await expect(page.getByTestId("level-1-play")).toHaveText("Replay");
+  await expect(page.getByTestId("level-2-play")).toHaveText("Replay");
+  await expect(page.getByTestId("level-3-play")).toHaveText("Play");
+  await expect(page.getByTestId("level-4-play")).toHaveText("Locked");
+  await expect(page.getByTestId("level-5-play")).toHaveText("Locked");
 });
