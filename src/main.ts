@@ -21,7 +21,7 @@ import {
   applyProgressAward,
   type PlayerProfile,
 } from "./core/profile";
-import { cosmeticCatalog } from "./core/inventory";
+import { cosmeticCatalog, selectedAppearance } from "./core/inventory";
 import {
   applyGauntletCompletion,
   applyStageOutcome,
@@ -117,7 +117,7 @@ function launchLevelRun(
   metadata: LevelRunMetadata,
   callbacks: LaunchLevelRunCallbacks,
 ): () => void {
-  backdrop.showLevel(content);
+  backdrop.showLevel(content, selectedAppearance(profile));
   let attemptResolved = false;
 
   const resolveSnapshot = (snapshot: LevelSnapshot): void => {

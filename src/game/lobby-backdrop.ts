@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { firstWakeLevel, type LevelContent } from "../content/first-wake";
+import type { CosmeticAppearance } from "../core/inventory";
 import {
   createRunState,
   resetRunState,
@@ -97,9 +98,12 @@ export interface LevelSnapshot {
 
 const SIMULATION_STEP_MS = 1000 / 60;
 
-const PLAYER_STYLE = {
-  fillRunning: 0x19d9f3,
+const DEFAULT_PLAYER_APPEARANCE: CosmeticAppearance = {
   fillDead: 0xff437d,
+  fillRunning: 0x19d9f3,
+};
+
+const PLAYER_STYLE = {
   stroke: 0xecfcff,
   strokeAlpha: 0.85,
   strokeWidth: 3,
@@ -120,8 +124,11 @@ const ORB_STYLE = {
   stroke: 0xffd6f4,
 };
 
-function playerFillFor(status: LevelSnapshot["status"]): number {
-  return status === "dead" ? PLAYER_STYLE.fillDead : PLAYER_STYLE.fillRunning;
+function playerFillFor(
+  status: LevelSnapshot["status"],
+  appearance: CosmeticAppearance,
+): number {
+  return status === "dead" ? appearance.fillDead : appearance.fillRunning;
 }
 
 function applyPlayerStrokeStyle<
@@ -136,11 +143,13 @@ function applyPlayerStrokeStyle<
 }
 
 interface LevelSceneInitData {
+  appearance?: CosmeticAppearance;
   levelContent?: LevelContent;
 }
 
 class LevelScene extends Phaser.Scene {
   private accumulator = 0;
+  private appearance: CosmeticAppearance = DEFAULT_PLAYER_APPEARANCE;
   private attempt = 1;
   private courseLayer?: Phaser.GameObjects.Container;
   private cubeJumpPending = false;
@@ -162,6 +171,9 @@ class LevelScene extends Phaser.Scene {
   init(data: LevelSceneInitData): void {
     if (data.levelContent) {
       this.levelContent = data.levelContent;
+    }
+    if (data.appearance) {
+      this.appearance = data.appearance;
     }
   }
 
@@ -388,7 +400,7 @@ class LevelScene extends Phaser.Scene {
     const playerScreenY = this.floorY - rules.playerHeight / 2;
     const halfWidth = rules.playerWidth / 2;
     const halfHeight = rules.playerHeight / 2;
-    const initialFill = playerFillFor(this.status);
+    const initialFill = playerFillFor(this.status, this.appearance);
 
     this.playerCube = applyPlayerStrokeStyle(
       this.add.rectangle(
@@ -420,7 +432,7 @@ class LevelScene extends Phaser.Scene {
         this.floorY + 2,
         80,
         3,
-        PLAYER_STYLE.fillRunning,
+        this.appearance.fillRunning,
         0.28,
       )
       .setOrigin(0.5, 0);
@@ -437,7 +449,7 @@ class LevelScene extends Phaser.Scene {
       rules.groundY -
       rules.playerHeight / 2;
     const isShip = this.state.player.mode === "ship";
-    const fillColor = playerFillFor(this.status);
+    const fillColor = playerFillFor(this.status, this.appearance);
 
     this.courseLayer?.setX(playerScreenX - this.state.player.x);
     this.playerCube
@@ -485,7 +497,7 @@ export interface BackdropController {
   ): void;
   setLevelPaused(paused: boolean): void;
   showLobby(): void;
-  showLevel(content: LevelContent): void;
+  showLevel(content: LevelContent, appearance?: CosmeticAppearance): void;
 }
 
 export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
@@ -493,6 +505,7 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
   let scenesReady = false;
   let snapshotListener: ((snapshot: LevelSnapshot) => void) | undefined;
   let pendingLevelContent: LevelContent | undefined;
+  let pendingAppearance: CosmeticAppearance | undefined;
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -528,6 +541,7 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
       game.scene.stop(LEVEL_SCENE_KEY);
     }
     game.scene.start(LEVEL_SCENE_KEY, {
+      appearance: pendingAppearance,
       levelContent: pendingLevelContent ?? firstWakeLevel,
     });
     (game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene).setSnapshotListener(
@@ -575,8 +589,9 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
       requestedScene = LOBBY_SCENE_KEY;
       applyRequestedScene();
     },
-    showLevel: (content: LevelContent) => {
+    showLevel: (content: LevelContent, appearance?: CosmeticAppearance) => {
       pendingLevelContent = content;
+      pendingAppearance = appearance;
       requestedScene = LEVEL_SCENE_KEY;
       applyRequestedScene();
     },

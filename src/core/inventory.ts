@@ -2,18 +2,64 @@ import type { PlayerProfile } from "./profile";
 
 export type CosmeticCategory = "icon";
 
+export interface CosmeticAppearance {
+  fillDead: number;
+  fillRunning: number;
+}
+
 export interface CosmeticItem {
+  appearance: CosmeticAppearance;
   category: CosmeticCategory;
   id: string;
   name: string;
   price: number;
 }
 
+const DEFAULT_APPEARANCE: CosmeticAppearance = {
+  fillDead: 0xff437d,
+  fillRunning: 0x19d9f3,
+};
+
+const SPARK_APPEARANCE: CosmeticAppearance = {
+  fillDead: 0xff8c42,
+  fillRunning: 0xffc857,
+};
+
+const PULSE_APPEARANCE: CosmeticAppearance = {
+  fillDead: 0xff437d,
+  fillRunning: 0xa45bff,
+};
+
 export const cosmeticCatalog: readonly CosmeticItem[] = [
-  { id: "icon-default", category: "icon", name: "Default", price: 0 },
-  { id: "icon-spark", category: "icon", name: "Spark", price: 50 },
-  { id: "icon-pulse", category: "icon", name: "Pulse", price: 80 },
+  {
+    appearance: DEFAULT_APPEARANCE,
+    category: "icon",
+    id: "icon-default",
+    name: "Default",
+    price: 0,
+  },
+  {
+    appearance: SPARK_APPEARANCE,
+    category: "icon",
+    id: "icon-spark",
+    name: "Spark",
+    price: 50,
+  },
+  {
+    appearance: PULSE_APPEARANCE,
+    category: "icon",
+    id: "icon-pulse",
+    name: "Pulse",
+    price: 80,
+  },
 ];
+
+export function selectedAppearance(profile: PlayerProfile): CosmeticAppearance {
+  const id = profile.selectedCosmetics["icon"];
+  if (!id) return DEFAULT_APPEARANCE;
+  const item = cosmeticCatalog.find((entry) => entry.id === id);
+  return item?.appearance ?? DEFAULT_APPEARANCE;
+}
 
 export const cosmeticCategories: readonly CosmeticCategory[] = Array.from(
   new Set(cosmeticCatalog.map((item) => item.category)),
