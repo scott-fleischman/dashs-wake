@@ -5,10 +5,15 @@ import {
 } from "../../src/content/first-wake";
 import type { PortalEntity } from "../../src/core/run-simulation";
 
-const STARTER_MECHANIC_TYPES = new Set(["gap", "platform", "spike"]);
+const STARTER_MECHANIC_TYPES = new Set([
+  "gap",
+  "platform",
+  "portal",
+  "spike",
+]);
 
 describe("First Wake content contract", () => {
-  it("uses only starter cube mechanics, with no launch pads or orbs", () => {
+  it("uses only authored beginner mechanics, with no launch pads or orbs", () => {
     expect(firstWakeLevel.entities.length).toBeGreaterThan(0);
 
     for (const entity of firstWakeLevel.entities) {

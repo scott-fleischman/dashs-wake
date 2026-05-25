@@ -1,4 +1,8 @@
-import type { LevelEntity, RunRules } from "../core/run-simulation";
+import type {
+  LevelEntity,
+  PortalEntity,
+  RunRules,
+} from "../core/run-simulation";
 
 export interface BeatMap {
   beats: readonly number[];
@@ -17,6 +21,8 @@ export interface ValidationResult {
   ok: boolean;
 }
 
+const MIN_SHIP_CORRIDOR_WIDTH_RATIO = 5;
+
 const FIRST_WAKE_RULES: RunRules = {
   fallBoundaryY: 420,
   gravity: 1250,
@@ -30,9 +36,11 @@ const FIRST_WAKE_RULES: RunRules = {
 const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
   { type: "spike", height: 30, width: 30, x: 160, y: 270 },
   { type: "spike", height: 30, width: 30, x: 425, y: 270 },
+  { type: "portal", mode: "ship", height: 80, width: 12, x: 500, y: 220 },
+  { type: "portal", mode: "cube", height: 80, width: 12, x: 740, y: 220 },
 ];
 
-const FIRST_WAKE_FINISH_X = 690;
+const FIRST_WAKE_FINISH_X = 820;
 
 function buildPlaceholderBeatMap(
   finishX: number,
@@ -88,6 +96,44 @@ export function validateLevelReachability(level: LevelContent): ValidationResult
     if (right > level.finishX) {
       issues.push(
         `Entity at x=${entity.x} extends past the finish line x=${level.finishX}.`,
+      );
+    }
+  }
+
+  const minCorridorWidth =
+    MIN_SHIP_CORRIDOR_WIDTH_RATIO * level.rules.playerWidth;
+  const shipPortals = level.entities
+    .filter(
+      (entity): entity is PortalEntity =>
+        entity.type === "portal" && entity.mode === "ship",
+    )
+    .slice()
+    .sort((a, b) => a.x - b.x);
+  const cubePortals = level.entities
+    .filter(
+      (entity): entity is PortalEntity =>
+        entity.type === "portal" && entity.mode === "cube",
+    )
+    .slice()
+    .sort((a, b) => a.x - b.x);
+
+  for (const shipPortal of shipPortals) {
+    const nextCubePortal = cubePortals.find(
+      (portal) => portal.x > shipPortal.x,
+    );
+
+    if (!nextCubePortal) {
+      issues.push(
+        `Ship corridor starting at x=${shipPortal.x} has no cube portal exit.`,
+      );
+      continue;
+    }
+
+    const corridorWidth = nextCubePortal.x - shipPortal.x;
+
+    if (corridorWidth < minCorridorWidth) {
+      issues.push(
+        `Ship corridor at x=${shipPortal.x} is too tight (${corridorWidth} < ${minCorridorWidth}).`,
       );
     }
   }
