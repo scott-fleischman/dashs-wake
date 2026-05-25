@@ -62,6 +62,18 @@ describe("gauntlet state machine", () => {
     expect(resumed.status).toBe("running");
   });
 
+  it("advances normally after a restart following a stage failure", () => {
+    let state = startGauntletRun(SHORT_GAUNTLET);
+    state = applyStageOutcome(state, "completed");
+    state = applyStageOutcome(state, "failed");
+    state = restartGauntletAtActiveStage(state);
+
+    state = applyStageOutcome(state, "completed");
+
+    expect(state.currentStageIndex).toBe(2);
+    expect(state.status).toBe("running");
+  });
+
   it("ignores stage outcomes after the gauntlet has already completed", () => {
     let state = startGauntletRun({ id: "short", stages: ["only-stage"] });
     state = applyStageOutcome(state, "completed");

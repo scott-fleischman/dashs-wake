@@ -26,6 +26,7 @@ import {
   applyGauntletCompletion,
   applyStageOutcome,
   gauntletCatalog,
+  restartGauntletAtActiveStage,
   startGauntletRun,
   type GauntletRunState,
 } from "./core/gauntlet";
@@ -96,6 +97,7 @@ let pendingGauntletCompletion: string | null = null;
 
 interface LaunchLevelRunCallbacks {
   onAttemptResolved: (snapshot: LevelSnapshot) => void;
+  onRestart?: () => void;
   onReturnHome: () => void;
 }
 
@@ -135,6 +137,7 @@ function launchLevelRun(
     onRestart: () => {
       attemptResolved = false;
       backdrop.restartLevel();
+      callbacks.onRestart?.();
     },
     onReturnToLobby: callbacks.onReturnHome,
     onSnapshotChange: (uiListener) => {
@@ -356,6 +359,13 @@ function renderRoute(): void {
             setTimeout(() => {
               renderRoute();
             }, 0);
+          }
+        },
+        onRestart: () => {
+          if (activeGauntletRun && activeGauntletRun.status === "failed") {
+            activeGauntletRun = restartGauntletAtActiveStage(
+              activeGauntletRun,
+            );
           }
         },
         onReturnHome: () => {
