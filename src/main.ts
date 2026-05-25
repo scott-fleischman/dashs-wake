@@ -123,7 +123,10 @@ async function startAudioPlayback(blobKey: string): Promise<void> {
   audio.play().catch(() => undefined);
 }
 
-window.addEventListener("beforeunload", stopAudioPlayback);
+window.addEventListener("beforeunload", () => {
+  stopAudioPlayback();
+  backdrop.destroy(true);
+});
 
 interface LaunchLevelRunCallbacks {
   onAttemptResolved: (snapshot: LevelSnapshot) => void;
