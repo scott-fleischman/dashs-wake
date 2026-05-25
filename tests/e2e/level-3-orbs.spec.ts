@@ -40,8 +40,10 @@ test("unlocks Level 3 and completes the safe orb sequence", async ({
     .toBeGreaterThanOrEqual(73);
   await page.keyboard.press("Space");
 
-  await expect(
-    page.getByRole("dialog", { name: "Level complete" }),
-  ).toBeVisible({ timeout: 5_000 });
+  const completeDialog = page.getByRole("dialog", { name: "Level complete" });
+  await expect(completeDialog).toBeVisible({ timeout: 5_000 });
   await expect(progress).toHaveText("100%");
+  await expect(completeDialog.locator(".result-message")).toContainText(
+    "Orbital Loop",
+  );
 });
