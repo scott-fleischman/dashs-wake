@@ -38,6 +38,16 @@ function levelStatusText(
   return isLevelUnlocked(metadata, profile) ? "Unlocked" : "Locked";
 }
 
+function unlockHintText(metadata: OfficialLevelMetadata): string {
+  const required = metadata.unlockRequirement.requiredCompletedLevels;
+  if (required.length === 0) return "";
+  const names = required.map((id) => {
+    const meta = officialLevelCatalog.find((entry) => entry.id === id);
+    return meta?.name ?? id;
+  });
+  return `Clear ${names.join(", ")}`;
+}
+
 interface DestinationConfig {
   name: string;
   route: string | null;
@@ -102,6 +112,8 @@ function renderLevelCard(
   const buttonLabel = unlocked ? "Play" : "Locked";
   const buttonDisabledAttr = unlocked ? "" : "disabled";
   const cardClasses = unlocked ? "level-card" : "level-card level-locked";
+  const hintText = unlocked ? "" : unlockHintText(metadata);
+  const hintHidden = hintText === "" ? "hidden" : "";
 
   return `
     <div class="${cardClasses}">
@@ -111,6 +123,7 @@ function renderLevelCard(
         <p class="level-stat" data-testid="${testId}-status">${status}</p>
         <p class="level-difficulty" data-testid="${testId}-difficulty">${difficulty}</p>
         <p class="level-stat level-best" data-testid="${testId}-best-percent" ${bestHidden}>${bestText}</p>
+        <p class="level-stat level-unlock-hint" data-testid="${testId}-unlock-hint" ${hintHidden}>${hintText}</p>
       </div>
       <button class="play-button" type="button" data-testid="${testId}-play" data-action="play" data-level-id="${metadata.id}" ${buttonDisabledAttr}>
         <span>${buttonLabel}</span>
