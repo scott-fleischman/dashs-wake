@@ -99,14 +99,21 @@ let activeAudioPlayback: { audio: HTMLAudioElement; url: string } | null = null;
 
 function stopAudioPlayback(): void {
   if (!activeAudioPlayback) return;
-  activeAudioPlayback.audio.pause();
-  URL.revokeObjectURL(activeAudioPlayback.url);
+  const { audio, url } = activeAudioPlayback;
+  audio.pause();
+  audio.removeAttribute("src");
+  audio.load();
+  URL.revokeObjectURL(url);
   activeAudioPlayback = null;
 }
 
+const MIN_PLAYABLE_AUDIO_BYTES = 1024;
+
 async function startAudioPlayback(blobKey: string): Promise<void> {
   const blob = await getAudioBlob(blobKey).catch(() => undefined);
-  if (!blob) return;
+  if (!blob || blob.size < MIN_PLAYABLE_AUDIO_BYTES) {
+    return;
+  }
   if (activeAudioPlayback) {
     return;
   }
@@ -115,6 +122,8 @@ async function startAudioPlayback(blobKey: string): Promise<void> {
   activeAudioPlayback = { audio, url };
   audio.play().catch(() => undefined);
 }
+
+window.addEventListener("beforeunload", stopAudioPlayback);
 
 interface LaunchLevelRunCallbacks {
   onAttemptResolved: (snapshot: LevelSnapshot) => void;
