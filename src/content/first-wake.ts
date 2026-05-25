@@ -1,6 +1,7 @@
 import type {
   LevelEntity,
   OrbEntity,
+  PadEntity,
   PortalEntity,
   RunRules,
 } from "../core/run-simulation";
@@ -11,7 +12,7 @@ export interface BeatMap {
 }
 
 export interface ExpectedRoute {
-  requiredOrbIds: readonly string[];
+  requiredTriggerIds: readonly string[];
 }
 
 export interface LevelContent {
@@ -159,7 +160,7 @@ const validateShipCorridors: LevelValidator = (level) => {
   return issues;
 };
 
-const validateRequiredOrbs: LevelValidator = (level) => {
+const validateRequiredTriggers: LevelValidator = (level) => {
   const route = level.expectedRoute;
 
   if (!route) {
@@ -167,16 +168,19 @@ const validateRequiredOrbs: LevelValidator = (level) => {
   }
 
   const issues: string[] = [];
-  const orbIds = new Set(
+  const triggerIds = new Set(
     level.entities
-      .filter((entity): entity is OrbEntity => entity.type === "orb")
-      .map((orb) => orb.id),
+      .filter(
+        (entity): entity is OrbEntity | PadEntity =>
+          entity.type === "orb" || entity.type === "pad",
+      )
+      .map((trigger) => trigger.id),
   );
 
-  for (const requiredId of route.requiredOrbIds) {
-    if (!orbIds.has(requiredId)) {
+  for (const requiredId of route.requiredTriggerIds) {
+    if (!triggerIds.has(requiredId)) {
       issues.push(
-        `Required orb "${requiredId}" is missing from the level entities.`,
+        `Required trigger "${requiredId}" is missing from the level entities.`,
       );
     }
   }
@@ -188,7 +192,7 @@ const LEVEL_VALIDATORS: readonly LevelValidator[] = [
   validateHazardReachability,
   validateEntityBounds,
   validateShipCorridors,
-  validateRequiredOrbs,
+  validateRequiredTriggers,
 ];
 
 export function validateLevelReachability(level: LevelContent): ValidationResult {

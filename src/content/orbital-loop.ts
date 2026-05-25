@@ -44,7 +44,7 @@ export const orbitalLoopLevel: LevelContent = {
   ),
   entities: ORBITAL_LOOP_ENTITIES,
   expectedRoute: {
-    requiredOrbIds: [REQUIRED_ORB_ID],
+    requiredTriggerIds: [REQUIRED_ORB_ID],
   },
   finishX: ORBITAL_LOOP_FINISH_X,
   rules: ORBITAL_LOOP_RULES,

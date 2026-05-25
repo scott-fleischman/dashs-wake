@@ -57,13 +57,13 @@ describe("Official level catalog", () => {
     expect(validateLevelReachability(level2).ok).toBe(true);
   });
 
-  it("authors Level 3 with safe orbs and a declared required-orb route", () => {
+  it("authors Level 3 with safe orbs and a declared required-trigger route", () => {
     const level3 = getOfficialLevelContent("level_3");
 
     const orbs = level3.entities.filter(
       (entity): entity is OrbEntity => entity.type === "orb",
     );
-    const requiredIds = level3.expectedRoute?.requiredOrbIds ?? [];
+    const requiredIds = level3.expectedRoute?.requiredTriggerIds ?? [];
 
     expect(orbs.length).toBeGreaterThan(0);
     expect(requiredIds.length).toBeGreaterThan(0);
@@ -80,15 +80,15 @@ describe("Official level catalog", () => {
     expect(validateLevelReachability(level3).ok).toBe(true);
   });
 
-  it("flags a level whose declared required orb id is missing from entities", () => {
+  it("flags a level whose declared required trigger id is missing from entities", () => {
     const broken = {
       ...firstWakeLevel,
-      expectedRoute: { requiredOrbIds: ["nonexistent-orb"] },
+      expectedRoute: { requiredTriggerIds: ["nonexistent-orb"] },
     };
 
     const result = validateLevelReachability(broken);
 
     expect(result.ok).toBe(false);
-    expect(result.issues.join(" ")).toMatch(/required orb/i);
+    expect(result.issues.join(" ")).toMatch(/required trigger/i);
   });
 });
