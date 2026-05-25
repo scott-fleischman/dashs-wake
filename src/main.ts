@@ -269,7 +269,9 @@ function renderRoute(): void {
             ...profile,
             generatedLevels: [...profile.generatedLevels, record],
           });
-          renderRoute();
+          if (window.location.hash === "#generated") {
+            renderRoute();
+          }
         };
 
         Promise.all([
