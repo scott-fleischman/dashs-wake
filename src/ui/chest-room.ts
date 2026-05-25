@@ -60,7 +60,7 @@ export function mountChestRoom(
           actionLabel: "Open",
           actionTestId: `chest-${testId}-open`,
           detail: `1 ${capitalize(chest.keyType)} Key → ${chestRewardSummary(chest.reward)}`,
-          name: chest.id,
+          name: chest.name,
           onAction: () => {
             const result = applyOpenChest(profileRef.current, chest.id);
             if (result.profile !== profileRef.current) {
