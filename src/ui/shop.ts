@@ -4,6 +4,7 @@ import {
   type CosmeticItem,
 } from "../core/inventory";
 import type { PlayerProfile } from "../core/profile";
+import { formatCoinAmount } from "../core/reward-summary";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
 interface ShopActions {
@@ -48,7 +49,7 @@ function buildPurchaseConfirmation(
 
   const message = document.createElement("p");
   message.className = "result-message";
-  message.textContent = `${item.price} Coins`;
+  message.textContent = formatCoinAmount(item.price);
   overlay.appendChild(message);
 
   const actionsRow = document.createElement("div");
@@ -89,7 +90,7 @@ export function mountShop(
     const balance = document.createElement("p");
     balance.className = "room-balance";
     balance.setAttribute("data-testid", "shop-balance");
-    balance.textContent = `${profile.coins} Coins`;
+    balance.textContent = formatCoinAmount(profile.coins);
     main.querySelector("header")?.appendChild(balance);
 
     root.appendChild(main);
@@ -104,7 +105,7 @@ export function mountShop(
           actionDisabled: owned || profile.coins < item.price,
           actionLabel: "Buy",
           actionTestId: `cosmetic-${testId}-buy`,
-          detail: `${item.price} Coins`,
+          detail: formatCoinAmount(item.price),
           name: item.name,
           rowExtraClass: owned ? "row-complete" : undefined,
           onAction: () => {

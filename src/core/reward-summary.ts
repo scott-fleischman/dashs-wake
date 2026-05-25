@@ -8,6 +8,10 @@ function capitalize(text: string): string {
   return text[0]!.toUpperCase() + text.slice(1);
 }
 
+export function formatCoinAmount(coins: number): string {
+  return `${coins} Coin${coins === 1 ? "" : "s"}`;
+}
+
 export function formatRewardSummary(reward: Reward): string {
   const parts: string[] = [];
 

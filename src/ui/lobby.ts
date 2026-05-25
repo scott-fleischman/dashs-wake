@@ -7,6 +7,7 @@ import {
 } from "../content/official-levels";
 import { getSelectedCosmetic } from "../core/inventory";
 import { isUnlockMet, type PlayerProfile } from "../core/profile";
+import { formatCoinAmount } from "../core/reward-summary";
 
 const DIFFICULTY_LABELS: Record<OfficialLevelDifficulty, string> = {
   easy: "Easy",
@@ -79,9 +80,6 @@ function destinationButton(destination: DestinationConfig): string {
   `;
 }
 
-function coinsText(coins: number): string {
-  return `${coins} Coin${coins === 1 ? "" : "s"}`;
-}
 
 const KEY_TYPE_LABELS: Record<string, string> = {
   easy: "Easy",
@@ -167,7 +165,7 @@ function renderProfileStats(profile: PlayerProfile): string {
 
   return `
     <div class="profile-stats" aria-label="Profile stats">
-      <span class="profile-stat" data-testid="profile-coins">${coinsText(profile.coins)}</span>
+      <span class="profile-stat" data-testid="profile-coins">${formatCoinAmount(profile.coins)}</span>
       ${keysHtml}
       ${renderEquippedIconChip(profile)}
     </div>
