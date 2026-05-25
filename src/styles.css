@@ -613,3 +613,21 @@ kbd {
 .cosmetic-swatch.shape-diamond {
   transform: rotate(45deg);
 }
+
+.result-overlay[aria-label="Run failed"] {
+  border-color: rgba(255, 67, 125, 0.7);
+  box-shadow: 0 0 70px rgba(255, 67, 125, 0.35);
+}
+
+.result-overlay[aria-label="Run failed"] h2 {
+  color: #ff8c42;
+}
+
+.result-overlay[aria-label="Level complete"] {
+  border-color: rgba(108, 242, 197, 0.7);
+  box-shadow: 0 0 70px rgba(108, 242, 197, 0.35);
+}
+
+.result-overlay[aria-label="Level complete"] h2 {
+  color: #6cf2c5;
+}
