@@ -24,6 +24,33 @@ export interface ManualClock extends PlayableClock {
   setElapsedMs(elapsedMs: number): void;
 }
 
+export interface AudioElementLike {
+  currentTime: number;
+  paused: boolean;
+  pause(): void;
+  play(): Promise<void> | void;
+}
+
+export function createAudioClock(audio: AudioElementLike): PlayableClock {
+  return {
+    pause() {
+      audio.pause();
+    },
+    read() {
+      return {
+        elapsedMs: audio.currentTime * 1000,
+        paused: audio.paused,
+      };
+    },
+    reset() {
+      audio.currentTime = 0;
+    },
+    resume() {
+      void audio.play();
+    },
+  };
+}
+
 export function createManualClock(
   initial: ClockState = { elapsedMs: 0, paused: false },
 ): ManualClock {
