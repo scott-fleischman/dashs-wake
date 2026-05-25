@@ -9,11 +9,6 @@ test("dying after partial progress awards coins for the new best percent", async
   const readPercent = async (): Promise<number> =>
     Number((await progress.textContent())?.replace("%", ""));
 
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(8);
-  await page.keyboard.press("Space");
-
   const failedDialog = page.getByRole("dialog", { name: "Run failed" });
   await expect(failedDialog).toBeVisible({ timeout: 5_000 });
 

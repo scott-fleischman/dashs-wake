@@ -49,6 +49,20 @@ describe("Official level catalog", () => {
     for (const level of officialLevelCatalog) {
       expect(level.name.length).toBeGreaterThan(0);
       expect(level.difficulty.length).toBeGreaterThan(0);
+      expect(level.track.audioPath).toMatch(/\.ogg$/);
+      expect(level.track.license).toBe("CC0");
+    }
+  });
+
+  it("times each expanded course to its bundled CC0 electronic track", () => {
+    for (const metadata of officialLevelCatalog) {
+      const content = getOfficialLevelContent(metadata.id);
+      const traversalMs =
+        (content.finishX / content.rules.horizontalSpeed) * 1000;
+
+      expect(content.beatMap.durationMs).toBe(metadata.track.durationMs);
+      expect(content.beatMap.durationMs).toBeGreaterThanOrEqual(20_000);
+      expect(content.beatMap.durationMs).toBeGreaterThanOrEqual(traversalMs);
     }
   });
 
@@ -61,6 +75,9 @@ describe("Official level catalog", () => {
 
     expect(pads.length).toBeGreaterThan(0);
     expect(orbs).toEqual([]);
+    for (const pad of pads) {
+      expect(pad.y).toBeGreaterThanOrEqual(level2.rules.groundY - pad.height);
+    }
   });
 
   it("validates Level 2 content as reachable", () => {
@@ -83,6 +100,10 @@ describe("Official level catalog", () => {
     for (const id of requiredIds) {
       const orb = orbs.find((entity) => entity.id === id);
       expect(orb).toBeDefined();
+      expect(orb!.y).toBeLessThan(level3.rules.groundY - orb!.height);
+      expect(orb!.y + orb!.height).toBeLessThanOrEqual(
+        level3.rules.groundY - level3.rules.playerHeight,
+      );
     }
   });
 
@@ -118,17 +139,33 @@ describe("Official level catalog", () => {
     expect(hasPad).toBe(true);
   });
 
-  it("authors Level 5 with trap orbs alongside earlier mechanics", () => {
+  it("authors Level 5 trap choices as normal airborne orbs aimed into spikes", () => {
     const level5 = getOfficialLevelContent("level_5");
 
     const hasPad = level5.entities.some((entity) => entity.type === "pad");
-    const hasTrapOrb = level5.entities.some(
+    const trapChoiceOrbs = level5.entities.filter(
       (entity): entity is OrbEntity =>
-        entity.type === "orb" && entity.effect.kind === "kill",
+        entity.type === "orb" && entity.id.includes("trap"),
     );
 
     expect(hasPad).toBe(true);
-    expect(hasTrapOrb).toBe(true);
+    expect(trapChoiceOrbs.length).toBeGreaterThan(0);
+    for (const orb of trapChoiceOrbs) {
+      expect(orb.effect.kind).toBe("impulse");
+      expect(orb.y).toBeLessThan(level5.rules.groundY - orb.height);
+      expect(orb.y + orb.height).toBeLessThanOrEqual(
+        level5.rules.groundY - level5.rules.playerHeight,
+      );
+      expect(
+        level5.entities.some(
+          (entity) =>
+            entity.type === "spike" &&
+            entity.y < level5.rules.groundY - entity.height &&
+            entity.x > orb.x &&
+            entity.x < orb.x + 100,
+        ),
+      ).toBe(true);
+    }
   });
 
   it("validates Level 4 and Level 5 content as reachable", () => {

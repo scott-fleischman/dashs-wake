@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { tapAtPercents } from "./helpers/course-play";
 import { seedProfile } from "./helpers/profile-storage";
 
-test("activating a trap orb crashes the run", async ({ page }) => {
+test("activating a lure orb launches the cube into visible trap spikes", async ({ page }) => {
   await page.goto("/");
   await seedProfile(page, {
     bestPercents: {
@@ -21,20 +22,9 @@ test("activating a trap orb crashes the run", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Trap Lane" })).toBeVisible();
 
   const progress = page.getByTestId("run-progress");
-  const readPercent = async (): Promise<number> =>
-    Number((await progress.textContent())?.replace("%", ""));
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(5);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 10_000 })
-    .toBeGreaterThanOrEqual(61);
-  await page.keyboard.press("Space");
+  await tapAtPercents(page, [2, 24, 26, 36, 38]);
 
   const failedDialog = page.getByRole("dialog", { name: "Run failed" });
-  await expect(failedDialog).toBeVisible({ timeout: 3_000 });
+  await expect(failedDialog).toBeVisible({ timeout: 5_000 });
   await expect(failedDialog.locator("h2")).toHaveText("Crash");
 });

@@ -8,6 +8,7 @@ export interface LevelRunMetadata {
   kicker: string;
   name: string;
   previousBestPercent?: number;
+  trackLabel?: string;
 }
 
 interface LevelRunActions {
@@ -90,6 +91,7 @@ export function mountFirstWake(
         <p class="kicker"></p>
         <h1></h1>
         <p class="run-status" role="status">Running</p>
+        <p class="run-track" data-testid="run-track" hidden></p>
       </header>
 
       <section class="run-hud" aria-label="Attempt status">
@@ -153,9 +155,14 @@ export function mountFirstWake(
   const equippedIconEl = root.querySelector<HTMLElement>(
     "[data-testid='equipped-icon']",
   );
+  const trackEl = root.querySelector<HTMLElement>("[data-testid='run-track']");
   if (kickerEl) kickerEl.textContent = metadata.kicker;
   if (headingEl) headingEl.textContent = metadata.name;
   if (equippedIconEl) equippedIconEl.textContent = metadata.equippedIcon;
+  if (trackEl && metadata.trackLabel) {
+    trackEl.textContent = metadata.trackLabel;
+    trackEl.hidden = false;
+  }
 
   const status = root.querySelector<HTMLElement>(".run-status");
   const feedback = root.querySelector<HTMLElement>(".input-feedback");

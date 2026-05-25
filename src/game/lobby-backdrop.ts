@@ -11,6 +11,7 @@ import {
   tickRun,
   type RunState,
 } from "../core/run-simulation";
+import { cubeGroundExtent } from "./player-presentation";
 
 const LOBBY_SCENE_KEY = "lobby-backdrop";
 const LEVEL_SCENE_KEY = "level-run";
@@ -341,12 +342,33 @@ class LevelScene extends Phaser.Scene {
       return true;
     }
 
-    if (this.cubeJumpPending || !this.state.player.grounded) {
+    if (
+      this.cubeJumpPending ||
+      (!this.state.player.grounded && !this.hasOverlappingOrb())
+    ) {
       return false;
     }
 
     this.cubeJumpPending = true;
     return true;
+  }
+
+  private hasOverlappingOrb(): boolean {
+    const rules = this.levelContent.rules;
+    const playerLeft = this.state.player.x - rules.playerWidth / 2;
+    const playerRight = this.state.player.x + rules.playerWidth / 2;
+    const playerTop = this.state.player.y - rules.playerHeight;
+    const playerBottom = this.state.player.y;
+
+    return this.levelContent.entities.some(
+      (entity) =>
+        entity.type === "orb" &&
+        !this.state.consumedTriggerIds.has(entity.id) &&
+        playerRight > entity.x &&
+        playerLeft < entity.x + entity.width &&
+        playerBottom > entity.y &&
+        playerTop < entity.y + entity.height,
+    );
   }
 
   restart(): void {
@@ -530,23 +552,33 @@ class LevelScene extends Phaser.Scene {
   private updatePresentation(): void {
     const rules = this.levelContent.rules;
     const playerScreenX = this.scale.width * 0.22;
-    const playerScreenY =
+    const simulationCenterY =
       this.floorY +
       this.state.player.y -
       rules.groundY -
       rules.playerHeight / 2;
     const isShip = this.state.player.mode === "ship";
     const fillColor = playerFillFor(this.status, this.appearance);
+    const cubeRotation = this.state.player.x / 62;
+    const cubeScreenY = this.state.player.grounded
+      ? this.floorY -
+        cubeGroundExtent(
+          this.appearance.cubeShape,
+          rules.playerWidth,
+          rules.playerHeight,
+          cubeRotation,
+        )
+      : simulationCenterY;
 
     this.courseLayer?.setX(playerScreenX - this.state.player.x);
     this.playerCube
       ?.setVisible(!isShip)
-      .setY(playerScreenY)
-      .setRotation(isShip ? 0 : this.state.player.x / 62)
+      .setY(cubeScreenY)
+      .setRotation(isShip ? 0 : cubeRotation)
       .setFillStyle(fillColor);
     this.playerShip
       ?.setVisible(isShip)
-      .setY(playerScreenY)
+      .setY(simulationCenterY)
       .setRotation(this.state.player.velocityY * 0.0006)
       .setFillStyle(fillColor);
   }

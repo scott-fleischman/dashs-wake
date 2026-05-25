@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { completeFirstWake } from "./helpers/course-play";
 
 test("lobby presents its destinations and lets the player choose Play", async ({
   page,
@@ -35,6 +36,8 @@ test("lobby presents its destinations and lets the player choose Play", async ({
     page.getByRole("heading", { name: "First Wake" }),
   ).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Running");
+  await expect(page.getByTestId("run-track")).toContainText("Bright Melodic EDM");
+  await expect(page.getByTestId("official-level-audio")).toBeAttached();
 });
 
 test("First Wake pauses with Escape and returns to the lobby", async ({
@@ -101,31 +104,6 @@ test("First Wake reports progress, restarts after failure, and can be completed"
   await expect(attempts).toHaveText("Attempt 3");
   await expect(page.getByText("Restarted - 0%")).toBeVisible();
 
-  const readPercent = async (): Promise<number> =>
-    Number((await progress.textContent())?.replace("%", ""));
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(8);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(27);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 5_000 })
-    .toBeGreaterThanOrEqual(61);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 4_000 })
-    .toBeGreaterThanOrEqual(84);
-  await page.keyboard.press("Space");
-
-  await expect(
-    page.getByRole("dialog", { name: "Level complete" }),
-  ).toBeVisible({ timeout: 5_000 });
+  await completeFirstWake(page);
   await expect(progress).toHaveText("100%");
 });

@@ -106,6 +106,7 @@ function renderLevelCard(
   const bestHidden = best === undefined ? "hidden" : "";
   const bestText = best === undefined ? "" : `${best}%`;
   const completed = profile.completedLevels.includes(metadata.id);
+  const trackText = `${metadata.track.title} - ${metadata.track.artist}`;
   const buttonLabel = !unlocked ? "Locked" : completed ? "Replay" : "Play";
   const buttonDisabledAttr = unlocked ? "" : "disabled";
   const cardClasses = completed
@@ -123,6 +124,7 @@ function renderLevelCard(
         <h2 class="level-title">${metadata.name}</h2>
         <p class="level-stat" data-testid="${testId}-status">${status}</p>
         <p class="level-difficulty" data-testid="${testId}-difficulty">${difficulty}</p>
+        <p class="level-track" data-testid="${testId}-track">${trackText}</p>
         <p class="level-stat level-best" data-testid="${testId}-best-percent" ${bestHidden}>${bestText}</p>
         <p class="level-stat level-unlock-hint" data-testid="${testId}-unlock-hint" ${hintHidden}>${hintText}</p>
       </div>

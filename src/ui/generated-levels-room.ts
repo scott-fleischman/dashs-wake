@@ -6,10 +6,21 @@ import type {
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
 interface GeneratedLevelsRoomActions {
+  onCreate: () => void;
   onGenerate: () => void;
   onImportAudio: (file: File) => void;
   onPlay: (recordId: string) => void;
   onReturnToLobby: () => void;
+}
+
+function buildCreateButton(onCreate: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "primary-button";
+  button.setAttribute("data-testid", "create-level");
+  button.textContent = "Level Creator";
+  button.addEventListener("click", onCreate);
+  return button;
 }
 
 function buildGenerateButton(onGenerate: () => void): HTMLButtonElement {
@@ -58,6 +69,7 @@ export function mountGeneratedLevelsRoom(
 
     const header = main.querySelector("header");
     header?.appendChild(buildGenerateButton(actions.onGenerate));
+    header?.appendChild(buildCreateButton(actions.onCreate));
     header?.appendChild(buildAudioUploadInput(actions.onImportAudio));
 
     if (profile.generatedLevels.length === 0) {
@@ -71,9 +83,12 @@ export function mountGeneratedLevelsRoom(
 
     for (const record of profile.generatedLevels) {
       const testId = safeTestId(record.id);
+      const isCreated = record.source === "creator";
       const isAudio = record.audioFileName !== undefined;
       const isSynced = isAudio && record.synced !== false;
-      const displayName = isAudio
+      const displayName = isCreated
+        ? record.name
+        : isAudio
         ? `${record.audioFileName} (Audio)`
         : record.name;
       const audioStatusLabel = isSynced ? "Synced" : "Not synced";
@@ -82,15 +97,17 @@ export function mountGeneratedLevelsRoom(
           actionDisabled: false,
           actionLabel: "Play",
           actionTestId: `${testId}-play`,
-          detail: isAudio
+          detail: isCreated
+            ? record.audioFileName ?? "Authored course"
+            : isAudio
             ? isSynced
               ? "Synchronized"
               : "Placeholder beats"
             : `Seed ${record.seed}`,
           name: displayName,
-          nameTestId: isAudio ? `${testId}-name` : undefined,
+          nameTestId: isAudio || isCreated ? `${testId}-name` : undefined,
           onAction: () => actions.onPlay(record.id),
-          statusLabel: isAudio ? audioStatusLabel : "Generated",
+          statusLabel: isCreated ? "Created" : isAudio ? audioStatusLabel : "Generated",
           statusTestId: `${testId}-status`,
           statusVisible: true,
         }),
@@ -116,6 +133,7 @@ export function buildPlaceholderGeneratedLevel(
     id: `generated-level-${index}`,
     name: `Generated Level ${index}`,
     seed,
+    source: "generator",
   };
 }
 
@@ -149,6 +167,7 @@ export function buildAudioDerivedLevel(
     id: `audio-derived-level-${index}`,
     name: fileName,
     seed,
+    source: "generator",
     synced,
   };
 }

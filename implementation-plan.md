@@ -20,21 +20,21 @@ coding:
 | --- | --- | --- |
 | Platform | Desktop-first browser game; make pointer input compatible with future touch support. | The requested controls and simple geometric rendering fit a web build, while mobile is conditional. |
 | Level 1 mechanics | Level 1 contains cube play, hazards, platforms, a gap, and an easy ship segment; it does not contain pads or orbs. | This reconciles the Level 1 draft with the overall acceptance criteria. |
-| Launch pads and orbs | Demonstrate pads in Level 2 and orbs in Level 3; use Levels 4 and 5 for combinations and trap orbs. | Matches the authored level progression. |
-| Music dependency | Use a deterministic placeholder beat map and metronome/visual pulse until approved audio exists. | The song is not chosen yet, and the acceptance criteria explicitly allow simulated beat data. |
-| Level completion timing | The authored placeholder level ends at its beat-map duration; later real audio becomes the authoritative clock. | Preserves the requirement that a level lasts as long as its song without blocking the prototype. |
+| Launch pads and orbs | Demonstrate floor pads in Level 2 and airborne orbs over spike runs in Level 3; use Levels 4 and 5 for combinations and visible lure-orb traps. | Matches the authored level progression and keeps trap consequences readable. |
+| Music dependency | Bundle five loop variants from Fupi's CC0 `Melodic EDM Loops` OpenGameArt pack for the official courses. | Supplies freely downloadable electronic music with clear redistribution rights and small assets. |
+| Level completion timing | Expanded official courses use integer loop durations from their selected track; uploaded creator songs initially place the finish gate at song duration. | Preserves the requirement that level length is controlled by its music while allowing explicit authored adjustment. |
 | Progress coins | Award the positive difference between newly reached whole percent and stored best percent, including attempts ending in death. Cap progress coins at 100 per level. | Implements "one coin for each new percent reached" without farming. |
 | Completion rewards | Award the level key and unlock effects once on first completion. | Prevents repeat completion from farming keys. |
 | Main-level checkpoints | None; death or `R` returns the run to 0 percent. Persist earned progress and unlocks. | Matches the failure and reward rules. |
-| Generator scope | MVP generation consumes seeded, simulated beat/section/intensity input. File upload, audio analysis, and local audio storage are a later slice. | Delivers the required placeholder generated level before taking on audio processing and licensing concerns. |
+| Generator and creator scope | Retain seeded generation and local audio analysis, and add a song-backed creator with a piece palette and authored finish point. | Supports both automatic and hand-authored player levels without uploading user audio. |
 | Visual assets | Draw original geometric shapes and neon palettes in code; do not import reference-game assets or designs. | Satisfies the originality requirement and keeps iteration fast. |
 
 Items intentionally deferred until after prototype acceptance: full settings,
-level editing/regeneration UI, robust audio feature analysis, content balancing,
+advanced level editing/regeneration tools, robust audio feature analysis, content balancing,
 production cosmetics/catalogs, and mobile layout polish.
 
-Inputs still needed before production content ships: licensed or original song
-files and durations, final official level names/difficulties beyond First Wake,
+Inputs still needed before production content ships: final official level
+names/difficulties beyond First Wake,
 shop pricing and chest loot tables, and the cosmetic/gauntlet art catalog. None
 blocks the placeholder-driven prototype.
 
@@ -205,12 +205,12 @@ orbs.
 
 | Cycle | Red test | Green implementation | Refactor focus |
 | --- | --- | --- | --- |
-| 6.1 | Simulation test expects activating a trap orb to kill the player while bypassing it is safe. | Add trap orb behavior and readable hazard rendering. | Model orb effects as typed outcomes. |
-| 6.2 | Content validators expect Levels 4 and 5 to combine required mechanics and preserve unlock chain. | Author combination courses with placeholder beats and reward keys. | Extract reusable authored pattern fragments only if duplication is real. |
+| 6.1 | Journey test expects activating a lure orb to launch the player into visible ceiling spikes while bypassing it is safe. | Author ordinary airborne impulse orbs with readable trap geometry. | Keep failure attributable to visible collision rather than hidden trigger effects. |
+| 6.2 | Content validators expect Levels 4 and 5 to combine required mechanics and preserve unlock chain. | Author expanded combination courses timed to bundled CC0 EDM loops and reward keys. | Extract reusable authored pattern fragments only if duplication is real. |
 | 6.3 | Browser journeys complete/unlock the official progression and show all status fields. | Complete list UI, completion/reward wiring, and difficulty presentation. | Audit UI state derivation from profile/content data. |
 
 **Exit gate:** Five official levels exist; each new mechanic appears at the
-intended learning point; trap orbs are clearly distinguishable.
+intended learning point; trap outcomes are visible in course geometry.
 
 ### Chunk 7: Customizer, Shop, and Chest Room
 
@@ -281,7 +281,7 @@ generated level synchronized to the audio clock, and keep the file local.
 | 10.3 | Browser journey imports a fixture audio file locally and launches a synchronized generated level. | Add local upload UX/storage policy messaging and IndexedDB audio storage if needed. | Separate binary storage from profile data. |
 
 **Exit gate:** Music-driven generation meets the fuller specification without
-uploading user audio or claiming rights to bundled music.
+uploading user audio; bundled official music is CC0 with provenance recorded.
 
 ## Acceptance Coverage
 

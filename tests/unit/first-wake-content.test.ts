@@ -13,6 +13,10 @@ const STARTER_MECHANIC_TYPES = new Set([
 ]);
 
 describe("First Wake content contract", () => {
+  it("uses the accelerated player pace", () => {
+    expect(firstWakeLevel.rules.horizontalSpeed).toBe(240);
+  });
+
   it("uses only authored beginner mechanics, with no launch pads or orbs", () => {
     expect(firstWakeLevel.entities.length).toBeGreaterThan(0);
 
@@ -23,7 +27,7 @@ describe("First Wake content contract", () => {
     }
   });
 
-  it("ships a placeholder beat map whose duration covers the finish line", () => {
+  it("ships a soundtrack beat map whose duration covers the finish line", () => {
     const traversalMs =
       (firstWakeLevel.finishX / firstWakeLevel.rules.horizontalSpeed) * 1000;
 
@@ -62,16 +66,20 @@ describe("First Wake content contract", () => {
     expect(result.issues.join(" ")).toMatch(/gap/i);
   });
 
-  it("teaches ship mode with one ship portal followed by one cube portal", () => {
+  it("teaches ship mode through repeated ship and cube portal passages", () => {
     const portals = firstWakeLevel.entities.filter(
       (entity): entity is PortalEntity => entity.type === "portal",
     );
     const shipPortals = portals.filter((portal) => portal.mode === "ship");
     const cubePortals = portals.filter((portal) => portal.mode === "cube");
 
-    expect(shipPortals).toHaveLength(1);
-    expect(cubePortals).toHaveLength(1);
-    expect(shipPortals[0]!.x).toBeLessThan(cubePortals[0]!.x);
+    expect(shipPortals.length).toBeGreaterThanOrEqual(2);
+    expect(cubePortals).toHaveLength(shipPortals.length);
+
+    for (const shipPortal of shipPortals) {
+      const exit = cubePortals.find((portal) => portal.x > shipPortal.x);
+      expect(exit).toBeDefined();
+    }
   });
 
   it("authors a wide, safe ship corridor without hazards between its portals", () => {

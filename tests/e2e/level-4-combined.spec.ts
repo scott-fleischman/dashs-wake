@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { tapAtPercents } from "./helpers/course-play";
 import { seedProfile } from "./helpers/profile-storage";
+
+test.setTimeout(45_000);
 
 test("unlocks Level 4 and completes the combined run", async ({ page }) => {
   await page.goto("/");
@@ -22,26 +25,10 @@ test("unlocks Level 4 and completes the combined run", async ({ page }) => {
   ).toBeVisible();
 
   const progress = page.getByTestId("run-progress");
-  const readPercent = async (): Promise<number> =>
-    Number((await progress.textContent())?.replace("%", ""));
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(7);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 8_000 })
-    .toBeGreaterThanOrEqual(57);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 8_000 })
-    .toBeGreaterThanOrEqual(87);
-  await page.keyboard.press("Space");
+  await tapAtPercents(page, [2, 24, 26, 54, 56, 66]);
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
-  await expect(completeDialog).toBeVisible({ timeout: 5_000 });
+  await expect(completeDialog).toBeVisible({ timeout: 10_000 });
   await expect(progress).toHaveText("100%");
   await expect(completeDialog.locator(".result-message")).toContainText(
     "Combined Run",

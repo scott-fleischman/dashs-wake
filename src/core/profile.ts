@@ -1,4 +1,12 @@
+import type { LevelEntity } from "./run-simulation";
+
+export interface AuthoredLevelLayout {
+  entities: readonly LevelEntity[];
+  finishX: number;
+}
+
 export interface GeneratedLevelRecord {
+  authoredLayout?: AuthoredLevelLayout;
   audioBlobKey?: string;
   audioFileName?: string;
   beatIntensities: readonly ("intense" | "quiet")[];
@@ -7,6 +15,7 @@ export interface GeneratedLevelRecord {
   id: string;
   name: string;
   seed: number;
+  source?: "creator" | "generator";
   synced?: boolean;
 }
 

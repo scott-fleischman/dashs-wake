@@ -15,6 +15,11 @@ import {
 } from "./ui/generated-levels-room";
 import { mountLobby } from "./ui/lobby";
 import { mountShop } from "./ui/shop";
+import {
+  buildCreatedLevelRecord,
+  contentForCreatedLevel,
+  mountLevelCreator,
+} from "./ui/level-creator";
 import { generateLevel } from "./core/generator";
 import {
   applyCompletionAward,
@@ -97,17 +102,22 @@ let disposeView = (): void => {};
 let profile: PlayerProfile = loadProfile();
 let activeGauntletRun: GauntletRunState | null = null;
 let pendingGauntletCompletion: string | null = null;
-let activeAudioPlayback: { audio: HTMLAudioElement; url: string } | null = null;
+let activeAudioPlayback: {
+  audio: HTMLAudioElement;
+  objectUrl?: string;
+} | null = null;
 let audioPlaybackToken = 0;
 
 function stopAudioPlayback(): void {
   if (!activeAudioPlayback) return;
-  const { audio, url } = activeAudioPlayback;
+  const { audio, objectUrl } = activeAudioPlayback;
   audio.pause();
   audio.removeAttribute("src");
   audio.load();
   audio.remove();
-  URL.revokeObjectURL(url);
+  if (objectUrl) {
+    URL.revokeObjectURL(objectUrl);
+  }
   activeAudioPlayback = null;
 }
 
@@ -118,6 +128,12 @@ function setAudioPlaybackPaused(paused: boolean): void {
   } else {
     activeAudioPlayback.audio.play().catch(() => undefined);
   }
+}
+
+function restartAudioPlayback(): void {
+  if (!activeAudioPlayback) return;
+  activeAudioPlayback.audio.currentTime = 0;
+  activeAudioPlayback.audio.play().catch(() => undefined);
 }
 
 const MIN_PLAYABLE_AUDIO_BYTES = 1024;
@@ -137,12 +153,24 @@ async function startAudioPlayback(blobKey: string): Promise<void> {
   if (activeAudioPlayback) {
     return;
   }
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
+  const objectUrl = URL.createObjectURL(blob);
+  const audio = new Audio(objectUrl);
   audio.setAttribute("data-testid", "level-audio");
   audio.hidden = true;
   document.body.appendChild(audio);
-  activeAudioPlayback = { audio, url };
+  activeAudioPlayback = { audio, objectUrl };
+  audio.play().catch(() => undefined);
+}
+
+function startOfficialAudioPlayback(
+  sourcePath: string,
+): void {
+  const audio = new Audio(sourcePath);
+  audio.loop = true;
+  audio.setAttribute("data-testid", "official-level-audio");
+  audio.hidden = true;
+  document.body.appendChild(audio);
+  activeAudioPlayback = { audio };
   audio.play().catch(() => undefined);
 }
 
@@ -184,6 +212,7 @@ function launchLevelRun(
       return;
     }
     attemptResolved = true;
+    setAudioPlaybackPaused(true);
     callbacks.onAttemptResolved(snapshot);
   };
 
@@ -264,6 +293,9 @@ function renderRoute(): void {
   if (hash === "#generated") {
     backdrop.showLobby();
     disposeView = mountGeneratedLevelsRoom(root, profileRef, {
+      onCreate: () => {
+        window.location.hash = "#creator";
+      },
       onGenerate: () => {
         const nextIndex =
           profile.generatedLevels.filter(
@@ -315,6 +347,40 @@ function renderRoute(): void {
     return;
   }
 
+  if (hash === "#creator") {
+    backdrop.showLobby();
+    disposeView = mountLevelCreator(root, {
+      onReturn: () => {
+        window.location.hash = "#generated";
+      },
+      onSave: (submission) => {
+        Promise.all([
+          putAudioBlob(submission.audioFile).catch(() => undefined),
+          analyzeAudioFile(submission.audioFile).catch(() => null),
+        ]).then(([audioBlobKey, analyzed]) => {
+          const nextIndex =
+            profile.generatedLevels.filter(
+              (entry) => entry.source === "creator",
+            ).length + 1;
+          const record = buildCreatedLevelRecord(
+            nextIndex,
+            submission,
+            audioBlobKey,
+            analyzed,
+          );
+          updateProfile({
+            ...profile,
+            generatedLevels: [...profile.generatedLevels, record],
+          });
+          if (window.location.hash === "#creator") {
+            window.location.hash = "#generated";
+          }
+        });
+      },
+    });
+    return;
+  }
+
   if (hash.startsWith("#generated/")) {
     const recordId = hash.slice("#generated/".length);
     const record = profile.generatedLevels.find(
@@ -326,12 +392,14 @@ function renderRoute(): void {
       return;
     }
 
-    const content = generateLevel({
-      beatIntensities: record.beatIntensities,
-      beatMap: record.beatMap,
-      difficulty: record.difficulty,
-      seed: record.seed,
-    });
+    const content =
+      contentForCreatedLevel(record) ??
+      generateLevel({
+        beatIntensities: record.beatIntensities,
+        beatMap: record.beatMap,
+        difficulty: record.difficulty,
+        seed: record.seed,
+      });
 
     if (record.audioBlobKey) {
       void startAudioPlayback(record.audioBlobKey);
@@ -339,7 +407,10 @@ function renderRoute(): void {
 
     disposeView = launchLevelRun(
       content,
-      buildLevelRunMetadata(`Generated Seed ${record.seed}`, record.name),
+      buildLevelRunMetadata(
+        record.source === "creator" ? "Created Level" : `Generated Seed ${record.seed}`,
+        record.name,
+      ),
       {
         onAttemptResolved: () => {
           // Generated levels do not yet award progression.
@@ -475,18 +546,22 @@ function renderRoute(): void {
     delete completionKeyReward.coinsAwarded;
     const previousBestPercent = profile.bestPercents[levelId] ?? 0;
 
+    startOfficialAudioPlayback(metadata.track.audioPath);
+
     disposeView = launchLevelRun(
       content,
       {
         ...buildLevelRunMetadata(levelKicker(levelId), metadata.name),
         completionKeyReward,
         previousBestPercent,
+        trackLabel: `${metadata.track.title} - ${metadata.track.artist}`,
       },
       {
         onAttemptResolved: (snapshot) => {
           profile = applyAttemptResult(profile, levelId, snapshot);
           saveProfile(profile);
         },
+        onRestart: restartAudioPlayback,
         onReturnHome: () => {
           window.location.hash = "";
         },

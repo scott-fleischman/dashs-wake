@@ -5,7 +5,12 @@ import type {
   PortalEntity,
   RunRules,
 } from "../core/run-simulation";
-import { buildPlaceholderBeatMap } from "./beat-maps";
+import {
+  paceAuthoredEntities,
+  paceAuthoredX,
+  PLAYER_HORIZONTAL_SPEED,
+} from "./level-pace";
+import { buildOfficialBeatMap } from "./official-soundtrack";
 
 export interface BeatMap {
   beats: readonly number[];
@@ -35,30 +40,33 @@ const FIRST_WAKE_RULES: RunRules = {
   fallBoundaryY: 420,
   gravity: 1250,
   groundY: 300,
-  horizontalSpeed: 190,
+  horizontalSpeed: PLAYER_HORIZONTAL_SPEED,
   jumpVelocity: -540,
   playerHeight: 34,
   playerWidth: 34,
 };
 
 const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 160, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 425, y: 270 },
-  { type: "portal", mode: "ship", height: 80, width: 12, x: 500, y: 220 },
-  { type: "portal", mode: "cube", height: 80, width: 12, x: 740, y: 220 },
-  { type: "spike", height: 30, width: 30, x: 880, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 1180, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 190, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 455, y: 270 },
+  { type: "portal", mode: "ship", height: 80, width: 12, x: 650, y: 220 },
+  { type: "portal", mode: "cube", height: 80, width: 12, x: 1020, y: 220 },
+  { type: "spike", height: 30, width: 30, x: 1190, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 1450, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 1690, y: 270 },
+  { type: "portal", mode: "ship", height: 80, width: 12, x: 1920, y: 220 },
+  { type: "portal", mode: "cube", height: 80, width: 12, x: 2320, y: 220 },
+  { type: "spike", height: 30, width: 30, x: 2520, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 2790, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 3080, y: 270 },
 ];
 
-const FIRST_WAKE_FINISH_X = 1340;
+const FIRST_WAKE_FINISH_X = 3918;
 
 export const firstWakeLevel: LevelContent = {
-  beatMap: buildPlaceholderBeatMap(
-    FIRST_WAKE_FINISH_X,
-    FIRST_WAKE_RULES.horizontalSpeed,
-  ),
-  entities: FIRST_WAKE_ENTITIES,
-  finishX: FIRST_WAKE_FINISH_X,
+  beatMap: buildOfficialBeatMap("level_1"),
+  entities: paceAuthoredEntities(FIRST_WAKE_ENTITIES),
+  finishX: paceAuthoredX(FIRST_WAKE_FINISH_X),
   rules: FIRST_WAKE_RULES,
 };
 

@@ -1,18 +1,21 @@
 import type { LevelEntity } from "../core/run-simulation";
 import { buildPlaceholderBeatMap } from "./beat-maps";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
+import { paceAuthoredEntities, paceAuthoredX } from "./level-pace";
 
 function buildStage(
   entities: readonly LevelEntity[],
   finishX: number,
 ): LevelContent {
+  const pacedFinishX = paceAuthoredX(finishX);
+
   return {
     beatMap: buildPlaceholderBeatMap(
-      finishX,
+      pacedFinishX,
       firstWakeLevel.rules.horizontalSpeed,
     ),
-    entities,
-    finishX,
+    entities: paceAuthoredEntities(entities),
+    finishX: pacedFinishX,
     rules: firstWakeLevel.rules,
   };
 }

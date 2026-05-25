@@ -4,6 +4,10 @@ import { launchSequenceLevel } from "./launch-sequence";
 import { orbitalLoopLevel } from "./orbital-loop";
 import { trapLaneLevel } from "./trap-lane";
 import type { UnlockRequirement } from "../core/profile";
+import {
+  getOfficialTrack,
+  type OfficialTrack,
+} from "./official-soundtrack";
 
 export type OfficialLevelDifficulty =
   | "easy"
@@ -16,7 +20,18 @@ export interface OfficialLevelMetadata {
   difficulty: OfficialLevelDifficulty;
   id: string;
   name: string;
+  track: OfficialTrack;
   unlockRequirement: UnlockRequirement;
+}
+
+function trackFor(levelId: string): OfficialTrack {
+  const track = getOfficialTrack(levelId);
+
+  if (!track) {
+    throw new Error(`Official track for ${levelId} is not configured.`);
+  }
+
+  return track;
 }
 
 export const officialLevelCatalog: readonly OfficialLevelMetadata[] = [
@@ -24,30 +39,35 @@ export const officialLevelCatalog: readonly OfficialLevelMetadata[] = [
     id: "level_1",
     name: "First Wake",
     difficulty: "easy",
+    track: trackFor("level_1"),
     unlockRequirement: { requiredCompletedLevels: [] },
   },
   {
     id: "level_2",
     name: "Launch Sequence",
     difficulty: "easy",
+    track: trackFor("level_2"),
     unlockRequirement: { requiredCompletedLevels: ["level_1"] },
   },
   {
     id: "level_3",
     name: "Orbital Loop",
     difficulty: "normal",
+    track: trackFor("level_3"),
     unlockRequirement: { requiredCompletedLevels: ["level_2"] },
   },
   {
     id: "level_4",
     name: "Combined Run",
     difficulty: "normal",
+    track: trackFor("level_4"),
     unlockRequirement: { requiredCompletedLevels: ["level_3"] },
   },
   {
     id: "level_5",
     name: "Trap Lane",
     difficulty: "hard",
+    track: trackFor("level_5"),
     unlockRequirement: { requiredCompletedLevels: ["level_4"] },
   },
 ];

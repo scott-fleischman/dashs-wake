@@ -17,7 +17,7 @@ describe("generated level playability", () => {
       ...firstWakeLevel,
       entities: [
         { type: "spike" as const, height: 30, width: 30, x: 160, y: 270 },
-        { type: "spike" as const, height: 30, width: 30, x: 250, y: 270 },
+        { type: "spike" as const, height: 30, width: 30, x: 315, y: 270 },
       ],
       finishX: 600,
     };

@@ -244,6 +244,13 @@ button {
   text-transform: uppercase;
 }
 
+.level-track {
+  color: #6cf2c5;
+  font-size: 0.67rem;
+  letter-spacing: 0.08em;
+  margin: 0.22rem 0 0;
+}
+
 .play-button {
   align-items: center;
   aspect-ratio: 1;
@@ -353,7 +360,7 @@ button {
   left: 50%;
   padding: 0.7rem 1rem;
   position: absolute;
-  top: clamp(1.4rem, 7vh, 3.8rem);
+  top: clamp(10.5rem, 26vh, 12.5rem);
   transform: translateX(-50%);
 }
 
@@ -390,6 +397,19 @@ button {
   color: #6cf2c5;
   text-transform: none;
   letter-spacing: 0.06em;
+}
+
+.run-track {
+  color: #19d9f3;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0.65rem 0 0;
+  text-transform: none;
+}
+
+.run-track[hidden] {
+  display: none;
 }
 
 .input-deck {
@@ -604,12 +624,12 @@ kbd {
   }
 
   .run-hud {
-    top: 10.4rem;
+    top: 12rem;
     transform: none;
   }
 
   .run-controls {
-    top: 14.8rem;
+    top: 16.4rem;
   }
 }
 
@@ -779,4 +799,308 @@ kbd {
 .result-overlay[aria-label="Level complete"] h2,
 .result-overlay[aria-label="Gauntlet complete"] h2 {
   color: #6cf2c5;
+}
+
+.level-creator {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  height: 100%;
+  padding: clamp(1rem, 3vh, 2rem) clamp(1rem, 4vw, 3rem);
+}
+
+.creator-header {
+  align-items: center;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: auto 1fr auto;
+}
+
+.creator-header .kicker {
+  margin-bottom: 0.35rem;
+}
+
+.creator-header h1 {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+}
+
+.creator-header .primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.creator-settings {
+  align-items: center;
+  background: rgba(8, 21, 37, 0.82);
+  border: 1px solid rgba(25, 217, 243, 0.26);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.4rem;
+  padding: 0.8rem 1rem;
+}
+
+.creator-settings label {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.creator-settings label span {
+  color: #84a8bb;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.creator-settings input[type="text"] {
+  background: rgba(12, 28, 46, 0.92);
+  border: 1px solid rgba(142, 170, 189, 0.43);
+  border-radius: 0.4rem;
+  color: #ecfcff;
+  padding: 0.46rem 0.65rem;
+}
+
+.creator-song-status,
+.creator-finish-status {
+  color: #6cf2c5;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.creator-finish-status {
+  color: #ffc857;
+  font-weight: 700;
+  margin-left: auto;
+  text-transform: uppercase;
+}
+
+.creator-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.58rem;
+}
+
+.creator-tool {
+  align-items: center;
+  background: rgba(12, 28, 46, 0.88);
+  border: 1px solid rgba(90, 126, 154, 0.44);
+  border-radius: 0.55rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  height: 4.65rem;
+  justify-content: center;
+  min-width: 6.1rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.creator-tool.selected,
+.creator-tool:hover,
+.creator-tool:focus-visible {
+  border-color: #19d9f3;
+  box-shadow: 0 0 16px rgba(25, 217, 243, 0.22);
+  outline: none;
+}
+
+.creator-tool small {
+  color: #c2d1db;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.creator-icon-spike {
+  border-bottom: 18px solid #ff437d;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  display: block;
+  height: 0;
+  width: 0;
+}
+
+.creator-icon-pad {
+  background: #ffc857;
+  border-radius: 0.15rem;
+  display: block;
+  height: 8px;
+  width: 29px;
+}
+
+.creator-icon-orb {
+  background: #ff7adf;
+  border: 2px solid #ffd6f4;
+  border-radius: 50%;
+  display: block;
+  height: 21px;
+  width: 21px;
+}
+
+.creator-icon-portal {
+  border: 2px solid #ffc857;
+  display: block;
+  height: 27px;
+  width: 9px;
+}
+
+.creator-icon-portal.cube {
+  border-color: #6cf2c5;
+}
+
+.creator-icon-finish {
+  border-left: 3px solid #19d9f3;
+  display: block;
+  height: 26px;
+  position: relative;
+  width: 18px;
+}
+
+.creator-icon-finish::after {
+  border: 2px solid #ecfcff;
+  border-radius: 50%;
+  content: "";
+  height: 8px;
+  left: -6px;
+  position: absolute;
+  top: -5px;
+  width: 8px;
+}
+
+.creator-icon-erase {
+  color: #ff8c42;
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 700;
+  height: 22px;
+  line-height: 1;
+}
+
+.creator-icon-erase::before {
+  content: "X";
+}
+
+.creator-workspace {
+  background: rgba(7, 17, 29, 0.64);
+  border: 1px solid rgba(25, 217, 243, 0.3);
+  border-radius: 0.85rem;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 18rem;
+  overflow: hidden;
+}
+
+.creator-instruction {
+  color: #84a8bb;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  margin: 0;
+  padding: 0.8rem 1rem 0;
+  text-transform: uppercase;
+}
+
+.creator-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-top: 0.8rem;
+}
+
+.creator-course {
+  background-color: #091827;
+  background-image:
+    linear-gradient(rgba(25, 217, 243, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(25, 217, 243, 0.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+  cursor: crosshair;
+  height: 290px;
+  min-width: 100%;
+  position: relative;
+}
+
+.creator-course::after {
+  background: #0d1d2d;
+  border-top: 3px solid rgba(25, 217, 243, 0.78);
+  bottom: 0;
+  content: "";
+  height: 65px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.creator-entity {
+  display: block;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.creator-entity.spike {
+  background: #ff437d;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  min-height: 22px;
+  min-width: 22px;
+  transform: translateY(-8px);
+}
+
+.creator-entity.pad {
+  background: #ffc857;
+  border: 1px solid #fff3c4;
+  min-height: 9px;
+  min-width: 30px;
+  transform: translateY(-10px);
+}
+
+.creator-entity.orb {
+  background: rgba(255, 122, 223, 0.62);
+  border: 2px solid #ffd6f4;
+  border-radius: 50%;
+  min-height: 22px;
+  min-width: 22px;
+}
+
+.creator-entity.portal {
+  background: rgba(255, 200, 87, 0.16);
+  border: 2px solid #ffc857;
+}
+
+.creator-entity.portal.cube {
+  background: rgba(108, 242, 197, 0.16);
+  border-color: #6cf2c5;
+}
+
+.creator-finish {
+  border-left: 3px solid #19d9f3;
+  bottom: 64px;
+  color: #ecfcff;
+  display: block;
+  height: 102px;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.creator-finish small {
+  font-size: 0.62rem;
+  font-weight: 700;
+  left: -22px;
+  letter-spacing: 0.18em;
+  position: absolute;
+  text-transform: uppercase;
+  top: -20px;
+}
+
+@media (max-width: 700px) {
+  .creator-header {
+    grid-template-columns: auto 1fr;
+  }
+
+  .creator-header [data-action="save"] {
+    grid-column: 1 / -1;
+  }
 }

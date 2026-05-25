@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { completeFirstWake } from "./helpers/course-play";
 
 test("completing a level updates lobby status, unlocks, and coins", async ({
   page,
@@ -12,32 +13,10 @@ test("completing a level updates lobby status, unlocks, and coins", async ({
   await page.getByTestId("level-1-play").click();
   await expect(page.getByRole("heading", { name: "First Wake" })).toBeVisible();
 
-  const progress = page.getByTestId("run-progress");
-  const readPercent = async (): Promise<number> =>
-    Number((await progress.textContent())?.replace("%", ""));
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(8);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(27);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 5_000 })
-    .toBeGreaterThanOrEqual(61);
-  await page.keyboard.press("Space");
-
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 4_000 })
-    .toBeGreaterThanOrEqual(84);
-  await page.keyboard.press("Space");
+  await completeFirstWake(page);
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
-  await expect(completeDialog).toBeVisible({ timeout: 6_000 });
+  await expect(completeDialog).toBeVisible();
   await expect(page.getByTestId("level-complete-reward")).toHaveText(
     "Earned: 100 Coins + 1 Easy Key",
   );
