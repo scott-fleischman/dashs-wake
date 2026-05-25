@@ -26,6 +26,10 @@ describe("generated level playability", () => {
 
     expect(result.ok).toBe(false);
     expect(result.issues.length).toBeGreaterThan(0);
+    const failure = result.issues[0]!;
+    expect(failure.code).toBe("ai-died");
+    expect(failure.x).toBeGreaterThan(0);
+    expect(failure.message.length).toBeGreaterThan(0);
   });
 });
 

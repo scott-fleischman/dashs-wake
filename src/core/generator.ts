@@ -252,27 +252,46 @@ function decideAiInput(
   return false;
 }
 
+export type PlayabilityIssueCode =
+  | "ai-died"
+  | "finish-not-reached";
+
+export interface PlayabilityIssue {
+  code: PlayabilityIssueCode;
+  deathCause?: string;
+  message: string;
+  x: number;
+}
+
 export interface PlayabilityValidationResult {
-  issues: readonly string[];
+  issues: readonly PlayabilityIssue[];
   ok: boolean;
 }
 
 export function validateGeneratedPlayability(
   level: LevelContent,
 ): PlayabilityValidationResult {
-  const issues: string[] = [];
   let state = createRunState(level.rules);
 
   for (let tick = 0; tick < AI_MAX_TICKS; tick += 1) {
     if (state.status === "dead") {
-      issues.push(
-        `Generated level: conservative AI died at x=${Math.round(state.player.x)} (${state.deathCause ?? "unknown"}).`,
-      );
-      return { issues, ok: false };
+      const x = Math.round(state.player.x);
+      const deathCause = state.deathCause ?? "unknown";
+      return {
+        issues: [
+          {
+            code: "ai-died",
+            deathCause,
+            message: `Conservative AI died at x=${x} (${deathCause}).`,
+            x,
+          },
+        ],
+        ok: false,
+      };
     }
 
     if (state.player.x >= level.finishX) {
-      return { issues, ok: true };
+      return { issues: [], ok: true };
     }
 
     const jumpPressed = decideAiInput(state, level.entities, level.rules);
@@ -285,15 +304,22 @@ export function validateGeneratedPlayability(
     );
   }
 
-  issues.push(
-    `Generated level: conservative AI did not reach finish within ${AI_MAX_TICKS} ticks (stopped at x=${Math.round(state.player.x)}).`,
-  );
-  return { issues, ok: false };
+  const x = Math.round(state.player.x);
+  return {
+    issues: [
+      {
+        code: "finish-not-reached",
+        message: `Conservative AI did not reach finish within ${AI_MAX_TICKS} ticks (stopped at x=${x}).`,
+        x,
+      },
+    ],
+    ok: false,
+  };
 }
 
 export interface GenerateValidLevelResult {
   attempts: number;
-  issues: readonly string[];
+  issues: readonly PlayabilityIssue[];
   level: LevelContent | null;
 }
 
@@ -301,7 +327,7 @@ export function generateValidLevel(
   input: GeneratorInput,
   maxRetries: number,
 ): GenerateValidLevelResult {
-  let lastIssues: readonly string[] = [];
+  let lastIssues: readonly PlayabilityIssue[] = [];
   let seed = input.seed;
 
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
