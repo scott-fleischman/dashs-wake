@@ -48,6 +48,11 @@ export function mountChestRoom(
       const opened = profile.openedChestIds.includes(chest.id);
       const keyCount = profile.keys[chest.keyType] ?? 0;
       const testId = safeTestId(chest.id);
+      const rewardCosmetic = chest.reward.cosmeticAwarded
+        ? cosmeticCatalog.find(
+            (item) => item.id === chest.reward.cosmeticAwarded,
+          )
+        : undefined;
 
       list.appendChild(
         buildRoomRow({
@@ -67,6 +72,11 @@ export function mountChestRoom(
           statusLabel: "Opened",
           statusTestId: `chest-${testId}-opened`,
           statusVisible: opened,
+          swatchColor: rewardCosmetic?.appearance.fillRunning,
+          swatchShape: rewardCosmetic?.appearance.cubeShape,
+          swatchTestId: rewardCosmetic
+            ? `chest-${testId}-reward-swatch`
+            : undefined,
         }),
       );
     }
