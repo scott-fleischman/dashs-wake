@@ -29,6 +29,7 @@ import {
   startGauntletRun,
   type GauntletRunState,
 } from "./core/gauntlet";
+import { putAudioBlob } from "./persistence/audio-storage";
 import { loadProfile, saveProfile } from "./persistence/profile-repository";
 import {
   getOfficialLevelContent,
@@ -217,12 +218,21 @@ function renderRoute(): void {
           profile.generatedLevels.filter(
             (entry) => entry.audioFileName !== undefined,
           ).length + 1;
-        const record = buildAudioDerivedLevel(nextIndex, file.name);
-        updateProfile({
-          ...profile,
-          generatedLevels: [...profile.generatedLevels, record],
-        });
-        renderRoute();
+
+        const finalize = (audioBlobKey?: string): void => {
+          const record = buildAudioDerivedLevel(
+            nextIndex,
+            file.name,
+            audioBlobKey,
+          );
+          updateProfile({
+            ...profile,
+            generatedLevels: [...profile.generatedLevels, record],
+          });
+          renderRoute();
+        };
+
+        putAudioBlob(file).then(finalize).catch(() => finalize(undefined));
       },
       onPlay: (recordId) => {
         window.location.hash = `#generated/${recordId}`;

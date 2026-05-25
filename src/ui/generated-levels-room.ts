@@ -115,9 +115,11 @@ export function buildPlaceholderGeneratedLevel(
 export function buildAudioDerivedLevel(
   index: number,
   fileName: string,
+  audioBlobKey?: string,
 ): GeneratedLevelRecord {
   const seed = 2000 + index;
   return {
+    ...(audioBlobKey ? { audioBlobKey } : {}),
     audioFileName: fileName,
     beatIntensities: ["quiet", "quiet", "quiet"],
     beatMap: { beats: [0, 600, 1200], durationMs: 1800 },

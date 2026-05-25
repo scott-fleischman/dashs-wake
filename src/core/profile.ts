@@ -1,4 +1,5 @@
 export interface GeneratedLevelRecord {
+  audioBlobKey?: string;
   audioFileName?: string;
   beatIntensities: readonly ("intense" | "quiet")[];
   beatMap: { readonly beats: readonly number[]; readonly durationMs: number };
