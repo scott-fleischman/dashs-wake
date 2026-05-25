@@ -339,3 +339,74 @@ describe("safe orb activations", () => {
     expect(after.player.velocityY).toBeCloseTo(rules.gravity * 0.1);
   });
 });
+
+describe("trap orb activations", () => {
+  it("kills the player when jump fires during contact with a trap orb", () => {
+    const trapOrb: LevelEntity = {
+      type: "orb",
+      kind: "trap",
+      id: "trap-1",
+      height: 20,
+      width: 10,
+      x: 5,
+      y: 40,
+    };
+    const inContact: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
+      status: "running",
+    };
+
+    const after = tickRun(inContact, { jumpPressed: true }, 100, rules, [trapOrb]);
+
+    expect(after.status).toBe("dead");
+    expect(after.deathCause).toBe("trap");
+  });
+
+  it("leaves the player alive when bypassing a trap orb without input", () => {
+    const trapOrb: LevelEntity = {
+      type: "orb",
+      kind: "trap",
+      id: "trap-1",
+      height: 20,
+      width: 10,
+      x: 5,
+      y: 40,
+    };
+    const inContact: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: { grounded: false, mode: "cube", velocityY: 0, x: 10, y: 50 },
+      status: "running",
+    };
+
+    const after = tickRun(inContact, { jumpPressed: false }, 100, rules, [trapOrb]);
+
+    expect(after.status).toBe("running");
+    expect(after.deathCause).toBeUndefined();
+  });
+
+  it("does not kill the player when jump fires outside a trap orb's contact window", () => {
+    const trapOrb: LevelEntity = {
+      type: "orb",
+      kind: "trap",
+      id: "trap-1",
+      height: 20,
+      width: 10,
+      x: 90,
+      y: 40,
+    };
+    const farAway: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: { grounded: true, mode: "cube", velocityY: 0, x: 10, y: 100 },
+      status: "running",
+    };
+
+    const after = tickRun(farAway, { jumpPressed: true }, 100, rules, [trapOrb]);
+
+    expect(after.status).toBe("running");
+    expect(after.deathCause).toBeUndefined();
+  });
+});
