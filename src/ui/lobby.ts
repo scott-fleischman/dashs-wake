@@ -4,6 +4,7 @@ import {
   type OfficialLevelDifficulty,
   type OfficialLevelMetadata,
 } from "../content/official-levels";
+import { getSelectedCosmetic } from "../core/inventory";
 import { isUnlockMet, type PlayerProfile } from "../core/profile";
 
 const DIFFICULTY_LABELS: Record<OfficialLevelDifficulty, string> = {
@@ -140,6 +141,17 @@ function renderKeyChip(keyType: string, count: number): string {
   return `<span class="profile-stat" data-testid="profile-keys-${keyType}" hidden></span>`;
 }
 
+function renderEquippedIconChip(profile: PlayerProfile): string {
+  const equipped = getSelectedCosmetic(profile, "icon");
+  if (!equipped) {
+    return "";
+  }
+  const color = `#${equipped.appearance.fillRunning
+    .toString(16)
+    .padStart(6, "0")}`;
+  return `<span class="profile-stat profile-equipped-icon" data-testid="profile-equipped-icon"><span class="cosmetic-swatch" style="background: ${color}"></span>${equipped.name}</span>`;
+}
+
 function renderProfileStats(profile: PlayerProfile): string {
   const keysHtml = KEY_TYPE_ORDER.map((keyType) =>
     renderKeyChip(keyType, profile.keys[keyType] ?? 0),
@@ -149,6 +161,7 @@ function renderProfileStats(profile: PlayerProfile): string {
     <div class="profile-stats" aria-label="Profile stats">
       <span class="profile-stat" data-testid="profile-coins">${coinsText(profile.coins)}</span>
       ${keysHtml}
+      ${renderEquippedIconChip(profile)}
     </div>
   `;
 }
