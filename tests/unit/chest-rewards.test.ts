@@ -63,4 +63,23 @@ describe("chest rewards", () => {
     expect(result.profile).toBe(profile);
     expect(result.profile.keys["easy"]).toBe(5);
   });
+
+  it("grants both coin and cosmetic rewards together when a chest awards both", () => {
+    const profile = {
+      ...createProfile(),
+      keys: { normal: 1 },
+    };
+
+    const result = applyOpenChest(profile, "chest-normal");
+
+    expect(result.granted.cosmeticAwarded).toBeDefined();
+    expect(result.profile.ownedCosmetics).toContain(
+      result.granted.cosmeticAwarded,
+    );
+    expect(result.profile.coins).toBe(
+      profile.coins + (result.granted.coinsAwarded ?? 0),
+    );
+    expect(result.profile.keys["normal"]).toBe(0);
+    expect(result.profile.openedChestIds).toContain("chest-normal");
+  });
 });
