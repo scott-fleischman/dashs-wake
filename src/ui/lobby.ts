@@ -26,13 +26,18 @@ function keysText(count: number): string {
   return `${count} Easy Key${count === 1 ? "" : "s"}`;
 }
 
-function level1StatusText(profile: PlayerProfile): string {
-  return profile.completedLevels.includes("level_1") ? "Complete" : "—";
+function renderLevel1Status(profile: PlayerProfile): string {
+  const completed = profile.completedLevels.includes("level_1");
+  const hidden = completed ? "" : "hidden";
+  const text = completed ? "Complete" : "";
+  return `<p class="level-stat" data-testid="level-1-status" ${hidden}>${text}</p>`;
 }
 
-function level1BestPercentText(profile: PlayerProfile): string {
+function renderLevel1BestPercent(profile: PlayerProfile): string {
   const best = profile.bestPercents["level_1"];
-  return best !== undefined ? `${best}%` : "—";
+  const hidden = best === undefined ? "hidden" : "";
+  const text = best === undefined ? "" : `${best}%`;
+  return `<p class="level-stat level-best" data-testid="level-1-best-percent" ${hidden}>${text}</p>`;
 }
 
 function level2StatusText(profile: PlayerProfile): string {
@@ -62,8 +67,8 @@ function renderLevelList(profile: PlayerProfile): string {
         <div class="level-card-info">
           <p class="level-kicker">Official Level 01</p>
           <h2 class="level-title">First Wake</h2>
-          <p class="level-stat" data-testid="level-1-status">${level1StatusText(profile)}</p>
-          <p class="level-stat level-best" data-testid="level-1-best-percent">${level1BestPercentText(profile)}</p>
+          ${renderLevel1Status(profile)}
+          ${renderLevel1BestPercent(profile)}
         </div>
         <button class="play-button" type="button" data-action="play">
           <span class="play-symbol" aria-hidden="true"></span>

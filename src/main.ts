@@ -1,5 +1,5 @@
 import "./styles.css";
-import { startLobbyBackdrop } from "./game/lobby-backdrop";
+import { startLobbyBackdrop, type FirstWakeSnapshot } from "./game/lobby-backdrop";
 import { mountLobby } from "./ui/lobby";
 import { mountFirstWake } from "./ui/first-wake";
 import {
@@ -10,6 +10,7 @@ import {
 import { loadProfile, saveProfile } from "./persistence/profile-repository";
 
 const FIRST_WAKE_ROUTE = "#play";
+const FIRST_WAKE_LEVEL_ID = "level_1";
 
 function requiredElement(id: string): HTMLElement {
   const element = document.getElementById(id);
@@ -19,6 +20,22 @@ function requiredElement(id: string): HTMLElement {
   }
 
   return element;
+}
+
+function applyAttemptResult(
+  current: PlayerProfile,
+  snapshot: FirstWakeSnapshot,
+): PlayerProfile {
+  let next = applyProgressAward(current, {
+    levelId: FIRST_WAKE_LEVEL_ID,
+    percentReached: snapshot.percent,
+  }).profile;
+
+  if (snapshot.status === "complete") {
+    next = applyCompletionAward(next, { levelId: FIRST_WAKE_LEVEL_ID }).profile;
+  }
+
+  return next;
 }
 
 const root = requiredElement("app");
@@ -33,6 +50,18 @@ function renderRoute(): void {
     backdrop.showFirstWake();
     let attemptHandled = false;
 
+    const resolveAttempt = (snapshot: FirstWakeSnapshot): void => {
+      if (
+        attemptHandled ||
+        (snapshot.status !== "dead" && snapshot.status !== "complete")
+      ) {
+        return;
+      }
+      attemptHandled = true;
+      profile = applyAttemptResult(profile, snapshot);
+      saveProfile(profile);
+    };
+
     disposeView = mountFirstWake(root, {
       onInput: () => backdrop.jumpFirstWake(),
       onPauseChange: (paused) => backdrop.setFirstWakePaused(paused),
@@ -44,35 +73,14 @@ function renderRoute(): void {
         window.location.hash = "";
       },
       onSnapshotChange: (uiListener) => {
-        backdrop.setFirstWakeSnapshotListener(
-          uiListener
-            ? (snapshot) => {
-                if (
-                  !attemptHandled &&
-                  (snapshot.status === "dead" ||
-                    snapshot.status === "complete")
-                ) {
-                  attemptHandled = true;
-                  const progressResult = applyProgressAward(profile, {
-                    levelId: "level_1",
-                    percentReached: snapshot.percent,
-                  });
-                  profile = progressResult.profile;
-
-                  if (snapshot.status === "complete") {
-                    const completionResult = applyCompletionAward(profile, {
-                      levelId: "level_1",
-                    });
-                    profile = completionResult.profile;
-                  }
-
-                  saveProfile(profile);
-                }
-
-                uiListener(snapshot);
-              }
-            : undefined,
-        );
+        if (!uiListener) {
+          backdrop.setFirstWakeSnapshotListener(undefined);
+          return;
+        }
+        backdrop.setFirstWakeSnapshotListener((snapshot) => {
+          resolveAttempt(snapshot);
+          uiListener(snapshot);
+        });
       },
     });
     return;

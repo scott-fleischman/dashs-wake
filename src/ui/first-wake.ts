@@ -83,7 +83,7 @@ export function mountFirstWake(
   const pauseButton = root.querySelector<HTMLButtonElement>("[data-action='pause']");
   const resumeButton = root.querySelector<HTMLButtonElement>("[data-action='resume']");
   const lobbyButton = root.querySelector<HTMLButtonElement>("[data-action='lobby']");
-  const overlay = root.querySelector<HTMLElement>(".pause-overlay");
+  const overlay = root.querySelector<HTMLElement>("[aria-label='Paused']");
   const failedOverlay = root.querySelector<HTMLElement>("[aria-label='Run failed']");
   const completeOverlay = root.querySelector<HTMLElement>("[aria-label='Level complete']");
   const restartButton = root.querySelector<HTMLButtonElement>("[data-action='restart']");
