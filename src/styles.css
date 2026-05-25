@@ -34,6 +34,7 @@ body {
 
 #app {
   isolation: isolate;
+  overflow-y: auto;
   position: relative;
 }
 
@@ -42,8 +43,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: clamp(2.2rem, 6vh, 4.5rem);
-  height: 100%;
   justify-content: center;
+  min-height: 100%;
   padding: 2rem clamp(1.25rem, 4vw, 4rem);
 }
 
@@ -546,14 +547,8 @@ kbd {
 }
 
 @media (max-width: 640px) {
-  body {
-    overflow-y: auto;
-  }
-
   .lobby {
     gap: 1.5rem;
-    height: auto;
-    min-height: 100%;
     padding-block: 2rem;
   }
 
