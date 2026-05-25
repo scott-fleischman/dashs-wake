@@ -1,5 +1,6 @@
 import { firstWakeLevel, type LevelContent } from "./first-wake";
 import { launchSequenceLevel } from "./launch-sequence";
+import { orbitalLoopLevel } from "./orbital-loop";
 
 export type OfficialLevelDifficulty =
   | "easy"
@@ -46,6 +47,7 @@ export const officialLevelCatalog: readonly OfficialLevelMetadata[] = [
 const LEVEL_CONTENT_BY_ID: Readonly<Record<string, LevelContent>> = {
   level_1: firstWakeLevel,
   level_2: launchSequenceLevel,
+  level_3: orbitalLoopLevel,
 };
 
 export function getOfficialLevelContent(id: string): LevelContent {

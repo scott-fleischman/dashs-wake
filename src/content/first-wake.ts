@@ -1,5 +1,6 @@
 import type {
   LevelEntity,
+  OrbEntity,
   PortalEntity,
   RunRules,
 } from "../core/run-simulation";
@@ -9,9 +10,14 @@ export interface BeatMap {
   durationMs: number;
 }
 
+export interface ExpectedRoute {
+  requiredOrbIds: readonly string[];
+}
+
 export interface LevelContent {
   beatMap: BeatMap;
   entities: readonly LevelEntity[];
+  expectedRoute?: ExpectedRoute;
   finishX: number;
   rules: RunRules;
 }
@@ -153,10 +159,36 @@ const validateShipCorridors: LevelValidator = (level) => {
   return issues;
 };
 
+const validateRequiredOrbs: LevelValidator = (level) => {
+  const route = level.expectedRoute;
+
+  if (!route) {
+    return [];
+  }
+
+  const issues: string[] = [];
+  const orbIds = new Set(
+    level.entities
+      .filter((entity): entity is OrbEntity => entity.type === "orb")
+      .map((orb) => orb.id),
+  );
+
+  for (const requiredId of route.requiredOrbIds) {
+    if (!orbIds.has(requiredId)) {
+      issues.push(
+        `Required orb "${requiredId}" is missing from the level entities.`,
+      );
+    }
+  }
+
+  return issues;
+};
+
 const LEVEL_VALIDATORS: readonly LevelValidator[] = [
   validateHazardReachability,
   validateEntityBounds,
   validateShipCorridors,
+  validateRequiredOrbs,
 ];
 
 export function validateLevelReachability(level: LevelContent): ValidationResult {
