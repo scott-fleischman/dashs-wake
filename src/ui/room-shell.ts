@@ -57,8 +57,8 @@ export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
     ? `cosmetic-row ${options.rowExtraClass}`
     : "cosmetic-row";
 
+  const swatch = document.createElement("span");
   if (options.swatchColor !== undefined) {
-    const swatch = document.createElement("span");
     const shapeClass =
       options.swatchShape === "circle"
         ? " shape-circle"
@@ -70,8 +70,10 @@ export function buildRoomRow(options: RoomRowOptions): HTMLLIElement {
     if (options.swatchTestId) {
       swatch.setAttribute("data-testid", options.swatchTestId);
     }
-    li.appendChild(swatch);
+  } else {
+    swatch.className = "cosmetic-swatch cosmetic-swatch-empty";
   }
+  li.appendChild(swatch);
 
   const nameEl = document.createElement("span");
   nameEl.className = "cosmetic-name";

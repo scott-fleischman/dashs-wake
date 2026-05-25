@@ -730,6 +730,12 @@ kbd {
   transform: rotate(45deg);
 }
 
+.cosmetic-swatch.cosmetic-swatch-empty {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .result-overlay[aria-label="Run failed"] {
   border-color: rgba(255, 67, 125, 0.7);
   box-shadow: 0 0 70px rgba(255, 67, 125, 0.35);
