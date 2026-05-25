@@ -70,7 +70,7 @@ function renderLevelList(profile: PlayerProfile): string {
           ${renderLevel1Status(profile)}
           ${renderLevel1BestPercent(profile)}
         </div>
-        <button class="play-button" type="button" data-action="play">
+        <button class="play-button" type="button" data-action="play" data-level-id="level_1">
           <span class="play-symbol" aria-hidden="true"></span>
           <span>Play</span>
         </button>
@@ -79,11 +79,11 @@ function renderLevelList(profile: PlayerProfile): string {
       <div class="level-card ${level2Unlocked ? "" : "level-locked"}">
         <div class="level-card-info">
           <p class="level-kicker">Official Level 02</p>
-          <h2 class="level-title">Level 2</h2>
+          <h2 class="level-title">Launch Sequence</h2>
           <p class="level-stat" data-testid="level-2-status">${level2StatusText(profile)}</p>
         </div>
-        <button class="play-button" type="button" disabled>
-          <span>${level2Unlocked ? "Coming later" : "Locked"}</span>
+        <button class="play-button" type="button" data-testid="level-2-play" data-action="play" data-level-id="level_2" ${level2Unlocked ? "" : "disabled"}>
+          <span>${level2Unlocked ? "Play" : "Locked"}</span>
         </button>
       </div>
     </div>
@@ -93,7 +93,7 @@ function renderLevelList(profile: PlayerProfile): string {
 export function mountLobby(
   root: HTMLElement,
   profile: PlayerProfile,
-  onPlay: () => void,
+  onPlay: (levelId: string) => void,
 ): () => void {
   root.innerHTML = `
     <main class="lobby">
@@ -119,15 +119,24 @@ export function mountLobby(
     </main>
   `;
 
-  const playButton = root.querySelector<HTMLButtonElement>("[data-action='play']");
+  const playButtons = Array.from(
+    root.querySelectorAll<HTMLButtonElement>("[data-action='play']"),
+  );
 
-  if (!playButton) {
+  if (playButtons.length === 0) {
     throw new Error("Lobby controls did not mount correctly.");
   }
 
-  playButton.addEventListener("click", onPlay);
+  const handlers = playButtons.map((button) => {
+    const levelId = button.dataset.levelId ?? "level_1";
+    const handler = (): void => onPlay(levelId);
+    button.addEventListener("click", handler);
+    return { button, handler };
+  });
 
   return () => {
-    playButton.removeEventListener("click", onPlay);
+    for (const { button, handler } of handlers) {
+      button.removeEventListener("click", handler);
+    }
   };
 }

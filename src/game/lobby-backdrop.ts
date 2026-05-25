@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { firstWakeLevel } from "../content/first-wake";
+import { firstWakeLevel, type LevelContent } from "../content/first-wake";
 import {
   createRunState,
   resetRunState,
@@ -8,7 +8,7 @@ import {
 } from "../core/run-simulation";
 
 const LOBBY_SCENE_KEY = "lobby-backdrop";
-const FIRST_WAKE_SCENE_KEY = "first-wake";
+const LEVEL_SCENE_KEY = "level-run";
 
 class LobbyBackdropScene extends Phaser.Scene {
   private pulse?: Phaser.GameObjects.Arc;
@@ -87,7 +87,7 @@ class LobbyBackdropScene extends Phaser.Scene {
   }
 }
 
-export interface FirstWakeSnapshot {
+export interface LevelSnapshot {
   attempt: number;
   deathCause?: "fall" | "spike";
   mode: "cube" | "ship";
@@ -95,9 +95,6 @@ export interface FirstWakeSnapshot {
   status: "complete" | "dead" | "running";
 }
 
-const FIRST_WAKE_RULES = firstWakeLevel.rules;
-const FIRST_WAKE_ENTITIES = firstWakeLevel.entities;
-const FIRST_WAKE_FINISH_X = firstWakeLevel.finishX;
 const SIMULATION_STEP_MS = 1000 / 60;
 
 const PLAYER_STYLE = {
@@ -113,7 +110,12 @@ const PORTAL_STYLE: Record<"cube" | "ship", number> = {
   ship: 0xffc857,
 };
 
-function playerFillFor(status: FirstWakeSnapshot["status"]): number {
+const PAD_STYLE = {
+  fill: 0xffc857,
+  stroke: 0xfff3c4,
+};
+
+function playerFillFor(status: LevelSnapshot["status"]): number {
   return status === "dead" ? PLAYER_STYLE.fillDead : PLAYER_STYLE.fillRunning;
 }
 
@@ -128,7 +130,11 @@ function applyPlayerStrokeStyle<
   return shape;
 }
 
-class FirstWakeScene extends Phaser.Scene {
+interface LevelSceneInitData {
+  levelContent?: LevelContent;
+}
+
+class LevelScene extends Phaser.Scene {
   private accumulator = 0;
   private attempt = 1;
   private courseLayer?: Phaser.GameObjects.Container;
@@ -136,15 +142,22 @@ class FirstWakeScene extends Phaser.Scene {
   private floorY = 0;
   private jumpHeld = false;
   private lastSnapshotKey = "";
-  private onSnapshot?: (snapshot: FirstWakeSnapshot) => void;
+  private levelContent: LevelContent = firstWakeLevel;
+  private onSnapshot?: (snapshot: LevelSnapshot) => void;
   private paused = false;
   private playerCube?: Phaser.GameObjects.Rectangle;
   private playerShip?: Phaser.GameObjects.Triangle;
-  private state: RunState = createRunState(FIRST_WAKE_RULES);
-  private status: FirstWakeSnapshot["status"] = "running";
+  private state: RunState = createRunState(firstWakeLevel.rules);
+  private status: LevelSnapshot["status"] = "running";
 
   constructor() {
-    super(FIRST_WAKE_SCENE_KEY);
+    super(LEVEL_SCENE_KEY);
+  }
+
+  init(data: LevelSceneInitData): void {
+    if (data.levelContent) {
+      this.levelContent = data.levelContent;
+    }
   }
 
   create(): void {
@@ -153,7 +166,7 @@ class FirstWakeScene extends Phaser.Scene {
     this.cubeJumpPending = false;
     this.jumpHeld = false;
     this.paused = false;
-    this.state = createRunState(FIRST_WAKE_RULES);
+    this.state = createRunState(this.levelContent.rules);
     this.status = "running";
     this.drawScene();
     this.publishSnapshot(true);
@@ -179,8 +192,8 @@ class FirstWakeScene extends Phaser.Scene {
         this.state,
         { jumpPressed },
         SIMULATION_STEP_MS,
-        FIRST_WAKE_RULES,
-        FIRST_WAKE_ENTITIES,
+        this.levelContent.rules,
+        this.levelContent.entities,
       );
       this.cubeJumpPending = false;
       this.accumulator -= SIMULATION_STEP_MS;
@@ -190,7 +203,7 @@ class FirstWakeScene extends Phaser.Scene {
         break;
       }
 
-      if (this.state.player.x >= FIRST_WAKE_FINISH_X) {
+      if (this.state.player.x >= this.levelContent.finishX) {
         this.status = "complete";
         break;
       }
@@ -236,14 +249,14 @@ class FirstWakeScene extends Phaser.Scene {
     this.cubeJumpPending = false;
     this.jumpHeld = false;
     this.paused = false;
-    this.state = resetRunState(this.state, FIRST_WAKE_RULES);
+    this.state = resetRunState(this.state, this.levelContent.rules);
     this.status = "running";
     this.updatePresentation();
     this.publishSnapshot(true);
   }
 
   setSnapshotListener(
-    listener: ((snapshot: FirstWakeSnapshot) => void) | undefined,
+    listener: ((snapshot: LevelSnapshot) => void) | undefined,
   ): void {
     this.onSnapshot = listener;
     this.publishSnapshot(true);
@@ -252,6 +265,9 @@ class FirstWakeScene extends Phaser.Scene {
   private drawScene(): void {
     const width = this.scale.width;
     const height = this.scale.height;
+    const rules = this.levelContent.rules;
+    const entities = this.levelContent.entities;
+    const finishX = this.levelContent.finishX;
 
     this.children.removeAll();
     this.floorY = height * 0.71;
@@ -270,23 +286,23 @@ class FirstWakeScene extends Phaser.Scene {
 
     const track = this.add.graphics();
     track.fillStyle(0x0d1d2d, 1);
-    track.fillRect(-180, this.floorY, FIRST_WAKE_FINISH_X + width, height - this.floorY);
+    track.fillRect(-180, this.floorY, finishX + width, height - this.floorY);
     track.lineStyle(3, 0x19d9f3, 0.75);
-    track.lineBetween(-180, this.floorY, FIRST_WAKE_FINISH_X + width, this.floorY);
+    track.lineBetween(-180, this.floorY, finishX + width, this.floorY);
     track.lineStyle(2, 0xa45bff, 0.44);
-    for (let x = 30; x < FIRST_WAKE_FINISH_X + width; x += 110) {
+    for (let x = 30; x < finishX + width; x += 110) {
       track.lineBetween(x, this.floorY + 35, x + 48, this.floorY + 35);
     }
     this.courseLayer.add(track);
 
     const hazards = this.add.graphics();
     hazards.fillStyle(0xff437d, 1);
-    for (const entity of FIRST_WAKE_ENTITIES) {
+    for (const entity of entities) {
       if (entity.type !== "spike") {
         continue;
       }
 
-      const y = this.floorY + entity.y - FIRST_WAKE_RULES.groundY;
+      const y = this.floorY + entity.y - rules.groundY;
       hazards.fillTriangle(
         entity.x,
         y + entity.height,
@@ -299,12 +315,12 @@ class FirstWakeScene extends Phaser.Scene {
     this.courseLayer.add(hazards);
 
     const portals = this.add.graphics();
-    for (const entity of FIRST_WAKE_ENTITIES) {
+    for (const entity of entities) {
       if (entity.type !== "portal") {
         continue;
       }
 
-      const y = this.floorY + entity.y - FIRST_WAKE_RULES.groundY;
+      const y = this.floorY + entity.y - rules.groundY;
       const portalColor = PORTAL_STYLE[entity.mode];
       portals.fillStyle(portalColor, 0.18);
       portals.fillRect(entity.x, y, entity.width, entity.height);
@@ -313,14 +329,30 @@ class FirstWakeScene extends Phaser.Scene {
     }
     this.courseLayer.add(portals);
 
+    const pads = this.add.graphics();
+    for (const entity of entities) {
+      if (entity.type !== "pad") {
+        continue;
+      }
+
+      const y = this.floorY + entity.y - rules.groundY;
+      pads.fillStyle(PAD_STYLE.fill, 0.85);
+      pads.fillRect(entity.x, y, entity.width, entity.height);
+      pads.lineStyle(2, PAD_STYLE.stroke, 0.95);
+      pads.strokeRect(entity.x, y, entity.width, entity.height);
+      pads.lineStyle(2, PAD_STYLE.stroke, 0.55);
+      pads.lineBetween(entity.x + 6, y + 2, entity.x + entity.width - 6, y + 2);
+    }
+    this.courseLayer.add(pads);
+
     const finishGate = this.add.graphics();
     finishGate.lineStyle(4, 0x19d9f3, 0.85);
-    finishGate.lineBetween(FIRST_WAKE_FINISH_X, this.floorY - 132, FIRST_WAKE_FINISH_X, this.floorY);
+    finishGate.lineBetween(finishX, this.floorY - 132, finishX, this.floorY);
     finishGate.lineStyle(2, 0xecfcff, 0.62);
-    finishGate.strokeCircle(FIRST_WAKE_FINISH_X, this.floorY - 145, 10);
+    finishGate.strokeCircle(finishX, this.floorY - 145, 10);
     this.courseLayer.add(finishGate);
     this.courseLayer.add(
-      this.add.text(FIRST_WAKE_FINISH_X - 30, this.floorY - 177, "FINISH", {
+      this.add.text(finishX - 30, this.floorY - 177, "FINISH", {
         color: "#ecfcff",
         fontFamily: "Arial, sans-serif",
         fontSize: "12px",
@@ -329,17 +361,17 @@ class FirstWakeScene extends Phaser.Scene {
     );
 
     const playerScreenX = width * 0.22;
-    const playerScreenY = this.floorY - FIRST_WAKE_RULES.playerHeight / 2;
-    const halfWidth = FIRST_WAKE_RULES.playerWidth / 2;
-    const halfHeight = FIRST_WAKE_RULES.playerHeight / 2;
+    const playerScreenY = this.floorY - rules.playerHeight / 2;
+    const halfWidth = rules.playerWidth / 2;
+    const halfHeight = rules.playerHeight / 2;
     const initialFill = playerFillFor(this.status);
 
     this.playerCube = applyPlayerStrokeStyle(
       this.add.rectangle(
         playerScreenX,
         playerScreenY,
-        FIRST_WAKE_RULES.playerWidth,
-        FIRST_WAKE_RULES.playerHeight,
+        rules.playerWidth,
+        rules.playerHeight,
         initialFill,
       ),
     );
@@ -373,12 +405,13 @@ class FirstWakeScene extends Phaser.Scene {
   }
 
   private updatePresentation(): void {
+    const rules = this.levelContent.rules;
     const playerScreenX = this.scale.width * 0.22;
     const playerScreenY =
       this.floorY +
       this.state.player.y -
-      FIRST_WAKE_RULES.groundY -
-      FIRST_WAKE_RULES.playerHeight / 2;
+      rules.groundY -
+      rules.playerHeight / 2;
     const isShip = this.state.player.mode === "ship";
     const fillColor = playerFillFor(this.status);
 
@@ -396,11 +429,12 @@ class FirstWakeScene extends Phaser.Scene {
   }
 
   private publishSnapshot(force = false): void {
+    const finishX = this.levelContent.finishX;
     const percent =
       this.status === "complete"
         ? 100
-        : Math.min(99, Math.floor((this.state.player.x / FIRST_WAKE_FINISH_X) * 100));
-    const snapshot: FirstWakeSnapshot = {
+        : Math.min(99, Math.floor((this.state.player.x / finishX) * 100));
+    const snapshot: LevelSnapshot = {
       attempt: this.attempt,
       ...(this.state.deathCause ? { deathCause: this.state.deathCause } : {}),
       mode: this.state.player.mode,
@@ -420,20 +454,21 @@ class FirstWakeScene extends Phaser.Scene {
 
 export interface BackdropController {
   destroy(removeCanvas?: boolean): void;
-  setFirstWakeJumpHeld(held: boolean): boolean;
-  restartFirstWake(): void;
-  setFirstWakeSnapshotListener(
-    listener: ((snapshot: FirstWakeSnapshot) => void) | undefined,
+  setLevelJumpHeld(held: boolean): boolean;
+  restartLevel(): void;
+  setLevelSnapshotListener(
+    listener: ((snapshot: LevelSnapshot) => void) | undefined,
   ): void;
-  setFirstWakePaused(paused: boolean): void;
+  setLevelPaused(paused: boolean): void;
   showLobby(): void;
-  showFirstWake(): void;
+  showLevel(content: LevelContent): void;
 }
 
 export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
   let requestedScene = LOBBY_SCENE_KEY;
   let scenesReady = false;
-  let snapshotListener: ((snapshot: FirstWakeSnapshot) => void) | undefined;
+  let snapshotListener: ((snapshot: LevelSnapshot) => void) | undefined;
+  let pendingLevelContent: LevelContent | undefined;
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -452,65 +487,73 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
       return;
     }
 
-    const inactiveScene =
-      requestedScene === LOBBY_SCENE_KEY ? FIRST_WAKE_SCENE_KEY : LOBBY_SCENE_KEY;
-
-    if (game.scene.isActive(inactiveScene)) {
-      game.scene.stop(inactiveScene);
+    if (requestedScene === LOBBY_SCENE_KEY) {
+      if (game.scene.isActive(LEVEL_SCENE_KEY)) {
+        game.scene.stop(LEVEL_SCENE_KEY);
+      }
+      if (!game.scene.isActive(LOBBY_SCENE_KEY)) {
+        game.scene.start(LOBBY_SCENE_KEY);
+      }
+      return;
     }
 
-    if (!game.scene.isActive(requestedScene)) {
-      game.scene.start(requestedScene);
+    if (game.scene.isActive(LOBBY_SCENE_KEY)) {
+      game.scene.stop(LOBBY_SCENE_KEY);
     }
+    if (game.scene.isActive(LEVEL_SCENE_KEY)) {
+      game.scene.stop(LEVEL_SCENE_KEY);
+    }
+    game.scene.start(LEVEL_SCENE_KEY, {
+      levelContent: pendingLevelContent ?? firstWakeLevel,
+    });
+    (game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene).setSnapshotListener(
+      snapshotListener,
+    );
   };
 
   game.events.once(Phaser.Core.Events.READY, () => {
-    game.scene.add(FIRST_WAKE_SCENE_KEY, FirstWakeScene, false);
-    (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).setSnapshotListener(
-      snapshotListener,
-    );
+    game.scene.add(LEVEL_SCENE_KEY, LevelScene, false);
     scenesReady = true;
     applyRequestedScene();
   });
 
   return {
     destroy: (removeCanvas = false) => game.destroy(removeCanvas),
-    setFirstWakeJumpHeld: (held: boolean) => {
-      if (game.scene.isActive(FIRST_WAKE_SCENE_KEY)) {
+    setLevelJumpHeld: (held: boolean) => {
+      if (game.scene.isActive(LEVEL_SCENE_KEY)) {
         return (
-          game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene
+          game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene
         ).setJumpHeld(held);
       }
 
       return false;
     },
-    restartFirstWake: () => {
-      if (game.scene.isActive(FIRST_WAKE_SCENE_KEY)) {
-        (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).restart();
+    restartLevel: () => {
+      if (game.scene.isActive(LEVEL_SCENE_KEY)) {
+        (game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene).restart();
       }
     },
-    setFirstWakeSnapshotListener: (listener) => {
+    setLevelSnapshotListener: (listener) => {
       snapshotListener = listener;
 
-      if (scenesReady) {
-        (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).setSnapshotListener(
+      if (scenesReady && game.scene.isActive(LEVEL_SCENE_KEY)) {
+        (game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene).setSnapshotListener(
           listener,
         );
       }
     },
-    setFirstWakePaused: (paused: boolean) => {
-      if (game.scene.isActive(FIRST_WAKE_SCENE_KEY)) {
-        (game.scene.getScene(FIRST_WAKE_SCENE_KEY) as FirstWakeScene).setPaused(
-          paused,
-        );
+    setLevelPaused: (paused: boolean) => {
+      if (game.scene.isActive(LEVEL_SCENE_KEY)) {
+        (game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene).setPaused(paused);
       }
     },
     showLobby: () => {
       requestedScene = LOBBY_SCENE_KEY;
       applyRequestedScene();
     },
-    showFirstWake: () => {
-      requestedScene = FIRST_WAKE_SCENE_KEY;
+    showLevel: (content: LevelContent) => {
+      pendingLevelContent = content;
+      requestedScene = LEVEL_SCENE_KEY;
       applyRequestedScene();
     },
   };

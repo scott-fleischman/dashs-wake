@@ -14,10 +14,10 @@ const LAUNCH_SEQUENCE_ENTITIES: readonly LevelEntity[] = [
     x: 380,
     y: 290,
   },
-  { type: "spike", height: 30, width: 30, x: 620, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 700, y: 270 },
 ];
 
-const LAUNCH_SEQUENCE_FINISH_X = 820;
+const LAUNCH_SEQUENCE_FINISH_X = 880;
 
 function buildPlaceholderBeatMap(
   finishX: number,

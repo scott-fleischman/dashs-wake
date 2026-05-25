@@ -1,30 +1,36 @@
-import type { FirstWakeSnapshot } from "../game/lobby-backdrop";
+import type { LevelSnapshot } from "../game/lobby-backdrop";
 
-interface FirstWakeActions {
+export interface LevelRunMetadata {
+  kicker: string;
+  name: string;
+}
+
+interface LevelRunActions {
   onJumpHold: (held: boolean) => boolean;
   onPauseChange: (paused: boolean) => void;
   onRestart: () => void;
   onReturnToLobby: () => void;
   onSnapshotChange: (
-    listener: ((snapshot: FirstWakeSnapshot) => void) | undefined,
+    listener: ((snapshot: LevelSnapshot) => void) | undefined,
   ) => void;
 }
 
 const JUMP_KEYS = new Set(["Space", "ArrowUp"]);
-const MODE_LABELS: Record<FirstWakeSnapshot["mode"], string> = {
+const MODE_LABELS: Record<LevelSnapshot["mode"], string> = {
   cube: "Cube",
   ship: "Ship",
 };
 
 export function mountFirstWake(
   root: HTMLElement,
-  actions: FirstWakeActions,
+  metadata: LevelRunMetadata,
+  actions: LevelRunActions,
 ): () => void {
   root.innerHTML = `
     <main class="first-wake">
       <header class="first-wake-header">
-        <p class="kicker">Official Level 01</p>
-        <h1>First Wake</h1>
+        <p class="kicker"></p>
+        <h1></h1>
         <p class="run-status" role="status">Running</p>
       </header>
 
@@ -80,6 +86,11 @@ export function mountFirstWake(
     </main>
   `;
 
+  const kickerEl = root.querySelector<HTMLElement>(".first-wake-header .kicker");
+  const headingEl = root.querySelector<HTMLElement>(".first-wake-header h1");
+  if (kickerEl) kickerEl.textContent = metadata.kicker;
+  if (headingEl) headingEl.textContent = metadata.name;
+
   const status = root.querySelector<HTMLElement>(".run-status");
   const feedback = root.querySelector<HTMLElement>(".input-feedback");
   const progress = root.querySelector<HTMLElement>("[data-testid='run-progress']");
@@ -122,7 +133,7 @@ export function mountFirstWake(
 
   let paused = false;
   let feedbackTimer: number | undefined;
-  let runStatus: FirstWakeSnapshot["status"] = "running";
+  let runStatus: LevelSnapshot["status"] = "running";
 
   const setPaused = (nextPaused: boolean): void => {
     if (runStatus !== "running") {
@@ -200,7 +211,7 @@ export function mountFirstWake(
     feedback.textContent = "Restarted - 0%";
   };
 
-  const renderSnapshot = (snapshot: FirstWakeSnapshot): void => {
+  const renderSnapshot = (snapshot: LevelSnapshot): void => {
     runStatus = snapshot.status;
     progress.textContent = `${snapshot.percent}%`;
     attempts.textContent = `Attempt ${snapshot.attempt}`;

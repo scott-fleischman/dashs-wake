@@ -1,5 +1,5 @@
 import "./styles.css";
-import { startLobbyBackdrop, type FirstWakeSnapshot } from "./game/lobby-backdrop";
+import { startLobbyBackdrop, type LevelSnapshot } from "./game/lobby-backdrop";
 import { mountLobby } from "./ui/lobby";
 import { mountFirstWake } from "./ui/first-wake";
 import {
@@ -8,9 +8,10 @@ import {
   type PlayerProfile,
 } from "./core/profile";
 import { loadProfile, saveProfile } from "./persistence/profile-repository";
-
-const FIRST_WAKE_ROUTE = "#play";
-const FIRST_WAKE_LEVEL_ID = "level_1";
+import {
+  getOfficialLevelContent,
+  officialLevelCatalog,
+} from "./content/official-levels";
 
 function requiredElement(id: string): HTMLElement {
   const element = document.getElementById(id);
@@ -22,17 +23,32 @@ function requiredElement(id: string): HTMLElement {
   return element;
 }
 
+function parseLevelIdFromHash(hash: string): string | null {
+  if (hash === "#play") {
+    return "level_1";
+  }
+  if (hash.startsWith("#play/")) {
+    return hash.slice("#play/".length) || null;
+  }
+  return null;
+}
+
+function kickerFor(index: number): string {
+  return `Official Level ${String(index + 1).padStart(2, "0")}`;
+}
+
 function applyAttemptResult(
   current: PlayerProfile,
-  snapshot: FirstWakeSnapshot,
+  levelId: string,
+  snapshot: LevelSnapshot,
 ): PlayerProfile {
   let next = applyProgressAward(current, {
-    levelId: FIRST_WAKE_LEVEL_ID,
+    levelId,
     percentReached: snapshot.percent,
   }).profile;
 
   if (snapshot.status === "complete") {
-    next = applyCompletionAward(next, { levelId: FIRST_WAKE_LEVEL_ID }).profile;
+    next = applyCompletionAward(next, { levelId }).profile;
   }
 
   return next;
@@ -46,11 +62,31 @@ let profile: PlayerProfile = loadProfile();
 function renderRoute(): void {
   disposeView();
 
-  if (window.location.hash === FIRST_WAKE_ROUTE) {
-    backdrop.showFirstWake();
+  const levelId = parseLevelIdFromHash(window.location.hash);
+
+  if (levelId) {
+    const metadataIndex = officialLevelCatalog.findIndex(
+      (level) => level.id === levelId,
+    );
+    const metadata = officialLevelCatalog[metadataIndex];
+
+    if (!metadata) {
+      window.location.hash = "";
+      return;
+    }
+
+    let content;
+    try {
+      content = getOfficialLevelContent(levelId);
+    } catch {
+      window.location.hash = "";
+      return;
+    }
+
+    backdrop.showLevel(content);
     let attemptHandled = false;
 
-    const resolveAttempt = (snapshot: FirstWakeSnapshot): void => {
+    const resolveAttempt = (snapshot: LevelSnapshot): void => {
       if (
         attemptHandled ||
         (snapshot.status !== "dead" && snapshot.status !== "complete")
@@ -58,37 +94,41 @@ function renderRoute(): void {
         return;
       }
       attemptHandled = true;
-      profile = applyAttemptResult(profile, snapshot);
+      profile = applyAttemptResult(profile, levelId, snapshot);
       saveProfile(profile);
     };
 
-    disposeView = mountFirstWake(root, {
-      onJumpHold: (held) => backdrop.setFirstWakeJumpHeld(held),
-      onPauseChange: (paused) => backdrop.setFirstWakePaused(paused),
-      onRestart: () => {
-        attemptHandled = false;
-        backdrop.restartFirstWake();
+    disposeView = mountFirstWake(
+      root,
+      { kicker: kickerFor(metadataIndex), name: metadata.name },
+      {
+        onJumpHold: (held) => backdrop.setLevelJumpHeld(held),
+        onPauseChange: (paused) => backdrop.setLevelPaused(paused),
+        onRestart: () => {
+          attemptHandled = false;
+          backdrop.restartLevel();
+        },
+        onReturnToLobby: () => {
+          window.location.hash = "";
+        },
+        onSnapshotChange: (uiListener) => {
+          if (!uiListener) {
+            backdrop.setLevelSnapshotListener(undefined);
+            return;
+          }
+          backdrop.setLevelSnapshotListener((snapshot) => {
+            resolveAttempt(snapshot);
+            uiListener(snapshot);
+          });
+        },
       },
-      onReturnToLobby: () => {
-        window.location.hash = "";
-      },
-      onSnapshotChange: (uiListener) => {
-        if (!uiListener) {
-          backdrop.setFirstWakeSnapshotListener(undefined);
-          return;
-        }
-        backdrop.setFirstWakeSnapshotListener((snapshot) => {
-          resolveAttempt(snapshot);
-          uiListener(snapshot);
-        });
-      },
-    });
+    );
     return;
   }
 
   backdrop.showLobby();
-  disposeView = mountLobby(root, profile, () => {
-    window.location.hash = FIRST_WAKE_ROUTE;
+  disposeView = mountLobby(root, profile, (selectedLevelId) => {
+    window.location.hash = `#play/${selectedLevelId}`;
   });
 }
 

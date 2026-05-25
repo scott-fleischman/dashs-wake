@@ -27,7 +27,7 @@ test("lobby presents its destinations and lets the player choose Play", async ({
 
   await page.getByRole("button", { name: "Play" }).click();
 
-  await expect(page).toHaveURL(/#play$/);
+  await expect(page).toHaveURL(/#play\/level_1$/);
   await expect(
     page.getByRole("heading", { name: "First Wake" }),
   ).toBeVisible();
@@ -49,13 +49,13 @@ test("First Wake pauses with Escape and returns to the lobby", async ({
 
   await page.getByRole("button", { name: "Return to Lobby" }).click();
 
-  await expect(page).not.toHaveURL(/#play$/);
+  await expect(page).not.toHaveURL(/#play/);
   await expect(
     page.getByRole("heading", { name: "Dash's Wake" }),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Play" }).click();
-  await expect(page).toHaveURL(/#play$/);
+  await expect(page).toHaveURL(/#play\/level_1$/);
   await expect(
     page.getByRole("heading", { name: "First Wake" }),
   ).toBeVisible();
