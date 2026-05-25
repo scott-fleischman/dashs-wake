@@ -194,3 +194,52 @@ describe("ship mode portals and motion", () => {
     expect(state.player.mode).toBe("cube");
   });
 });
+
+describe("launch pad impulses", () => {
+  it("applies a pad's configured upward impulse the first time the player overlaps it", () => {
+    const pad: LevelEntity = {
+      type: "pad",
+      id: "pad-a",
+      impulse: 30,
+      height: 10,
+      width: 6,
+      x: 5,
+      y: 95,
+    };
+    const onPad: RunState = {
+      consumedPadIds: new Set(),
+      elapsedMs: 0,
+      player: { grounded: true, mode: "cube", velocityY: 0, x: 8, y: 100 },
+      status: "running",
+    };
+
+    const after = tickRun(onPad, { jumpPressed: false }, 100, rules, [pad]);
+
+    expect(after.player.velocityY).toBeCloseTo(-30 + rules.gravity * 0.1);
+    expect(after.player.grounded).toBe(false);
+    expect(after.consumedPadIds.has("pad-a")).toBe(true);
+  });
+
+  it("does not re-apply a pad's impulse while the player remains in contact", () => {
+    const pad: LevelEntity = {
+      type: "pad",
+      id: "pad-a",
+      impulse: 30,
+      height: 10,
+      width: 6,
+      x: 5,
+      y: 95,
+    };
+    const afterFirstHit: RunState = {
+      consumedPadIds: new Set(["pad-a"]),
+      elapsedMs: 100,
+      player: { grounded: false, mode: "cube", velocityY: -28, x: 9, y: 97.2 },
+      status: "running",
+    };
+
+    const after = tickRun(afterFirstHit, { jumpPressed: false }, 100, rules, [pad]);
+
+    expect(after.player.velocityY).toBeCloseTo(-28 + rules.gravity * 0.1);
+    expect(after.consumedPadIds.has("pad-a")).toBe(true);
+  });
+});
