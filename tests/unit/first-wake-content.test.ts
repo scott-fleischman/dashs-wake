@@ -97,6 +97,53 @@ describe("First Wake content contract", () => {
     expect(hazardsInCorridor).toEqual([]);
   });
 
+  it("flags entities whose right edge extends past the finish line", () => {
+    const broken = {
+      ...firstWakeLevel,
+      entities: [
+        ...firstWakeLevel.entities,
+        {
+          type: "spike" as const,
+          height: 30,
+          width: 30,
+          x: firstWakeLevel.finishX + 50,
+          y: 270,
+        },
+      ],
+    };
+
+    const result = validateLevelReachability(broken);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.join(" ")).toMatch(/extends past the finish line/);
+  });
+
+  it("flags a spike that is wider than the max jump arc", () => {
+    const maxJump =
+      firstWakeLevel.rules.horizontalSpeed *
+      ((2 * Math.abs(firstWakeLevel.rules.jumpVelocity)) /
+        firstWakeLevel.rules.gravity);
+
+    const broken = {
+      ...firstWakeLevel,
+      entities: [
+        ...firstWakeLevel.entities,
+        {
+          type: "spike" as const,
+          height: 30,
+          width: maxJump + 20,
+          x: 30,
+          y: 270,
+        },
+      ],
+    };
+
+    const result = validateLevelReachability(broken);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.join(" ")).toMatch(/spike/i);
+  });
+
   it("flags a ship corridor whose width is too tight for safe ship play", () => {
     const minCorridorWidth = 5 * firstWakeLevel.rules.playerWidth;
 
