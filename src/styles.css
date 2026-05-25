@@ -324,6 +324,7 @@ button {
 .first-wake {
   height: 100%;
   position: relative;
+  touch-action: none;
 }
 
 .first-wake-header {

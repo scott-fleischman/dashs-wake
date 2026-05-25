@@ -82,6 +82,14 @@ test("First Wake ignores a second jump while the cube is airborne", async ({
   await expect(page.getByText("Airborne - jump ignored")).toBeVisible();
 });
 
+test("First Wake jumps when the run surface is clicked", async ({ page }) => {
+  await page.goto("/#play");
+
+  await page.getByRole("heading", { name: "First Wake" }).click();
+
+  await expect(page.getByText("Jump registered")).toBeVisible();
+});
+
 test("First Wake reports progress, restarts after failure, and can be completed", async ({
   page,
 }) => {

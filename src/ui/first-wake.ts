@@ -170,6 +170,7 @@ export function mountFirstWake(
   const attempts = root.querySelector<HTMLElement>("[data-testid='attempt-count']");
   const modeReadout = root.querySelector<HTMLElement>("[data-testid='run-mode']");
   const cueReadout = root.querySelector<HTMLElement>("[data-testid='run-cue']");
+  const runSurface = root.querySelector<HTMLElement>(".first-wake");
   const pulseButton = root.querySelector<HTMLButtonElement>("[data-action='pulse']");
   const pauseButton = root.querySelector<HTMLButtonElement>("[data-action='pause']");
   const resumeButton = root.querySelector<HTMLButtonElement>("[data-action='resume']");
@@ -203,6 +204,7 @@ export function mountFirstWake(
     !attempts ||
     !modeReadout ||
     !cueReadout ||
+    !runSurface ||
     !pulseButton ||
     !pauseButton ||
     !resumeButton ||
@@ -272,7 +274,7 @@ export function mountFirstWake(
   };
 
   const registerHold = (): void => {
-    if (paused) {
+    if (paused || runStatus !== "running") {
       return;
     }
 
@@ -289,6 +291,19 @@ export function mountFirstWake(
 
   const releaseHold = (): void => {
     actions.onJumpHold(false);
+  };
+
+  const onSurfacePointerDown = (event: PointerEvent): void => {
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest("button:not([data-action='pulse'])")
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    registerHold();
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
@@ -388,10 +403,9 @@ export function mountFirstWake(
   };
 
   actions.onSnapshotChange(renderSnapshot);
-  pulseButton.addEventListener("pointerdown", registerHold);
-  pulseButton.addEventListener("pointerup", releaseHold);
-  pulseButton.addEventListener("pointerleave", releaseHold);
-  pulseButton.addEventListener("pointercancel", releaseHold);
+  runSurface.addEventListener("pointerdown", onSurfacePointerDown);
+  window.addEventListener("pointerup", releaseHold);
+  window.addEventListener("pointercancel", releaseHold);
   pauseButton.addEventListener("click", () => setPaused(true));
   resumeButton.addEventListener("click", () => setPaused(false));
   lobbyButton.addEventListener("click", actions.onReturnToLobby);
@@ -404,6 +418,9 @@ export function mountFirstWake(
 
   return () => {
     window.clearTimeout(feedbackTimer);
+    runSurface.removeEventListener("pointerdown", onSurfacePointerDown);
+    window.removeEventListener("pointerup", releaseHold);
+    window.removeEventListener("pointercancel", releaseHold);
     window.removeEventListener("keydown", onKeyDown);
     window.removeEventListener("keyup", onKeyUp);
     releaseHold();
