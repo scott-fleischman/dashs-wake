@@ -45,7 +45,7 @@ interface DestinationConfig {
 }
 
 const DESTINATIONS: readonly DestinationConfig[] = [
-  { name: "Generated Levels", route: null, testId: "destination-generated-levels" },
+  { name: "Generated Levels", route: "#generated", testId: "destination-generated-levels" },
   { name: "Gauntlets", route: "#gauntlets", testId: "destination-gauntlets" },
   { name: "Chest Room", route: "#chest-room", testId: "destination-chest-room" },
   { name: "Shop", route: "#shop", testId: "destination-shop" },

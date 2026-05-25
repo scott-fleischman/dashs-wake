@@ -10,7 +10,7 @@ test("lobby presents its destinations and lets the player choose Play", async ({
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
 
-  for (const destination of ["Generated Levels", "Settings"]) {
+  for (const destination of ["Settings"]) {
     await expect(
       page.getByRole("button", {
         name: `${destination} - Coming later`,
@@ -23,6 +23,7 @@ test("lobby presents its destinations and lets the player choose Play", async ({
     "destination-shop",
     "destination-chest-room",
     "destination-gauntlets",
+    "destination-generated-levels",
   ]) {
     await expect(page.getByTestId(destinationTestId)).toBeEnabled();
   }

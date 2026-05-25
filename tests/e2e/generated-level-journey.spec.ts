@@ -16,7 +16,6 @@ test("generates, persists, reopens, and completes a placeholder generated level"
   await expect(playButton).toBeVisible();
 
   await page.reload();
-  await page.getByTestId("destination-generated-levels").click();
   await expect(playButton).toBeVisible();
 
   await playButton.click();

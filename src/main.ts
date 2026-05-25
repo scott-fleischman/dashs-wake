@@ -8,8 +8,13 @@ import {
   type LevelRunMetadata,
 } from "./ui/first-wake";
 import { mountGauntletsRoom } from "./ui/gauntlets-room";
+import {
+  buildPlaceholderGeneratedLevel,
+  mountGeneratedLevelsRoom,
+} from "./ui/generated-levels-room";
 import { mountLobby } from "./ui/lobby";
 import { mountShop } from "./ui/shop";
+import { generateLevel } from "./core/generator";
 import {
   applyCompletionAward,
   applyProgressAward,
@@ -177,6 +182,65 @@ function renderRoute(): void {
         window.location.hash = "";
       },
     });
+    return;
+  }
+
+  if (hash === "#generated") {
+    backdrop.showLobby();
+    disposeView = mountGeneratedLevelsRoom(root, profileRef, {
+      onGenerate: () => {
+        const nextIndex = profile.generatedLevels.length + 1;
+        const record = buildPlaceholderGeneratedLevel(nextIndex);
+        updateProfile({
+          ...profile,
+          generatedLevels: [...profile.generatedLevels, record],
+        });
+        renderRoute();
+      },
+      onPlay: (recordId) => {
+        window.location.hash = `#generated/${recordId}`;
+      },
+      onReturnToLobby: () => {
+        window.location.hash = "";
+      },
+    });
+    return;
+  }
+
+  if (hash.startsWith("#generated/")) {
+    const recordId = hash.slice("#generated/".length);
+    const record = profile.generatedLevels.find(
+      (entry) => entry.id === recordId,
+    );
+
+    if (!record) {
+      window.location.hash = "#generated";
+      return;
+    }
+
+    const content = generateLevel({
+      beatIntensities: record.beatIntensities,
+      beatMap: record.beatMap,
+      difficulty: record.difficulty,
+      seed: record.seed,
+    });
+
+    disposeView = launchLevelRun(
+      content,
+      {
+        kicker: "Generated Level",
+        name: record.name,
+        equippedIcon: equippedIconName(profile),
+      },
+      {
+        onAttemptResolved: () => {
+          // Generated levels do not yet award progression.
+        },
+        onReturnHome: () => {
+          window.location.hash = "#generated";
+        },
+      },
+    );
     return;
   }
 

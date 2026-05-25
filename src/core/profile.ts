@@ -1,8 +1,18 @@
+export interface GeneratedLevelRecord {
+  beatIntensities: readonly ("intense" | "quiet")[];
+  beatMap: { readonly beats: readonly number[]; readonly durationMs: number };
+  difficulty: "easy" | "normal" | "hard" | "harder" | "insane";
+  id: string;
+  name: string;
+  seed: number;
+}
+
 export interface PlayerProfile {
   bestPercents: Readonly<Record<string, number>>;
   coins: number;
   completedGauntletIds: readonly string[];
   completedLevels: readonly string[];
+  generatedLevels: readonly GeneratedLevelRecord[];
   keys: Readonly<Record<string, number>>;
   openedChestIds: readonly string[];
   ownedCosmetics: readonly string[];
@@ -139,6 +149,7 @@ export function createProfile(): PlayerProfile {
     coins: 0,
     completedGauntletIds: [],
     completedLevels: [],
+    generatedLevels: [],
     keys: {},
     openedChestIds: [],
     ownedCosmetics: [],
