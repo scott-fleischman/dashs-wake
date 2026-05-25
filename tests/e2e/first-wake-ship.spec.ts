@@ -25,8 +25,10 @@ test("First Wake completes through cube and ship modes", async ({ page }) => {
   await expect(mode).toHaveText("Ship", { timeout: 5_000 });
   await expect(mode).toHaveText("Cube", { timeout: 5_000 });
 
-  await expect(
-    page.getByRole("dialog", { name: "Level complete" }),
-  ).toBeVisible({ timeout: 5_000 });
+  const completeDialog = page.getByRole("dialog", { name: "Level complete" });
+  await expect(completeDialog).toBeVisible({ timeout: 5_000 });
   await expect(progress).toHaveText("100%");
+  await expect(completeDialog.locator(".result-message")).toContainText(
+    "First Wake",
+  );
 });
