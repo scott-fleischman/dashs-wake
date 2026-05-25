@@ -40,8 +40,15 @@ export interface PortalEntity extends RectangularEntity {
   type: "portal";
 }
 
+export interface PadEntity extends RectangularEntity {
+  id: string;
+  impulse: number;
+  type: "pad";
+}
+
 export type LevelEntity =
   | GapEntity
+  | PadEntity
   | PlatformEntity
   | PortalEntity
   | SpikeEntity;
@@ -57,6 +64,7 @@ export interface PlayerState {
 }
 
 export interface RunState {
+  consumedPadIds: ReadonlySet<string>;
   deathCause?: DeathCause;
   elapsedMs: number;
   player: PlayerState;
@@ -65,6 +73,7 @@ export interface RunState {
 
 export function createRunState(rules: RunRules): RunState {
   return {
+    consumedPadIds: new Set(),
     elapsedMs: 0,
     player: {
       grounded: true,
@@ -203,6 +212,20 @@ function resolvePortalMode(
   return currentMode;
 }
 
+function findActivatablePads(
+  player: PlayerState,
+  consumedPadIds: ReadonlySet<string>,
+  entities: readonly LevelEntity[],
+  rules: RunRules,
+): readonly PadEntity[] {
+  return entities.filter(
+    (entity): entity is PadEntity =>
+      entity.type === "pad" &&
+      !consumedPadIds.has(entity.id) &&
+      playerOverlapsRect(player.x, player.y, entity, rules),
+  );
+}
+
 export function tickRun(
   state: RunState,
   input: RunInput,
@@ -219,8 +242,22 @@ export function tickRun(
   }
 
   const elapsedSeconds = elapsedMs / 1000;
-  const velocityY = computeNextVelocityY(
+  const activatablePads = findActivatablePads(
     state.player,
+    state.consumedPadIds,
+    entities,
+    rules,
+  );
+  const padImpulse =
+    activatablePads.length > 0
+      ? Math.max(...activatablePads.map((pad) => pad.impulse))
+      : 0;
+  const playerForVelocity: PlayerState =
+    padImpulse > 0
+      ? { ...state.player, grounded: false, velocityY: -padImpulse }
+      : state.player;
+  const velocityY = computeNextVelocityY(
+    playerForVelocity,
     input,
     elapsedSeconds,
     rules,
@@ -251,6 +288,13 @@ export function tickRun(
     x: proposedX,
     y: placedY,
   };
+  const nextConsumedPadIds: ReadonlySet<string> =
+    activatablePads.length > 0
+      ? new Set([
+          ...state.consumedPadIds,
+          ...activatablePads.map((pad) => pad.id),
+        ])
+      : state.consumedPadIds;
   const deathCause = entities.some(
     (entity) =>
       entity.type === "spike" &&
@@ -262,6 +306,7 @@ export function tickRun(
       : undefined;
 
   return {
+    consumedPadIds: nextConsumedPadIds,
     ...(deathCause ? { deathCause } : {}),
     elapsedMs: state.elapsedMs + elapsedMs,
     player,

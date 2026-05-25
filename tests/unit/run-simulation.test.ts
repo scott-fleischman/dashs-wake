@@ -60,6 +60,7 @@ describe("cube run simulation", () => {
       y: 92,
     };
     const fallingState: RunState = {
+      consumedPadIds: new Set(),
       elapsedMs: 400,
       player: {
         grounded: false,
@@ -143,6 +144,7 @@ describe("ship mode portals and motion", () => {
 
   it("rises while jump is held in ship mode and falls when released", () => {
     const flying: RunState = {
+      consumedPadIds: new Set(),
       elapsedMs: 0,
       player: {
         grounded: false,
@@ -176,6 +178,7 @@ describe("ship mode portals and motion", () => {
     };
 
     let state: RunState = {
+      consumedPadIds: new Set(),
       elapsedMs: 0,
       player: {
         grounded: false,
