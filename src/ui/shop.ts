@@ -24,6 +24,7 @@ export function mountShop(
 
     const balance = document.createElement("p");
     balance.className = "room-balance";
+    balance.setAttribute("data-testid", "shop-balance");
     balance.textContent = `${profile.coins} Coins`;
     main.querySelector("header")?.appendChild(balance);
 
