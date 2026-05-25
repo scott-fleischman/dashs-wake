@@ -106,6 +106,7 @@ function stopAudioPlayback(): void {
   audio.pause();
   audio.removeAttribute("src");
   audio.load();
+  audio.remove();
   URL.revokeObjectURL(url);
   activeAudioPlayback = null;
 }
@@ -138,6 +139,9 @@ async function startAudioPlayback(blobKey: string): Promise<void> {
   }
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
+  audio.setAttribute("data-testid", "level-audio");
+  audio.hidden = true;
+  document.body.appendChild(audio);
   activeAudioPlayback = { audio, url };
   audio.play().catch(() => undefined);
 }
