@@ -33,4 +33,5 @@ test("dying after partial progress awards coins for the new best percent", async
     `${partialPercent} Coins`,
   );
   await expect(page.getByTestId("level-2-status")).toHaveText("Locked");
+  await expect(page.getByTestId("profile-keys-easy")).toBeHidden();
 });
