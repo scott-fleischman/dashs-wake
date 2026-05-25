@@ -1,6 +1,8 @@
+import { combinedRunLevel } from "./combined-run";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
 import { launchSequenceLevel } from "./launch-sequence";
 import { orbitalLoopLevel } from "./orbital-loop";
+import { trapLaneLevel } from "./trap-lane";
 
 export type OfficialLevelDifficulty =
   | "easy"
@@ -48,6 +50,8 @@ const LEVEL_CONTENT_BY_ID: Readonly<Record<string, LevelContent>> = {
   level_1: firstWakeLevel,
   level_2: launchSequenceLevel,
   level_3: orbitalLoopLevel,
+  level_4: combinedRunLevel,
+  level_5: trapLaneLevel,
 };
 
 export function getOfficialLevelContent(id: string): LevelContent {

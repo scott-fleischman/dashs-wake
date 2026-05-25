@@ -45,6 +45,21 @@ export const OFFICIAL_LEVEL_COMPLETION_RULES: LevelCompletionRules = {
     keyAwarded: { type: "easy", amount: 1 },
     unlocks: ["level_2"],
   },
+  level_2: {
+    keyAwarded: { type: "easy", amount: 1 },
+    unlocks: ["level_3"],
+  },
+  level_3: {
+    keyAwarded: { type: "normal", amount: 1 },
+    unlocks: ["level_4"],
+  },
+  level_4: {
+    keyAwarded: { type: "normal", amount: 1 },
+    unlocks: ["level_5"],
+  },
+  level_5: {
+    keyAwarded: { type: "hard", amount: 1 },
+  },
 };
 
 export function createProfile(): PlayerProfile {
