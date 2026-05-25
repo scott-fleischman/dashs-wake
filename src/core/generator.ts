@@ -45,9 +45,15 @@ export type BeatSelection =
   | { type: "pad"; x: number }
   | { type: "spike"; x: number };
 
+interface PatternProduceArgs {
+  beatIndex: number;
+  x: number;
+}
+
 interface PatternCapability {
   id: PatternId;
   minDifficulty: OfficialLevelDifficulty;
+  produce: (args: PatternProduceArgs) => LevelEntity;
   requiresIntensity: Intensity;
 }
 
@@ -60,9 +66,31 @@ const DIFFICULTY_RANK: Record<OfficialLevelDifficulty, number> = {
 };
 
 const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
-  { id: "spike", minDifficulty: "easy", requiresIntensity: "intense" },
-  { id: "pad", minDifficulty: "hard", requiresIntensity: "intense" },
+  {
+    id: "spike",
+    minDifficulty: "easy",
+    requiresIntensity: "intense",
+    produce: ({ x }) => ({ type: "spike", height: 30, width: 30, x, y: 270 }),
+  },
+  {
+    id: "pad",
+    minDifficulty: "hard",
+    requiresIntensity: "intense",
+    produce: ({ beatIndex, x }) => ({
+      type: "pad",
+      id: `generated-pad-${beatIndex}`,
+      impulse: 720,
+      height: 18,
+      width: 40,
+      x,
+      y: 290,
+    }),
+  },
 ];
+
+function findCapability(id: PatternId): PatternCapability | undefined {
+  return PATTERN_CAPABILITIES.find((capability) => capability.id === id);
+}
 
 export function permittedPatterns(
   intensity: Intensity,
@@ -124,24 +152,16 @@ export function generateLevel(input: GeneratorInput): LevelContent {
       random: rng(),
     });
 
-    if (selection.type === "spike") {
-      entities.push({
-        type: "spike",
-        height: 30,
-        width: 30,
-        x: selection.x,
-        y: 270,
-      });
-    } else if (selection.type === "pad") {
-      entities.push({
-        type: "pad",
-        id: `generated-pad-${index}`,
-        impulse: 720,
-        height: 18,
-        width: 40,
-        x: selection.x,
-        y: 290,
-      });
+    if (selection.type === "skip") {
+      continue;
+    }
+
+    const capability = findCapability(selection.type);
+
+    if (capability) {
+      entities.push(
+        capability.produce({ beatIndex: index, x: selection.x }),
+      );
     }
   }
 
