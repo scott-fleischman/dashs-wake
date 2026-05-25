@@ -97,6 +97,17 @@ interface LaunchLevelRunCallbacks {
   onReturnHome: () => void;
 }
 
+function buildLevelRunMetadata(
+  kicker: string,
+  name: string,
+): LevelRunMetadata {
+  return {
+    equippedIcon: equippedIconName(profile),
+    kicker,
+    name,
+  };
+}
+
 function launchLevelRun(
   content: LevelContent,
   metadata: LevelRunMetadata,
@@ -227,11 +238,7 @@ function renderRoute(): void {
 
     disposeView = launchLevelRun(
       content,
-      {
-        kicker: "Generated Level",
-        name: record.name,
-        equippedIcon: equippedIconName(profile),
-      },
+      buildLevelRunMetadata(`Generated Seed ${record.seed}`, record.name),
       {
         onAttemptResolved: () => {
           // Generated levels do not yet award progression.
@@ -296,11 +303,10 @@ function renderRoute(): void {
 
     disposeView = launchLevelRun(
       stageContent,
-      {
-        kicker: `${gauntlet.name} - Stage ${stageNumber} of ${totalStages}`,
-        name: gauntlet.name,
-        equippedIcon: equippedIconName(profile),
-      },
+      buildLevelRunMetadata(
+        `${gauntlet.name} - Stage ${stageNumber} of ${totalStages}`,
+        gauntlet.name,
+      ),
       {
         onAttemptResolved: (snapshot) => {
           if (!activeGauntletRun) {
@@ -355,11 +361,7 @@ function renderRoute(): void {
 
     disposeView = launchLevelRun(
       content,
-      {
-        kicker: levelKicker(levelId),
-        name: metadata.name,
-        equippedIcon: equippedIconName(profile),
-      },
+      buildLevelRunMetadata(levelKicker(levelId), metadata.name),
       {
         onAttemptResolved: (snapshot) => {
           profile = applyAttemptResult(profile, levelId, snapshot);
