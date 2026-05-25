@@ -33,12 +33,24 @@ export interface GapEntity {
   x: number;
 }
 
-export type LevelEntity = GapEntity | PlatformEntity | SpikeEntity;
+export type PlayerMode = "cube" | "ship";
+
+export interface PortalEntity extends RectangularEntity {
+  mode: PlayerMode;
+  type: "portal";
+}
+
+export type LevelEntity =
+  | GapEntity
+  | PlatformEntity
+  | PortalEntity
+  | SpikeEntity;
 export type DeathCause = "fall" | "spike";
 export type RunStatus = "dead" | "running";
 
 export interface PlayerState {
   grounded: boolean;
+  mode: PlayerMode;
   velocityY: number;
   x: number;
   y: number;
@@ -56,6 +68,7 @@ export function createRunState(rules: RunRules): RunState {
     elapsedMs: 0,
     player: {
       grounded: true,
+      mode: "cube",
       velocityY: 0,
       x: 0,
       y: rules.groundY,
@@ -140,6 +153,56 @@ function touchesSpike(
   );
 }
 
+function overlapsBox(
+  playerX: number,
+  playerY: number,
+  entity: RectangularEntity,
+  rules: RunRules,
+): boolean {
+  const playerTop = playerY - rules.playerHeight;
+  const playerBottom = playerY;
+
+  return (
+    overlapsHorizontally(playerX, entity, rules) &&
+    playerBottom > entity.y &&
+    playerTop < entity.y + entity.height
+  );
+}
+
+function computeNextVelocityY(
+  player: PlayerState,
+  input: RunInput,
+  elapsedSeconds: number,
+  rules: RunRules,
+): number {
+  if (player.mode === "ship") {
+    const acceleration = input.jumpPressed ? -rules.gravity : rules.gravity;
+    return player.velocityY + acceleration * elapsedSeconds;
+  }
+
+  const launchVelocity =
+    input.jumpPressed && player.grounded
+      ? rules.jumpVelocity
+      : player.velocityY;
+  return launchVelocity + rules.gravity * elapsedSeconds;
+}
+
+function resolvePortalMode(
+  currentMode: PlayerMode,
+  playerX: number,
+  playerY: number,
+  entities: readonly LevelEntity[],
+  rules: RunRules,
+): PlayerMode {
+  for (const entity of entities) {
+    if (entity.type === "portal" && overlapsBox(playerX, playerY, entity, rules)) {
+      return entity.mode;
+    }
+  }
+
+  return currentMode;
+}
+
 export function tickRun(
   state: RunState,
   input: RunInput,
@@ -156,11 +219,12 @@ export function tickRun(
   }
 
   const elapsedSeconds = elapsedMs / 1000;
-  const launchVelocity =
-    input.jumpPressed && state.player.grounded
-      ? rules.jumpVelocity
-      : state.player.velocityY;
-  const velocityY = launchVelocity + rules.gravity * elapsedSeconds;
+  const velocityY = computeNextVelocityY(
+    state.player,
+    input,
+    elapsedSeconds,
+    rules,
+  );
   const proposedX = state.player.x + rules.horizontalSpeed * elapsedSeconds;
   const proposedY = state.player.y + velocityY * elapsedSeconds;
   const landingY = resolveLandingY(
@@ -172,11 +236,20 @@ export function tickRun(
     rules,
   );
   const landed = landingY !== undefined;
+  const placedY = landed ? landingY : proposedY;
+  const nextMode = resolvePortalMode(
+    state.player.mode,
+    proposedX,
+    placedY,
+    entities,
+    rules,
+  );
   const player: PlayerState = {
     grounded: landed,
+    mode: nextMode,
     velocityY: landed ? 0 : velocityY,
     x: proposedX,
-    y: landed ? landingY : proposedY,
+    y: placedY,
   };
   const deathCause = entities.some(
     (entity) => entity.type === "spike" && touchesSpike(player, entity, rules),
