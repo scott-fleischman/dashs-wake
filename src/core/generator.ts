@@ -6,7 +6,10 @@ import {
 import type { LevelEntity } from "./run-simulation";
 import type { OfficialLevelDifficulty } from "../content/official-levels";
 
+export type Intensity = "intense" | "quiet";
+
 export interface GeneratorInput {
+  beatIntensities?: readonly Intensity[];
   beatMap: BeatMap;
   difficulty: OfficialLevelDifficulty;
   seed: number;
@@ -31,12 +34,56 @@ export interface BeatContext {
   beatMs: number;
   difficulty: OfficialLevelDifficulty;
   horizontalSpeed: number;
+  intensity: Intensity;
   random: number;
 }
 
-export type BeatSelection = { type: "skip" } | { type: "spike"; x: number };
+export type PatternId = "spike" | "pad";
+
+export type BeatSelection =
+  | { type: "skip" }
+  | { type: "pad"; x: number }
+  | { type: "spike"; x: number };
+
+interface PatternCapability {
+  id: PatternId;
+  minDifficulty: OfficialLevelDifficulty;
+  requiresIntensity: Intensity;
+}
+
+const DIFFICULTY_RANK: Record<OfficialLevelDifficulty, number> = {
+  easy: 0,
+  normal: 1,
+  hard: 2,
+  harder: 3,
+  insane: 4,
+};
+
+const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
+  { id: "spike", minDifficulty: "easy", requiresIntensity: "intense" },
+  { id: "pad", minDifficulty: "hard", requiresIntensity: "intense" },
+];
+
+export function permittedPatterns(
+  intensity: Intensity,
+  difficulty: OfficialLevelDifficulty,
+): readonly PatternId[] {
+  const rank = DIFFICULTY_RANK[difficulty];
+
+  return PATTERN_CAPABILITIES.filter(
+    (capability) =>
+      capability.requiresIntensity === intensity &&
+      DIFFICULTY_RANK[capability.minDifficulty] <= rank,
+  ).map((capability) => capability.id);
+}
 
 export function selectBeatPattern(context: BeatContext): BeatSelection {
+  const permitted = permittedPatterns(context.intensity, context.difficulty);
+
+  if (permitted.length === 0) {
+    return { type: "skip" };
+  }
+
   if (context.random >= PLACE_THRESHOLD) {
     return { type: "skip" };
   }
@@ -47,6 +94,17 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
     return { type: "skip" };
   }
 
+  const slotWidth = PLACE_THRESHOLD / permitted.length;
+  const idx = Math.min(
+    permitted.length - 1,
+    Math.floor(context.random / slotWidth),
+  );
+  const patternId = permitted[idx]!;
+
+  if (patternId === "pad") {
+    return { type: "pad", x };
+  }
+
   return { type: "spike", x };
 }
 
@@ -55,11 +113,14 @@ export function generateLevel(input: GeneratorInput): LevelContent {
   const rules = firstWakeLevel.rules;
   const entities: LevelEntity[] = [];
 
-  for (const beatMs of input.beatMap.beats) {
+  for (let index = 0; index < input.beatMap.beats.length; index += 1) {
+    const beatMs = input.beatMap.beats[index]!;
+    const intensity = input.beatIntensities?.[index] ?? "intense";
     const selection = selectBeatPattern({
       beatMs,
       difficulty: input.difficulty,
       horizontalSpeed: rules.horizontalSpeed,
+      intensity,
       random: rng(),
     });
 
@@ -70,6 +131,16 @@ export function generateLevel(input: GeneratorInput): LevelContent {
         width: 30,
         x: selection.x,
         y: 270,
+      });
+    } else if (selection.type === "pad") {
+      entities.push({
+        type: "pad",
+        id: `generated-pad-${index}`,
+        impulse: 720,
+        height: 18,
+        width: 40,
+        x: selection.x,
+        y: 290,
       });
     }
   }
