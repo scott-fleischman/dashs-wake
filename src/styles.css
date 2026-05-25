@@ -223,6 +223,12 @@ button {
   color: #19d9f3;
 }
 
+.level-stat.level-unlock-hint {
+  color: #ffc857;
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+
 .level-difficulty {
   color: #ffc857;
   font-size: 0.7rem;
