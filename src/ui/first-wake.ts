@@ -71,6 +71,10 @@ export function resultOverlayCopyForDeath(
   return deathCause === "fall" ? FALL_COPY : CRASH_COPY;
 }
 
+export function completionResultMessage(levelName: string): string {
+  return `${levelName} cleared at 100%.`;
+}
+
 export function mountFirstWake(
   root: HTMLElement,
   metadata: LevelRunMetadata,
@@ -162,6 +166,8 @@ export function mountFirstWake(
   const failedHeading = failedOverlay?.querySelector<HTMLElement>("h2") ?? null;
   const failedMessage = failedOverlay?.querySelector<HTMLElement>(".result-message") ?? null;
   const completeOverlay = root.querySelector<HTMLElement>("[aria-label='Level complete']");
+  const completeMessage =
+    completeOverlay?.querySelector<HTMLElement>(".result-message") ?? null;
   const restartButton = root.querySelector<HTMLButtonElement>("[data-action='restart']");
   const replayButton = root.querySelector<HTMLButtonElement>("[data-action='replay']");
   const failedLobbyButton = root.querySelector<HTMLButtonElement>("[data-action='failed-lobby']");
@@ -185,6 +191,7 @@ export function mountFirstWake(
     !failedHeading ||
     !failedMessage ||
     !completeOverlay ||
+    !completeMessage ||
     !restartButton ||
     !replayButton ||
     !failedLobbyButton ||
@@ -306,6 +313,7 @@ export function mountFirstWake(
     }
 
     if (snapshot.status === "complete") {
+      completeMessage.textContent = completionResultMessage(metadata.name);
       setFeedback(RUN_MESSAGES.courseComplete);
     }
   };
