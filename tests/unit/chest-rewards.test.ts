@@ -14,6 +14,14 @@ describe("chest rewards", () => {
     }
   });
 
+  it("offers a chest for every key type levels can award", () => {
+    const keyTypes = new Set(chestCatalog.map((chest) => chest.keyType));
+
+    for (const required of ["easy", "normal", "hard"]) {
+      expect(keyTypes.has(required)).toBe(true);
+    }
+  });
+
   it("consumes one key of the chest's type and grants the deterministic reward on first open", () => {
     const profile = {
       ...createProfile(),
