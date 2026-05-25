@@ -3,7 +3,7 @@ import { chestRewardSummary } from "../../src/ui/chest-room";
 
 describe("chest reward summary", () => {
   it("describes a coins-only reward", () => {
-    expect(chestRewardSummary({ coinsAwarded: 50 })).toBe("50 coins");
+    expect(chestRewardSummary({ coinsAwarded: 50 })).toBe("50 Coins");
   });
 
   it("describes a coins + cosmetic reward joined by a plus", () => {
@@ -12,7 +12,7 @@ describe("chest reward summary", () => {
         coinsAwarded: 120,
         cosmeticAwarded: "icon-spark",
       }),
-    ).toBe("120 coins + Spark");
+    ).toBe("120 Coins + Spark");
   });
 
   it("uses the cosmetic id when the catalog has no matching item", () => {
