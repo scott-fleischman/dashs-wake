@@ -3,6 +3,7 @@ import {
   firstWakeLevel,
   validateLevelReachability,
 } from "../../src/content/first-wake";
+import type { PortalEntity } from "../../src/core/run-simulation";
 
 const STARTER_MECHANIC_TYPES = new Set(["gap", "platform", "spike"]);
 
@@ -54,5 +55,71 @@ describe("First Wake content contract", () => {
 
     expect(result.ok).toBe(false);
     expect(result.issues.join(" ")).toMatch(/gap/i);
+  });
+
+  it("teaches ship mode with one ship portal followed by one cube portal", () => {
+    const portals = firstWakeLevel.entities.filter(
+      (entity): entity is PortalEntity => entity.type === "portal",
+    );
+    const shipPortals = portals.filter((portal) => portal.mode === "ship");
+    const cubePortals = portals.filter((portal) => portal.mode === "cube");
+
+    expect(shipPortals).toHaveLength(1);
+    expect(cubePortals).toHaveLength(1);
+    expect(shipPortals[0]!.x).toBeLessThan(cubePortals[0]!.x);
+  });
+
+  it("authors a wide, safe ship corridor without hazards between its portals", () => {
+    const portals = firstWakeLevel.entities.filter(
+      (entity): entity is PortalEntity => entity.type === "portal",
+    );
+    const shipPortal = portals.find((portal) => portal.mode === "ship");
+    const cubePortal = portals.find((portal) => portal.mode === "cube");
+
+    expect(shipPortal).toBeDefined();
+    expect(cubePortal).toBeDefined();
+
+    const corridorWidth = cubePortal!.x - shipPortal!.x;
+    const minCorridorWidth = 5 * firstWakeLevel.rules.playerWidth;
+    expect(corridorWidth).toBeGreaterThanOrEqual(minCorridorWidth);
+
+    const hazardsInCorridor = firstWakeLevel.entities.filter(
+      (entity) =>
+        (entity.type === "spike" || entity.type === "gap") &&
+        entity.x + entity.width > shipPortal!.x &&
+        entity.x < cubePortal!.x,
+    );
+    expect(hazardsInCorridor).toEqual([]);
+  });
+
+  it("flags a ship corridor whose width is too tight for safe ship play", () => {
+    const minCorridorWidth = 5 * firstWakeLevel.rules.playerWidth;
+
+    const tightCorridor = {
+      ...firstWakeLevel,
+      entities: [
+        ...firstWakeLevel.entities,
+        {
+          type: "portal" as const,
+          mode: "ship" as const,
+          height: 80,
+          width: 12,
+          x: 80,
+          y: 240,
+        },
+        {
+          type: "portal" as const,
+          mode: "cube" as const,
+          height: 80,
+          width: 12,
+          x: 80 + Math.floor(minCorridorWidth / 3),
+          y: 240,
+        },
+      ],
+    };
+
+    const result = validateLevelReachability(tightCorridor);
+    expect(result.ok).toBe(false);
+    expect(result.issues.join(" ")).toMatch(/ship corridor/i);
   });
 });
