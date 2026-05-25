@@ -6,6 +6,7 @@ import {
 import { cosmeticCatalog } from "../core/inventory";
 import { describeKeySource } from "../core/key-sources";
 import type { PlayerProfile } from "../core/profile";
+import { formatRewardSummary } from "../core/reward-summary";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
 interface ChestRoomActions {
@@ -14,17 +15,12 @@ interface ChestRoomActions {
 }
 
 export function chestRewardSummary(reward: ChestReward): string {
-  const parts: string[] = [];
-  if (reward.coinsAwarded && reward.coinsAwarded > 0) {
-    parts.push(`${reward.coinsAwarded} Coins`);
-  }
-  if (reward.cosmeticAwarded) {
-    const item = cosmeticCatalog.find(
-      (entry) => entry.id === reward.cosmeticAwarded,
-    );
-    parts.push(item?.name ?? reward.cosmeticAwarded);
-  }
-  return parts.join(" + ");
+  return formatRewardSummary({
+    coinsAwarded: reward.coinsAwarded,
+    cosmeticsAwarded: reward.cosmeticAwarded
+      ? [reward.cosmeticAwarded]
+      : undefined,
+  });
 }
 
 function capitalize(text: string): string {
