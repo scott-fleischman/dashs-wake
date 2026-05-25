@@ -16,9 +16,15 @@ interface LevelRunActions {
 }
 
 const JUMP_KEYS = new Set(["Space", "ArrowUp"]);
-const MODE_LABELS: Record<LevelSnapshot["mode"], string> = {
-  cube: "Cube",
-  ship: "Ship",
+
+interface ModeCue {
+  hint: string;
+  label: string;
+}
+
+const MODE_CUES: Record<LevelSnapshot["mode"], ModeCue> = {
+  cube: { label: "Cube", hint: "Tap to jump" },
+  ship: { label: "Ship", hint: "Hold to rise" },
 };
 
 export function mountFirstWake(
@@ -39,6 +45,7 @@ export function mountFirstWake(
         <strong class="hud-value" data-testid="run-progress">0%</strong>
         <p class="attempt-count" data-testid="attempt-count">Attempt 1</p>
         <p class="run-mode" data-testid="run-mode">Cube</p>
+        <p class="run-cue" data-testid="run-cue">Tap to jump</p>
       </section>
 
       <section class="input-deck" aria-label="First Wake controls">
@@ -96,6 +103,7 @@ export function mountFirstWake(
   const progress = root.querySelector<HTMLElement>("[data-testid='run-progress']");
   const attempts = root.querySelector<HTMLElement>("[data-testid='attempt-count']");
   const modeReadout = root.querySelector<HTMLElement>("[data-testid='run-mode']");
+  const cueReadout = root.querySelector<HTMLElement>("[data-testid='run-cue']");
   const pulseButton = root.querySelector<HTMLButtonElement>("[data-action='pulse']");
   const pauseButton = root.querySelector<HTMLButtonElement>("[data-action='pause']");
   const resumeButton = root.querySelector<HTMLButtonElement>("[data-action='resume']");
@@ -116,6 +124,7 @@ export function mountFirstWake(
     !progress ||
     !attempts ||
     !modeReadout ||
+    !cueReadout ||
     !pulseButton ||
     !pauseButton ||
     !resumeButton ||
@@ -215,7 +224,9 @@ export function mountFirstWake(
     runStatus = snapshot.status;
     progress.textContent = `${snapshot.percent}%`;
     attempts.textContent = `Attempt ${snapshot.attempt}`;
-    modeReadout.textContent = MODE_LABELS[snapshot.mode];
+    const cue = MODE_CUES[snapshot.mode];
+    modeReadout.textContent = cue.label;
+    cueReadout.textContent = cue.hint;
     failedOverlay.hidden = snapshot.status !== "dead";
     completeOverlay.hidden = snapshot.status !== "complete";
     pulseButton.disabled = snapshot.status !== "running";

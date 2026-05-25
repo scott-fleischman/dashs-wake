@@ -337,7 +337,8 @@ button {
 
 .hud-label,
 .attempt-count,
-.run-mode {
+.run-mode,
+.run-cue {
   color: #84a8bb;
   font-size: 0.69rem;
   font-weight: 700;
@@ -353,13 +354,20 @@ button {
 }
 
 .attempt-count,
-.run-mode {
+.run-mode,
+.run-cue {
   border-left: 1px solid rgba(142, 170, 189, 0.3);
   padding-left: 0.8rem;
 }
 
 .run-mode {
   color: #ffc857;
+}
+
+.run-cue {
+  color: #6cf2c5;
+  text-transform: none;
+  letter-spacing: 0.06em;
 }
 
 .input-deck {
