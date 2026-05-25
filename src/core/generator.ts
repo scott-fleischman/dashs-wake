@@ -12,9 +12,9 @@ export interface GeneratorInput {
   seed: number;
 }
 
-type RandomSource = () => number;
+export type RandomSource = () => number;
 
-function mulberry32(seed: number): RandomSource {
+export function mulberry32(seed: number): RandomSource {
   let t = seed | 0;
   return () => {
     t = (t + 0x6d2b79f5) | 0;
@@ -27,31 +27,51 @@ function mulberry32(seed: number): RandomSource {
 const PLACE_THRESHOLD = 0.4;
 const FINISH_TAIL = 200;
 
+export interface BeatContext {
+  beatMs: number;
+  difficulty: OfficialLevelDifficulty;
+  horizontalSpeed: number;
+  random: number;
+}
+
+export type BeatSelection = { type: "skip" } | { type: "spike"; x: number };
+
+export function selectBeatPattern(context: BeatContext): BeatSelection {
+  if (context.random >= PLACE_THRESHOLD) {
+    return { type: "skip" };
+  }
+
+  const x = Math.round((context.beatMs / 1000) * context.horizontalSpeed);
+
+  if (x === 0) {
+    return { type: "skip" };
+  }
+
+  return { type: "spike", x };
+}
+
 export function generateLevel(input: GeneratorInput): LevelContent {
   const rng = mulberry32(input.seed);
   const rules = firstWakeLevel.rules;
   const entities: LevelEntity[] = [];
 
   for (const beatMs of input.beatMap.beats) {
-    const placeRoll = rng();
-
-    if (placeRoll >= PLACE_THRESHOLD) {
-      continue;
-    }
-
-    const x = Math.round((beatMs / 1000) * rules.horizontalSpeed);
-
-    if (x === 0) {
-      continue;
-    }
-
-    entities.push({
-      type: "spike",
-      height: 30,
-      width: 30,
-      x,
-      y: 270,
+    const selection = selectBeatPattern({
+      beatMs,
+      difficulty: input.difficulty,
+      horizontalSpeed: rules.horizontalSpeed,
+      random: rng(),
     });
+
+    if (selection.type === "spike") {
+      entities.push({
+        type: "spike",
+        height: 30,
+        width: 30,
+        x: selection.x,
+        y: 270,
+      });
+    }
   }
 
   const finishX =
