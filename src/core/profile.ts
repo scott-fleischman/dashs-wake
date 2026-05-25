@@ -7,6 +7,7 @@ export interface GeneratedLevelRecord {
   id: string;
   name: string;
   seed: number;
+  synced?: boolean;
 }
 
 export interface PlayerProfile {

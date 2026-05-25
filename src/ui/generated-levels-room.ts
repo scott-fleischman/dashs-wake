@@ -72,19 +72,25 @@ export function mountGeneratedLevelsRoom(
     for (const record of profile.generatedLevels) {
       const testId = safeTestId(record.id);
       const isAudio = record.audioFileName !== undefined;
+      const isSynced = isAudio && record.synced !== false;
       const displayName = isAudio
         ? `${record.audioFileName} (Audio)`
         : record.name;
+      const audioStatusLabel = isSynced ? "Synced" : "Not synced";
       list.appendChild(
         buildRoomRow({
           actionDisabled: false,
           actionLabel: "Play",
           actionTestId: `${testId}-play`,
-          detail: isAudio ? "Synchronized" : `Seed ${record.seed}`,
+          detail: isAudio
+            ? isSynced
+              ? "Synchronized"
+              : "Placeholder beats"
+            : `Seed ${record.seed}`,
           name: displayName,
           nameTestId: isAudio ? `${testId}-name` : undefined,
           onAction: () => actions.onPlay(record.id),
-          statusLabel: isAudio ? "Imported" : "Generated",
+          statusLabel: isAudio ? audioStatusLabel : "Generated",
           statusTestId: `${testId}-status`,
           statusVisible: true,
         }),
@@ -128,6 +134,7 @@ export function buildAudioDerivedLevel(
   analyzed?: AnalyzedAudio | null,
 ): GeneratedLevelRecord {
   const seed = 2000 + index;
+  const synced = analyzed != null;
   const beats = analyzed?.beats ?? PLACEHOLDER_BEATS;
   const durationMs = analyzed?.durationMs ?? PLACEHOLDER_DURATION_MS;
   const beatIntensities =
@@ -141,5 +148,6 @@ export function buildAudioDerivedLevel(
     id: `audio-derived-level-${index}`,
     name: fileName,
     seed,
+    synced,
   };
 }
