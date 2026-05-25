@@ -43,7 +43,9 @@ test("completing a level updates lobby status, unlocks, and coins", async ({
 
   await expect(page.getByTestId("level-1-status")).toHaveText("Complete");
   await expect(page.getByTestId("level-1-best-percent")).toHaveText("100%");
+  await expect(page.getByTestId("level-1-play")).toHaveText("Replay");
   await expect(page.getByTestId("level-2-status")).toHaveText("Unlocked");
+  await expect(page.getByTestId("level-2-play")).toHaveText("Play");
   await expect(page.getByTestId("profile-coins")).toHaveText("100 Coins");
   await expect(page.getByTestId("profile-keys-easy")).toHaveText("1 Easy Key");
 
@@ -51,6 +53,7 @@ test("completing a level updates lobby status, unlocks, and coins", async ({
 
   await expect(page.getByTestId("level-1-status")).toHaveText("Complete");
   await expect(page.getByTestId("level-1-best-percent")).toHaveText("100%");
+  await expect(page.getByTestId("level-1-play")).toHaveText("Replay");
   await expect(page.getByTestId("level-2-status")).toHaveText("Unlocked");
   await expect(page.getByTestId("profile-coins")).toHaveText("100 Coins");
   await expect(page.getByTestId("profile-keys-easy")).toHaveText("1 Easy Key");
