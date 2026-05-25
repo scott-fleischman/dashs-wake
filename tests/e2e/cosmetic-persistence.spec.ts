@@ -21,6 +21,10 @@ test("equipped cosmetic survives a page reload and reaches the level HUD", async
   await expect(page.getByTestId("cosmetic-icon-spark-equipped")).toBeVisible();
   await page.getByTestId("room-back").click();
 
+  await expect(page.getByTestId("profile-equipped-icon")).toContainText(
+    "Spark",
+  );
+
   await page.getByTestId("level-1-play").click();
   await expect(page.getByTestId("equipped-icon")).toHaveText("Spark");
 });
