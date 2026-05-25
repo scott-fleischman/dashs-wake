@@ -223,6 +223,35 @@ describe("launch pad impulses", () => {
     expect(after.consumedTriggerIds.has("pad-a")).toBe(true);
   });
 
+  it("applies the strongest impulse when cube jump and pad would fire together", () => {
+    const pad: LevelEntity = {
+      type: "pad",
+      id: "pad-strong",
+      impulse: 30,
+      height: 10,
+      width: 6,
+      x: 5,
+      y: 95,
+    };
+    const onPadGrounded: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: { grounded: true, mode: "cube", velocityY: 0, x: 8, y: 100 },
+      status: "running",
+    };
+
+    const after = tickRun(
+      onPadGrounded,
+      { jumpPressed: true },
+      100,
+      rules,
+      [pad],
+    );
+
+    expect(after.player.velocityY).toBeCloseTo(-pad.impulse + rules.gravity * 0.1);
+    expect(after.consumedTriggerIds.has("pad-strong")).toBe(true);
+  });
+
   it("does not re-apply a pad's impulse while the player remains in contact", () => {
     const pad: LevelEntity = {
       type: "pad",
