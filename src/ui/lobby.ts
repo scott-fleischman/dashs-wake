@@ -44,6 +44,10 @@ function level2StatusText(profile: PlayerProfile): string {
   return profile.unlockedLevels.includes("level_2") ? "Unlocked" : "Locked";
 }
 
+function level3StatusText(profile: PlayerProfile): string {
+  return profile.unlockedLevels.includes("level_3") ? "Unlocked" : "Locked";
+}
+
 function renderProfileStats(profile: PlayerProfile): string {
   const easyKeys = profile.keys["easy"] ?? 0;
   const keysHtml =
@@ -61,6 +65,7 @@ function renderProfileStats(profile: PlayerProfile): string {
 
 function renderLevelList(profile: PlayerProfile): string {
   const level2Unlocked = profile.unlockedLevels.includes("level_2");
+  const level3Unlocked = profile.unlockedLevels.includes("level_3");
   return `
     <div class="level-list" aria-label="Level select">
       <div class="level-card">
@@ -84,6 +89,17 @@ function renderLevelList(profile: PlayerProfile): string {
         </div>
         <button class="play-button" type="button" data-testid="level-2-play" data-action="play" data-level-id="level_2" ${level2Unlocked ? "" : "disabled"}>
           <span>${level2Unlocked ? "Play" : "Locked"}</span>
+        </button>
+      </div>
+
+      <div class="level-card ${level3Unlocked ? "" : "level-locked"}">
+        <div class="level-card-info">
+          <p class="level-kicker">Official Level 03</p>
+          <h2 class="level-title">Orbital Loop</h2>
+          <p class="level-stat" data-testid="level-3-status">${level3StatusText(profile)}</p>
+        </div>
+        <button class="play-button" type="button" data-testid="level-3-play" data-action="play" data-level-id="level_3" ${level3Unlocked ? "" : "disabled"}>
+          <span>${level3Unlocked ? "Play" : "Locked"}</span>
         </button>
       </div>
     </div>

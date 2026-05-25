@@ -115,6 +115,11 @@ const PAD_STYLE = {
   stroke: 0xfff3c4,
 };
 
+const ORB_STYLE = {
+  fill: 0xff7adf,
+  stroke: 0xffd6f4,
+};
+
 function playerFillFor(status: LevelSnapshot["status"]): number {
   return status === "dead" ? PLAYER_STYLE.fillDead : PLAYER_STYLE.fillRunning;
 }
@@ -344,6 +349,25 @@ class LevelScene extends Phaser.Scene {
       pads.lineBetween(entity.x + 6, y + 2, entity.x + entity.width - 6, y + 2);
     }
     this.courseLayer.add(pads);
+
+    const orbs = this.add.graphics();
+    for (const entity of entities) {
+      if (entity.type !== "orb") {
+        continue;
+      }
+
+      const centerX = entity.x + entity.width / 2;
+      const centerY = this.floorY + entity.y - rules.groundY + entity.height / 2;
+      const radius = Math.min(entity.width, entity.height) / 2;
+
+      orbs.fillStyle(ORB_STYLE.fill, 0.55);
+      orbs.fillCircle(centerX, centerY, radius);
+      orbs.lineStyle(2, ORB_STYLE.stroke, 0.95);
+      orbs.strokeCircle(centerX, centerY, radius);
+      orbs.lineStyle(2, ORB_STYLE.stroke, 0.45);
+      orbs.strokeCircle(centerX, centerY, radius + 5);
+    }
+    this.courseLayer.add(orbs);
 
     const finishGate = this.add.graphics();
     finishGate.lineStyle(4, 0x19d9f3, 0.85);
