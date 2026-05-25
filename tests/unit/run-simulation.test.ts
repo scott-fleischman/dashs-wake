@@ -114,3 +114,82 @@ describe("cube run simulation", () => {
     expect(resetRunState(dead, rules)).toEqual(createRunState(rules));
   });
 });
+
+describe("ship mode portals and motion", () => {
+  it("starts a new run in cube mode", () => {
+    const state = createRunState(rules);
+
+    expect(state.player.mode).toBe("cube");
+  });
+
+  it("switches to ship mode when the player traverses a ship portal", () => {
+    const shipPortal: LevelEntity = {
+      type: "portal",
+      mode: "ship",
+      height: 20,
+      width: 4,
+      x: 4,
+      y: 90,
+    };
+
+    let state = createRunState(rules);
+    for (let frame = 0; frame < 5; frame += 1) {
+      state = tickRun(state, { jumpPressed: false }, 100, rules, [shipPortal]);
+    }
+
+    expect(state.player.mode).toBe("ship");
+  });
+
+  it("rises while jump is held in ship mode and falls when released", () => {
+    const flying: RunState = {
+      elapsedMs: 0,
+      player: {
+        grounded: false,
+        mode: "ship",
+        velocityY: 0,
+        x: 50,
+        y: 50,
+      },
+      status: "running",
+    };
+
+    const held = tickRun(flying, { jumpPressed: true }, 100, rules);
+
+    expect(held.player.velocityY).toBeLessThan(0);
+    expect(held.player.y).toBeLessThan(flying.player.y);
+    expect(held.player.mode).toBe("ship");
+
+    const released = tickRun(held, { jumpPressed: false }, 100, rules);
+
+    expect(released.player.velocityY).toBeGreaterThan(held.player.velocityY);
+  });
+
+  it("returns to cube mode when the ship traverses a cube portal", () => {
+    const cubePortal: LevelEntity = {
+      type: "portal",
+      mode: "cube",
+      height: 20,
+      width: 4,
+      x: 4,
+      y: 40,
+    };
+
+    let state: RunState = {
+      elapsedMs: 0,
+      player: {
+        grounded: false,
+        mode: "ship",
+        velocityY: 0,
+        x: 0,
+        y: 50,
+      },
+      status: "running",
+    };
+
+    for (let frame = 0; frame < 5; frame += 1) {
+      state = tickRun(state, { jumpPressed: false }, 100, rules, [cubePortal]);
+    }
+
+    expect(state.player.mode).toBe("cube");
+  });
+});
