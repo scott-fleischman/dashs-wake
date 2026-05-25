@@ -3,7 +3,15 @@ import {
   type BeatMap,
   type LevelContent,
 } from "../content/first-wake";
-import type { LevelEntity } from "./run-simulation";
+import {
+  createRunState,
+  tickRun,
+  type LevelEntity,
+  type OrbEntity,
+  type PlayerState,
+  type RunRules,
+  type RunState,
+} from "./run-simulation";
 import type { OfficialLevelDifficulty } from "../content/official-levels";
 
 export type Intensity = "intense" | "quiet";
@@ -175,4 +183,138 @@ export function generateLevel(input: GeneratorInput): LevelContent {
     finishX,
     rules,
   };
+}
+
+const AI_TICK_MS = 1000 / 60;
+const AI_MAX_TICKS = 1500;
+const AI_PRE_JUMP_DISTANCE = 40;
+
+function aiOrbOverlap(
+  player: PlayerState,
+  entities: readonly LevelEntity[],
+  rules: RunRules,
+): OrbEntity | undefined {
+  const playerLeft = player.x - rules.playerWidth / 2;
+  const playerRight = player.x + rules.playerWidth / 2;
+  const playerTop = player.y - rules.playerHeight;
+  const playerBottom = player.y;
+
+  for (const entity of entities) {
+    if (entity.type !== "orb") {
+      continue;
+    }
+    if (
+      playerRight > entity.x &&
+      playerLeft < entity.x + entity.width &&
+      playerBottom > entity.y &&
+      playerTop < entity.y + entity.height
+    ) {
+      return entity;
+    }
+  }
+
+  return undefined;
+}
+
+function decideAiInput(
+  state: RunState,
+  entities: readonly LevelEntity[],
+  rules: RunRules,
+): boolean {
+  if (state.player.mode === "ship") {
+    return false;
+  }
+
+  const overlappingOrb = aiOrbOverlap(state.player, entities, rules);
+
+  if (overlappingOrb && overlappingOrb.effect.kind === "impulse") {
+    return !state.consumedTriggerIds.has(overlappingOrb.id);
+  }
+
+  if (overlappingOrb && overlappingOrb.effect.kind === "kill") {
+    return false;
+  }
+
+  if (!state.player.grounded) {
+    return false;
+  }
+
+  for (const entity of entities) {
+    if (entity.type !== "spike") {
+      continue;
+    }
+    const distance = entity.x - state.player.x;
+    if (distance > 0 && distance < AI_PRE_JUMP_DISTANCE) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export interface PlayabilityValidationResult {
+  issues: readonly string[];
+  ok: boolean;
+}
+
+export function validateGeneratedPlayability(
+  level: LevelContent,
+): PlayabilityValidationResult {
+  const issues: string[] = [];
+  let state = createRunState(level.rules);
+
+  for (let tick = 0; tick < AI_MAX_TICKS; tick += 1) {
+    if (state.status === "dead") {
+      issues.push(
+        `Generated level: conservative AI died at x=${Math.round(state.player.x)} (${state.deathCause ?? "unknown"}).`,
+      );
+      return { issues, ok: false };
+    }
+
+    if (state.player.x >= level.finishX) {
+      return { issues, ok: true };
+    }
+
+    const jumpPressed = decideAiInput(state, level.entities, level.rules);
+    state = tickRun(
+      state,
+      { jumpPressed },
+      AI_TICK_MS,
+      level.rules,
+      level.entities,
+    );
+  }
+
+  issues.push(
+    `Generated level: conservative AI did not reach finish within ${AI_MAX_TICKS} ticks (stopped at x=${Math.round(state.player.x)}).`,
+  );
+  return { issues, ok: false };
+}
+
+export interface GenerateValidLevelResult {
+  attempts: number;
+  issues: readonly string[];
+  level: LevelContent | null;
+}
+
+export function generateValidLevel(
+  input: GeneratorInput,
+  maxRetries: number,
+): GenerateValidLevelResult {
+  let lastIssues: readonly string[] = [];
+  let seed = input.seed;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+    const level = generateLevel({ ...input, seed });
+    const result = validateGeneratedPlayability(level);
+
+    if (result.ok) {
+      return { attempts: attempt, issues: [], level };
+    }
+
+    lastIssues = result.issues;
+    seed = (seed + 1) | 0;
+  }
+
+  return { attempts: maxRetries, issues: lastIssues, level: null };
 }
