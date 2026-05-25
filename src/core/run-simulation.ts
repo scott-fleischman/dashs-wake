@@ -171,13 +171,8 @@ type VelocityStrategy = (
 ) => number;
 
 const VELOCITY_STRATEGIES: Record<PlayerMode, VelocityStrategy> = {
-  cube: (player, input, elapsedSeconds, rules) => {
-    const launchVelocity =
-      input.jumpPressed && player.grounded
-        ? rules.jumpVelocity
-        : player.velocityY;
-    return launchVelocity + rules.gravity * elapsedSeconds;
-  },
+  cube: (player, _input, elapsedSeconds, rules) =>
+    player.velocityY + rules.gravity * elapsedSeconds,
   ship: (player, input, elapsedSeconds, rules) => {
     const acceleration = input.jumpPressed ? -rules.gravity : rules.gravity;
     return player.velocityY + acceleration * elapsedSeconds;
@@ -191,6 +186,46 @@ function computeNextVelocityY(
   rules: RunRules,
 ): number {
   return VELOCITY_STRATEGIES[player.mode](player, input, elapsedSeconds, rules);
+}
+
+interface UpwardImpulse {
+  magnitude: number;
+}
+
+function gatherImpulses(
+  state: RunState,
+  input: RunInput,
+  activatablePads: readonly PadEntity[],
+  rules: RunRules,
+): readonly UpwardImpulse[] {
+  const impulses: UpwardImpulse[] = activatablePads.map((pad) => ({
+    magnitude: pad.impulse,
+  }));
+
+  if (
+    state.player.mode === "cube" &&
+    state.player.grounded &&
+    input.jumpPressed
+  ) {
+    impulses.push({ magnitude: Math.abs(rules.jumpVelocity) });
+  }
+
+  return impulses;
+}
+
+function applyStrongestImpulse(
+  player: PlayerState,
+  impulses: readonly UpwardImpulse[],
+): PlayerState {
+  if (impulses.length === 0) {
+    return player;
+  }
+
+  const strongest = impulses.reduce((a, b) =>
+    a.magnitude >= b.magnitude ? a : b,
+  );
+
+  return { ...player, grounded: false, velocityY: -strongest.magnitude };
 }
 
 function resolvePortalMode(
@@ -248,14 +283,8 @@ export function tickRun(
     entities,
     rules,
   );
-  const padImpulse =
-    activatablePads.length > 0
-      ? Math.max(...activatablePads.map((pad) => pad.impulse))
-      : 0;
-  const playerForVelocity: PlayerState =
-    padImpulse > 0
-      ? { ...state.player, grounded: false, velocityY: -padImpulse }
-      : state.player;
+  const impulses = gatherImpulses(state, input, activatablePads, rules);
+  const playerForVelocity = applyStrongestImpulse(state.player, impulses);
   const velocityY = computeNextVelocityY(
     playerForVelocity,
     input,
