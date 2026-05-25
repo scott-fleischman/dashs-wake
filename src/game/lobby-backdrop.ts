@@ -100,6 +100,34 @@ const FIRST_WAKE_ENTITIES = firstWakeLevel.entities;
 const FIRST_WAKE_FINISH_X = firstWakeLevel.finishX;
 const SIMULATION_STEP_MS = 1000 / 60;
 
+const PLAYER_STYLE = {
+  fillRunning: 0x19d9f3,
+  fillDead: 0xff437d,
+  stroke: 0xecfcff,
+  strokeAlpha: 0.85,
+  strokeWidth: 3,
+} as const;
+
+const PORTAL_STYLE: Record<"cube" | "ship", number> = {
+  cube: 0x6cf2c5,
+  ship: 0xffc857,
+};
+
+function playerFillFor(status: FirstWakeSnapshot["status"]): number {
+  return status === "dead" ? PLAYER_STYLE.fillDead : PLAYER_STYLE.fillRunning;
+}
+
+function applyPlayerStrokeStyle<
+  T extends Phaser.GameObjects.Rectangle | Phaser.GameObjects.Triangle,
+>(shape: T): T {
+  shape.setStrokeStyle(
+    PLAYER_STYLE.strokeWidth,
+    PLAYER_STYLE.stroke,
+    PLAYER_STYLE.strokeAlpha,
+  );
+  return shape;
+}
+
 class FirstWakeScene extends Phaser.Scene {
   private accumulator = 0;
   private attempt = 1;
@@ -277,7 +305,7 @@ class FirstWakeScene extends Phaser.Scene {
       }
 
       const y = this.floorY + entity.y - FIRST_WAKE_RULES.groundY;
-      const portalColor = entity.mode === "ship" ? 0xffc857 : 0x6cf2c5;
+      const portalColor = PORTAL_STYLE[entity.mode];
       portals.fillStyle(portalColor, 0.18);
       portals.fillRect(entity.x, y, entity.width, entity.height);
       portals.lineStyle(3, portalColor, 0.95);
@@ -304,19 +332,20 @@ class FirstWakeScene extends Phaser.Scene {
     const playerScreenY = this.floorY - FIRST_WAKE_RULES.playerHeight / 2;
     const halfWidth = FIRST_WAKE_RULES.playerWidth / 2;
     const halfHeight = FIRST_WAKE_RULES.playerHeight / 2;
+    const initialFill = playerFillFor(this.status);
 
-    this.playerCube = this.add
-      .rectangle(
+    this.playerCube = applyPlayerStrokeStyle(
+      this.add.rectangle(
         playerScreenX,
         playerScreenY,
         FIRST_WAKE_RULES.playerWidth,
         FIRST_WAKE_RULES.playerHeight,
-        0x19d9f3,
-      )
-      .setStrokeStyle(3, 0xecfcff, 0.85);
+        initialFill,
+      ),
+    );
 
-    this.playerShip = this.add
-      .triangle(
+    this.playerShip = applyPlayerStrokeStyle(
+      this.add.triangle(
         playerScreenX,
         playerScreenY,
         -halfWidth,
@@ -325,13 +354,19 @@ class FirstWakeScene extends Phaser.Scene {
         0,
         -halfWidth,
         halfHeight,
-        0x19d9f3,
-      )
-      .setStrokeStyle(3, 0xecfcff, 0.85)
-      .setVisible(false);
+        initialFill,
+      ),
+    ).setVisible(false);
 
     this.add
-      .rectangle(playerScreenX, this.floorY + 2, 80, 3, 0x19d9f3, 0.28)
+      .rectangle(
+        playerScreenX,
+        this.floorY + 2,
+        80,
+        3,
+        PLAYER_STYLE.fillRunning,
+        0.28,
+      )
       .setOrigin(0.5, 0);
 
     this.updatePresentation();
@@ -345,7 +380,7 @@ class FirstWakeScene extends Phaser.Scene {
       FIRST_WAKE_RULES.groundY -
       FIRST_WAKE_RULES.playerHeight / 2;
     const isShip = this.state.player.mode === "ship";
-    const fillColor = this.status === "dead" ? 0xff437d : 0x19d9f3;
+    const fillColor = playerFillFor(this.status);
 
     this.courseLayer?.setX(playerScreenX - this.state.player.x);
     this.playerCube
