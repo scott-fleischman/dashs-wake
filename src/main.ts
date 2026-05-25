@@ -399,11 +399,15 @@ function renderRoute(): void {
             pendingGauntletCompletion = gauntletId;
             activeGauntletRun = null;
             setTimeout(() => {
-              window.location.hash = "#gauntlets";
+              if (window.location.hash.startsWith("#gauntlet/")) {
+                window.location.hash = "#gauntlets";
+              }
             }, 0);
           } else if (activeGauntletRun.status === "running") {
             setTimeout(() => {
-              renderRoute();
+              if (window.location.hash.startsWith("#gauntlet/")) {
+                renderRoute();
+              }
             }, 0);
           }
         },
