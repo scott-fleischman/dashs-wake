@@ -1,4 +1,45 @@
+import {
+  officialLevelCatalog,
+  type OfficialLevelDifficulty,
+  type OfficialLevelMetadata,
+} from "../content/official-levels";
 import type { PlayerProfile } from "../core/profile";
+
+const DIFFICULTY_LABELS: Record<OfficialLevelDifficulty, string> = {
+  easy: "Easy",
+  normal: "Normal",
+  hard: "Hard",
+  harder: "Harder",
+  insane: "Insane",
+};
+
+function testIdFor(levelId: string): string {
+  return levelId.replace(/_/g, "-");
+}
+
+function kickerFor(index: number): string {
+  return `Official Level ${String(index + 1).padStart(2, "0")}`;
+}
+
+function isLevelUnlocked(
+  metadata: OfficialLevelMetadata,
+  profile: PlayerProfile,
+): boolean {
+  if (metadata.unlockedBy === null) {
+    return true;
+  }
+  return profile.unlockedLevels.includes(metadata.id);
+}
+
+function levelStatusText(
+  metadata: OfficialLevelMetadata,
+  profile: PlayerProfile,
+): string {
+  if (profile.completedLevels.includes(metadata.id)) {
+    return "Complete";
+  }
+  return isLevelUnlocked(metadata, profile) ? "Unlocked" : "Locked";
+}
 
 const futureDestinations = [
   "Generated Levels",
@@ -26,26 +67,37 @@ function keysText(count: number): string {
   return `${count} Easy Key${count === 1 ? "" : "s"}`;
 }
 
-function renderLevel1Status(profile: PlayerProfile): string {
-  const completed = profile.completedLevels.includes("level_1");
-  const hidden = completed ? "" : "hidden";
-  const text = completed ? "Complete" : "";
-  return `<p class="level-stat" data-testid="level-1-status" ${hidden}>${text}</p>`;
-}
+function renderLevelCard(
+  metadata: OfficialLevelMetadata,
+  index: number,
+  profile: PlayerProfile,
+): string {
+  const testId = testIdFor(metadata.id);
+  const unlocked = isLevelUnlocked(metadata, profile);
+  const status = levelStatusText(metadata, profile);
+  const difficulty = DIFFICULTY_LABELS[metadata.difficulty];
+  const kicker = kickerFor(index);
+  const best = profile.bestPercents[metadata.id];
+  const bestHidden = best === undefined ? "hidden" : "";
+  const bestText = best === undefined ? "" : `${best}%`;
+  const buttonLabel = unlocked ? "Play" : "Locked";
+  const buttonDisabledAttr = unlocked ? "" : "disabled";
+  const cardClasses = unlocked ? "level-card" : "level-card level-locked";
 
-function renderLevel1BestPercent(profile: PlayerProfile): string {
-  const best = profile.bestPercents["level_1"];
-  const hidden = best === undefined ? "hidden" : "";
-  const text = best === undefined ? "" : `${best}%`;
-  return `<p class="level-stat level-best" data-testid="level-1-best-percent" ${hidden}>${text}</p>`;
-}
-
-function level2StatusText(profile: PlayerProfile): string {
-  return profile.unlockedLevels.includes("level_2") ? "Unlocked" : "Locked";
-}
-
-function level3StatusText(profile: PlayerProfile): string {
-  return profile.unlockedLevels.includes("level_3") ? "Unlocked" : "Locked";
+  return `
+    <div class="${cardClasses}">
+      <div class="level-card-info">
+        <p class="level-kicker">${kicker}</p>
+        <h2 class="level-title">${metadata.name}</h2>
+        <p class="level-stat" data-testid="${testId}-status">${status}</p>
+        <p class="level-difficulty" data-testid="${testId}-difficulty">${difficulty}</p>
+        <p class="level-stat level-best" data-testid="${testId}-best-percent" ${bestHidden}>${bestText}</p>
+      </div>
+      <button class="play-button" type="button" data-testid="${testId}-play" data-action="play" data-level-id="${metadata.id}" ${buttonDisabledAttr}>
+        <span>${buttonLabel}</span>
+      </button>
+    </div>
+  `;
 }
 
 function renderProfileStats(profile: PlayerProfile): string {
@@ -64,44 +116,13 @@ function renderProfileStats(profile: PlayerProfile): string {
 }
 
 function renderLevelList(profile: PlayerProfile): string {
-  const level2Unlocked = profile.unlockedLevels.includes("level_2");
-  const level3Unlocked = profile.unlockedLevels.includes("level_3");
+  const cards = officialLevelCatalog
+    .map((metadata, index) => renderLevelCard(metadata, index, profile))
+    .join("");
+
   return `
     <div class="level-list" aria-label="Level select">
-      <div class="level-card">
-        <div class="level-card-info">
-          <p class="level-kicker">Official Level 01</p>
-          <h2 class="level-title">First Wake</h2>
-          ${renderLevel1Status(profile)}
-          ${renderLevel1BestPercent(profile)}
-        </div>
-        <button class="play-button" type="button" data-action="play" data-level-id="level_1">
-          <span class="play-symbol" aria-hidden="true"></span>
-          <span>Play</span>
-        </button>
-      </div>
-
-      <div class="level-card ${level2Unlocked ? "" : "level-locked"}">
-        <div class="level-card-info">
-          <p class="level-kicker">Official Level 02</p>
-          <h2 class="level-title">Launch Sequence</h2>
-          <p class="level-stat" data-testid="level-2-status">${level2StatusText(profile)}</p>
-        </div>
-        <button class="play-button" type="button" data-testid="level-2-play" data-action="play" data-level-id="level_2" ${level2Unlocked ? "" : "disabled"}>
-          <span>${level2Unlocked ? "Play" : "Locked"}</span>
-        </button>
-      </div>
-
-      <div class="level-card ${level3Unlocked ? "" : "level-locked"}">
-        <div class="level-card-info">
-          <p class="level-kicker">Official Level 03</p>
-          <h2 class="level-title">Orbital Loop</h2>
-          <p class="level-stat" data-testid="level-3-status">${level3StatusText(profile)}</p>
-        </div>
-        <button class="play-button" type="button" data-testid="level-3-play" data-action="play" data-level-id="level_3" ${level3Unlocked ? "" : "disabled"}>
-          <span>${level3Unlocked ? "Play" : "Locked"}</span>
-        </button>
-      </div>
+      ${cards}
     </div>
   `;
 }
