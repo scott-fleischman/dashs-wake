@@ -14,6 +14,14 @@ export interface GauntletRunState {
   status: GauntletStatus;
 }
 
+// Gauntlet runs use a between-stage checkpoint: dying inside stage N
+// freezes the run at that stage and a restart resumes from stage N.
+// Main-level runs (see resetRunState in run-simulation) deliberately
+// have no checkpoint of any kind so a death resets the whole run.
+export const GAUNTLET_CHECKPOINT_POLICY = {
+  preservesStageProgressOnRestart: true,
+} as const;
+
 export function startGauntletRun(
   definition: GauntletDefinition,
 ): GauntletRunState {

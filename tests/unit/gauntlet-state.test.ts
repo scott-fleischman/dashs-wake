@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   applyStageOutcome,
+  GAUNTLET_CHECKPOINT_POLICY,
   restartGauntletAtActiveStage,
   startGauntletRun,
 } from "../../src/core/gauntlet";
+import { MAIN_LEVEL_CHECKPOINT_POLICY } from "../../src/core/run-simulation";
 
 const SHORT_GAUNTLET = {
   id: "test-gauntlet",
@@ -67,5 +69,12 @@ describe("gauntlet state machine", () => {
     const after = applyStageOutcome(state, "completed");
 
     expect(after).toBe(state);
+  });
+
+  it("declares its checkpoint policy distinctly from the main-level policy", () => {
+    expect(GAUNTLET_CHECKPOINT_POLICY.preservesStageProgressOnRestart).toBe(
+      true,
+    );
+    expect(MAIN_LEVEL_CHECKPOINT_POLICY.preservesProgressOnRestart).toBe(false);
   });
 });

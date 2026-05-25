@@ -97,6 +97,14 @@ export function createRunState(rules: RunRules): RunState {
   };
 }
 
+// Main-level runs deliberately have no checkpoint: a reset returns the
+// run to its start regardless of how far the player progressed. Gauntlet
+// stage progress lives separately in src/core/gauntlet.ts and uses a
+// different policy (see GAUNTLET_CHECKPOINT_POLICY there).
+export const MAIN_LEVEL_CHECKPOINT_POLICY = {
+  preservesProgressOnRestart: false,
+} as const;
+
 export function resetRunState(_state: RunState, rules: RunRules): RunState {
   return createRunState(rules);
 }
