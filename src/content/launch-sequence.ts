@@ -16,9 +16,19 @@ const LAUNCH_SEQUENCE_ENTITIES: readonly LevelEntity[] = [
     y: 290,
   },
   { type: "spike", height: 30, width: 30, x: 700, y: 270 },
+  {
+    type: "pad",
+    id: "level-2-pad-2",
+    impulse: 720,
+    height: 18,
+    width: 40,
+    x: 920,
+    y: 290,
+  },
+  { type: "spike", height: 30, width: 30, x: 1200, y: 270 },
 ];
 
-const LAUNCH_SEQUENCE_FINISH_X = 880;
+const LAUNCH_SEQUENCE_FINISH_X = 1380;
 
 export const launchSequenceLevel: LevelContent = {
   beatMap: buildPlaceholderBeatMap(

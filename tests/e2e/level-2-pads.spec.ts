@@ -27,12 +27,17 @@ test("unlocks Level 2 and completes the launch pad sequence", async ({
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(14);
+    .toBeGreaterThanOrEqual(8);
   await page.keyboard.press("Space");
 
   await expect
     .poll(readPercent, { intervals: [20], timeout: 6_000 })
-    .toBeGreaterThanOrEqual(70);
+    .toBeGreaterThanOrEqual(47);
+  await page.keyboard.press("Space");
+
+  await expect
+    .poll(readPercent, { intervals: [20], timeout: 6_000 })
+    .toBeGreaterThanOrEqual(83);
   await page.keyboard.press("Space");
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
