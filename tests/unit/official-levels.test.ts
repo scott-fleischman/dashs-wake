@@ -3,7 +3,11 @@ import {
   getOfficialLevelContent,
   officialLevelCatalog,
 } from "../../src/content/official-levels";
-import { validateLevelReachability } from "../../src/content/first-wake";
+import {
+  firstWakeLevel,
+  validateLevelReachability,
+} from "../../src/content/first-wake";
+import type { OrbEntity } from "../../src/core/run-simulation";
 
 describe("Official level catalog", () => {
   it("publishes metadata for the five official launch levels in order", () => {
@@ -51,5 +55,40 @@ describe("Official level catalog", () => {
     const level2 = getOfficialLevelContent("level_2");
 
     expect(validateLevelReachability(level2).ok).toBe(true);
+  });
+
+  it("authors Level 3 with safe orbs and a declared required-orb route", () => {
+    const level3 = getOfficialLevelContent("level_3");
+
+    const orbs = level3.entities.filter(
+      (entity): entity is OrbEntity => entity.type === "orb",
+    );
+    const requiredIds = level3.expectedRoute?.requiredOrbIds ?? [];
+
+    expect(orbs.length).toBeGreaterThan(0);
+    expect(requiredIds.length).toBeGreaterThan(0);
+
+    for (const id of requiredIds) {
+      const orb = orbs.find((entity) => entity.id === id);
+      expect(orb).toBeDefined();
+    }
+  });
+
+  it("validates Level 3 content as reachable", () => {
+    const level3 = getOfficialLevelContent("level_3");
+
+    expect(validateLevelReachability(level3).ok).toBe(true);
+  });
+
+  it("flags a level whose declared required orb id is missing from entities", () => {
+    const broken = {
+      ...firstWakeLevel,
+      expectedRoute: { requiredOrbIds: ["nonexistent-orb"] },
+    };
+
+    const result = validateLevelReachability(broken);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.join(" ")).toMatch(/required orb/i);
   });
 });
