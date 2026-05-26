@@ -3,12 +3,15 @@ import type {
   GeneratedLevelRecord,
   PlayerProfile,
 } from "../core/profile";
+import type { OfficialLevelDifficulty } from "../content/official-levels";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
 
 interface GeneratedLevelsRoomActions {
   onCreate: () => void;
-  onGenerate: () => void;
-  onImportAudio: (file: File) => void;
+  onDelete: (recordId: string) => void;
+  onEdit: (recordId: string) => void;
+  onGenerate: (difficulty: OfficialLevelDifficulty) => void;
+  onImportAudio: (file: File, difficulty: OfficialLevelDifficulty) => void;
   onPlay: (recordId: string) => void;
   onReturnToLobby: () => void;
 }
@@ -23,18 +26,22 @@ function buildCreateButton(onCreate: () => void): HTMLButtonElement {
   return button;
 }
 
-function buildGenerateButton(onGenerate: () => void): HTMLButtonElement {
+function buildGenerateButton(
+  difficulty: () => OfficialLevelDifficulty,
+  onGenerate: (difficulty: OfficialLevelDifficulty) => void,
+): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "primary-button";
   button.setAttribute("data-testid", "generate-level");
   button.textContent = "Generate Level";
-  button.addEventListener("click", onGenerate);
+  button.addEventListener("click", () => onGenerate(difficulty()));
   return button;
 }
 
 function buildAudioUploadInput(
-  onImportAudio: (file: File) => void,
+  difficulty: () => OfficialLevelDifficulty,
+  onImportAudio: (file: File, difficulty: OfficialLevelDifficulty) => void,
 ): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "file";
@@ -44,7 +51,7 @@ function buildAudioUploadInput(
   input.addEventListener("change", () => {
     const file = input.files?.[0];
     if (file) {
-      onImportAudio(file);
+      onImportAudio(file, difficulty());
       input.value = "";
     }
   });
@@ -68,9 +75,21 @@ export function mountGeneratedLevelsRoom(
     root.appendChild(main);
 
     const header = main.querySelector("header");
-    header?.appendChild(buildGenerateButton(actions.onGenerate));
+    const difficulty = document.createElement("select");
+    difficulty.className = "difficulty-select";
+    difficulty.setAttribute("data-testid", "generated-difficulty");
+    for (const value of ["normal", "hard", "insane"] as const) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = `${value[0]!.toUpperCase()}${value.slice(1)} Blocks`;
+      difficulty.appendChild(option);
+    }
+    const getDifficulty = (): OfficialLevelDifficulty =>
+      difficulty.value as OfficialLevelDifficulty;
+    header?.appendChild(difficulty);
+    header?.appendChild(buildGenerateButton(getDifficulty, actions.onGenerate));
     header?.appendChild(buildCreateButton(actions.onCreate));
-    header?.appendChild(buildAudioUploadInput(actions.onImportAudio));
+    header?.appendChild(buildAudioUploadInput(getDifficulty, actions.onImportAudio));
 
     if (profile.generatedLevels.length === 0) {
       const empty = document.createElement("p");
@@ -92,8 +111,7 @@ export function mountGeneratedLevelsRoom(
         ? `${record.audioFileName} (Audio)`
         : record.name;
       const audioStatusLabel = isSynced ? "Synced" : "Not synced";
-      list.appendChild(
-        buildRoomRow({
+      const row = buildRoomRow({
           actionDisabled: false,
           actionLabel: "Play",
           actionTestId: `${testId}-play`,
@@ -110,8 +128,24 @@ export function mountGeneratedLevelsRoom(
           statusLabel: isCreated ? "Created" : isAudio ? audioStatusLabel : "Generated",
           statusTestId: `${testId}-status`,
           statusVisible: true,
-        }),
-      );
+        });
+      if (isCreated) {
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "utility-button";
+        edit.textContent = "Edit";
+        edit.setAttribute("data-testid", `${testId}-edit`);
+        edit.addEventListener("click", () => actions.onEdit(record.id));
+        row.appendChild(edit);
+      }
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "utility-button danger";
+      remove.textContent = "Delete";
+      remove.setAttribute("data-testid", `${testId}-delete`);
+      remove.addEventListener("click", () => actions.onDelete(record.id));
+      row.appendChild(remove);
+      list.appendChild(row);
     }
   }
 
@@ -124,12 +158,13 @@ export function mountGeneratedLevelsRoom(
 
 export function buildPlaceholderGeneratedLevel(
   index: number,
+  difficulty: OfficialLevelDifficulty = "normal",
 ): GeneratedLevelRecord {
   const seed = 1000 + index;
   return {
-    beatIntensities: ["quiet", "quiet", "quiet"],
-    beatMap: { beats: [0, 600, 1200], durationMs: 1800 },
-    difficulty: "easy",
+    beatIntensities: ["intense", "intense", "intense", "intense", "intense", "intense"],
+    beatMap: { beats: [0, 600, 1200, 1800, 2400, 3000], durationMs: 3600 },
+    difficulty,
     id: `generated-level-${index}`,
     name: `Generated Level ${index}`,
     seed,
@@ -150,6 +185,7 @@ export function buildAudioDerivedLevel(
   fileName: string,
   audioBlobKey?: string,
   analyzed?: AnalyzedAudio | null,
+  difficulty: OfficialLevelDifficulty = "normal",
 ): GeneratedLevelRecord {
   const seed = 2000 + index;
   const synced = analyzed != null && analyzed.beats.length > 0;
@@ -163,7 +199,7 @@ export function buildAudioDerivedLevel(
     audioFileName: fileName,
     beatIntensities,
     beatMap: { beats, durationMs },
-    difficulty: "easy",
+    difficulty,
     id: `audio-derived-level-${index}`,
     name: fileName,
     seed,

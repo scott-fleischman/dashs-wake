@@ -5,6 +5,7 @@ import type {
   CubeShapeKind,
   ShipShapeKind,
 } from "../core/inventory";
+import type { LevelColorTheme } from "../core/profile";
 import {
   createRunState,
   resetRunState,
@@ -95,7 +96,7 @@ class LobbyBackdropScene extends Phaser.Scene {
 
 export interface LevelSnapshot {
   attempt: number;
-  deathCause?: "fall" | "spike" | "trap";
+  deathCause?: "block" | "fall" | "spike" | "trap";
   mode: "cube" | "ship";
   percent: number;
   status: "complete" | "dead" | "running";
@@ -104,9 +105,11 @@ export interface LevelSnapshot {
 const SIMULATION_STEP_MS = 1000 / 60;
 
 const DEFAULT_PLAYER_APPEARANCE: CosmeticAppearance = {
+  accent: 0xecfcff,
   cubeShape: "rectangle",
   fillDead: 0xff437d,
   fillRunning: 0x19d9f3,
+  motif: "core",
   shipShape: "triangle",
 };
 
@@ -129,6 +132,60 @@ const PAD_STYLE = {
 const ORB_STYLE = {
   fill: 0xff7adf,
   stroke: 0xffd6f4,
+};
+
+interface LevelPalette {
+  accent: number;
+  accentSecondary: number;
+  block: number;
+  decoration: number;
+  floor: number;
+  skyBottom: number;
+  skyTop: number;
+  spike: number;
+}
+
+const LEVEL_PALETTES: Record<LevelColorTheme, LevelPalette> = {
+  neon: {
+    accent: 0x19d9f3,
+    accentSecondary: 0xa45bff,
+    block: 0x154d69,
+    decoration: 0x19d9f3,
+    floor: 0x0d1d2d,
+    skyBottom: 0x112037,
+    skyTop: 0x07111d,
+    spike: 0xff437d,
+  },
+  sunset: {
+    accent: 0xff7958,
+    accentSecondary: 0xffc857,
+    block: 0x723548,
+    decoration: 0xffc857,
+    floor: 0x2b1724,
+    skyBottom: 0x45243c,
+    skyTop: 0x150f1b,
+    spike: 0xffdc78,
+  },
+  forest: {
+    accent: 0x34e8b3,
+    accentSecondary: 0x19d9f3,
+    block: 0x125545,
+    decoration: 0x34e8b3,
+    floor: 0x0b2624,
+    skyBottom: 0x103b38,
+    skyTop: 0x061817,
+    spike: 0xff6682,
+  },
+  void: {
+    accent: 0xa45bff,
+    accentSecondary: 0xff7adf,
+    block: 0x342363,
+    decoration: 0xa45bff,
+    floor: 0x120f2c,
+    skyBottom: 0x211541,
+    skyTop: 0x09081b,
+    spike: 0xff437d,
+  },
 };
 
 function playerFillFor(
@@ -235,6 +292,7 @@ function createPlayerShip(
 interface LevelSceneInitData {
   appearance?: CosmeticAppearance;
   levelContent?: LevelContent;
+  theme?: LevelColorTheme;
 }
 
 class LevelScene extends Phaser.Scene {
@@ -243,6 +301,7 @@ class LevelScene extends Phaser.Scene {
   private attempt = 1;
   private courseLayer?: Phaser.GameObjects.Container;
   private cubeJumpPending = false;
+  private cubeInputBufferMs = 0;
   private floorY = 0;
   private jumpHeld = false;
   private lastSnapshotKey = "";
@@ -250,9 +309,12 @@ class LevelScene extends Phaser.Scene {
   private onSnapshot?: (snapshot: LevelSnapshot) => void;
   private paused = false;
   private playerCube?: Phaser.GameObjects.Shape;
+  private playerCubeDetail?: Phaser.GameObjects.Graphics;
   private playerShip?: Phaser.GameObjects.Shape;
+  private playerShipDetail?: Phaser.GameObjects.Graphics;
   private state: RunState = createRunState(firstWakeLevel.rules);
   private status: LevelSnapshot["status"] = "running";
+  private theme: LevelColorTheme = "neon";
 
   constructor() {
     super(LEVEL_SCENE_KEY);
@@ -265,12 +327,16 @@ class LevelScene extends Phaser.Scene {
     if (data.appearance) {
       this.appearance = data.appearance;
     }
+    if (data.theme) {
+      this.theme = data.theme;
+    }
   }
 
   create(): void {
     this.accumulator = 0;
     this.attempt = 1;
     this.cubeJumpPending = false;
+    this.cubeInputBufferMs = 0;
     this.jumpHeld = false;
     this.paused = false;
     this.state = createRunState(this.levelContent.rules);
@@ -294,7 +360,9 @@ class LevelScene extends Phaser.Scene {
       const jumpPressed =
         this.state.player.mode === "ship"
           ? this.jumpHeld
-          : this.cubeJumpPending;
+          : this.cubeJumpPending || this.cubeInputBufferMs > 0;
+      const wasGrounded = this.state.player.grounded;
+      const consumedCount = this.state.consumedTriggerIds.size;
       this.state = tickRun(
         this.state,
         { jumpPressed },
@@ -303,6 +371,14 @@ class LevelScene extends Phaser.Scene {
         this.levelContent.entities,
       );
       this.cubeJumpPending = false;
+      if (this.state.player.mode === "cube" && this.cubeInputBufferMs > 0) {
+        const impulseActivated =
+          this.state.consumedTriggerIds.size > consumedCount;
+        this.cubeInputBufferMs =
+          impulseActivated || (wasGrounded && jumpPressed)
+            ? 0
+            : Math.max(0, this.cubeInputBufferMs - SIMULATION_STEP_MS);
+      }
       this.accumulator -= SIMULATION_STEP_MS;
 
       if (this.state.status === "dead") {
@@ -342,32 +418,34 @@ class LevelScene extends Phaser.Scene {
       return true;
     }
 
-    if (
-      this.cubeJumpPending ||
-      (!this.state.player.grounded && !this.hasOverlappingOrb())
-    ) {
+    if (this.cubeJumpPending) {
+      return false;
+    }
+
+    if (this.state.player.grounded) {
+      this.cubeJumpPending = true;
+      this.cubeInputBufferMs = 0;
+      return true;
+    }
+
+    if (!this.hasApproachingOrb()) {
       return false;
     }
 
     this.cubeJumpPending = true;
+    this.cubeInputBufferMs = 150;
     return true;
   }
 
-  private hasOverlappingOrb(): boolean {
-    const rules = this.levelContent.rules;
-    const playerLeft = this.state.player.x - rules.playerWidth / 2;
-    const playerRight = this.state.player.x + rules.playerWidth / 2;
-    const playerTop = this.state.player.y - rules.playerHeight;
-    const playerBottom = this.state.player.y;
-
+  private hasApproachingOrb(): boolean {
+    const triggerReach =
+      this.levelContent.rules.horizontalSpeed * (this.cubeInputBufferMs > 0 ? 0.2 : 0.15);
     return this.levelContent.entities.some(
       (entity) =>
         entity.type === "orb" &&
         !this.state.consumedTriggerIds.has(entity.id) &&
-        playerRight > entity.x &&
-        playerLeft < entity.x + entity.width &&
-        playerBottom > entity.y &&
-        playerTop < entity.y + entity.height,
+        entity.x + entity.width >= this.state.player.x &&
+        entity.x - this.state.player.x <= triggerReach,
     );
   }
 
@@ -375,6 +453,7 @@ class LevelScene extends Phaser.Scene {
     this.accumulator = 0;
     this.attempt += 1;
     this.cubeJumpPending = false;
+    this.cubeInputBufferMs = 0;
     this.jumpHeld = false;
     this.paused = false;
     this.state = resetRunState(this.state, this.levelContent.rules);
@@ -396,16 +475,23 @@ class LevelScene extends Phaser.Scene {
     const rules = this.levelContent.rules;
     const entities = this.levelContent.entities;
     const finishX = this.levelContent.finishX;
+    const palette = LEVEL_PALETTES[this.theme];
 
     this.children.removeAll();
     this.floorY = height * 0.71;
 
     const wash = this.add.graphics();
-    wash.fillGradientStyle(0x07111d, 0x07111d, 0x112037, 0x112037, 1);
+    wash.fillGradientStyle(
+      palette.skyTop,
+      palette.skyTop,
+      palette.skyBottom,
+      palette.skyBottom,
+      1,
+    );
     wash.fillRect(0, 0, width, height);
 
     const horizon = this.add.graphics();
-    horizon.lineStyle(1, 0x19d9f3, 0.16);
+    horizon.lineStyle(1, palette.accent, 0.16);
     for (let y = this.floorY - 150; y < this.floorY; y += 38) {
       horizon.lineBetween(0, y, width, y);
     }
@@ -413,18 +499,18 @@ class LevelScene extends Phaser.Scene {
     this.courseLayer = this.add.container(0, 0);
 
     const track = this.add.graphics();
-    track.fillStyle(0x0d1d2d, 1);
+    track.fillStyle(palette.floor, 1);
     track.fillRect(-180, this.floorY, finishX + width, height - this.floorY);
-    track.lineStyle(3, 0x19d9f3, 0.75);
+    track.lineStyle(3, palette.accent, 0.75);
     track.lineBetween(-180, this.floorY, finishX + width, this.floorY);
-    track.lineStyle(2, 0xa45bff, 0.44);
+    track.lineStyle(2, palette.accentSecondary, 0.44);
     for (let x = 30; x < finishX + width; x += 110) {
       track.lineBetween(x, this.floorY + 35, x + 48, this.floorY + 35);
     }
     this.courseLayer.add(track);
 
     const hazards = this.add.graphics();
-    hazards.fillStyle(0xff437d, 1);
+    hazards.fillStyle(palette.spike, 1);
     for (const entity of entities) {
       if (entity.type !== "spike") {
         continue;
@@ -441,6 +527,52 @@ class LevelScene extends Phaser.Scene {
       );
     }
     this.courseLayer.add(hazards);
+
+    const blocks = this.add.graphics();
+    for (const entity of entities) {
+      if (entity.type !== "block" && entity.type !== "platform") {
+        continue;
+      }
+      const y = this.floorY + entity.y - rules.groundY;
+      blocks.fillStyle(palette.block, 0.96);
+      blocks.fillRect(entity.x, y, entity.width, entity.height);
+      blocks.lineStyle(2, palette.accent, 0.8);
+      blocks.strokeRect(entity.x, y, entity.width, entity.height);
+      blocks.lineStyle(1, palette.accent, 0.35);
+      blocks.lineBetween(entity.x + 8, y + 10, entity.x + entity.width - 8, y + 10);
+    }
+    this.courseLayer.add(blocks);
+
+    const decorations = this.add.graphics();
+    for (const entity of entities) {
+      if (entity.type !== "decoration") {
+        continue;
+      }
+      const y = this.floorY + entity.y - rules.groundY;
+      decorations.lineStyle(2, palette.decoration, 0.27);
+      if (entity.kind === "diamond") {
+        decorations.strokeTriangle(
+          entity.x + entity.width / 2,
+          y,
+          entity.x + entity.width,
+          y + entity.height / 2,
+          entity.x + entity.width / 2,
+          y + entity.height,
+        );
+        decorations.lineBetween(
+          entity.x + entity.width / 2,
+          y + entity.height,
+          entity.x,
+          y + entity.height / 2,
+        );
+      } else if (entity.kind === "beam") {
+        decorations.lineBetween(entity.x, y + entity.height, entity.x + entity.width, y);
+        decorations.lineBetween(entity.x + 12, y + entity.height, entity.x + entity.width + 12, y);
+      } else {
+        decorations.strokeRect(entity.x, y, entity.width, entity.height);
+      }
+    }
+    this.courseLayer.add(decorations);
 
     const portals = this.add.graphics();
     for (const entity of entities) {
@@ -493,7 +625,7 @@ class LevelScene extends Phaser.Scene {
     this.courseLayer.add(orbs);
 
     const finishGate = this.add.graphics();
-    finishGate.lineStyle(4, 0x19d9f3, 0.85);
+    finishGate.lineStyle(4, palette.accent, 0.85);
     finishGate.lineBetween(finishX, this.floorY - 132, finishX, this.floorY);
     finishGate.lineStyle(2, 0xecfcff, 0.62);
     finishGate.strokeCircle(finishX, this.floorY - 145, 10);
@@ -535,6 +667,11 @@ class LevelScene extends Phaser.Scene {
       ),
     ).setVisible(false);
 
+    this.playerCubeDetail = this.add.graphics();
+    this.playerShipDetail = this.add.graphics();
+    this.drawPlayerDetail(this.playerCubeDetail, false);
+    this.drawPlayerDetail(this.playerShipDetail, true);
+
     this.add
       .rectangle(
         playerScreenX,
@@ -547,6 +684,54 @@ class LevelScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     this.updatePresentation();
+  }
+
+  private drawPlayerDetail(
+    graphics: Phaser.GameObjects.Graphics,
+    isShip: boolean,
+  ): void {
+    const accent = this.appearance.accent;
+    graphics.clear();
+    graphics.lineStyle(2, accent, 0.95);
+
+    if (isShip) {
+      graphics.lineBetween(-11, 0, 4, 0);
+      graphics.lineBetween(-9, -5, -14, 0);
+      graphics.lineBetween(-14, 0, -9, 5);
+      return;
+    }
+
+    switch (this.appearance.motif) {
+      case "bolt":
+        graphics.lineBetween(4, -12, -5, 0);
+        graphics.lineBetween(-5, 0, 3, 0);
+        graphics.lineBetween(3, 0, -4, 12);
+        break;
+      case "circuit":
+        graphics.strokeRect(-9, -9, 18, 18);
+        graphics.lineBetween(-15, 0, -9, 0);
+        graphics.lineBetween(9, 0, 15, 0);
+        break;
+      case "flare":
+        graphics.strokeCircle(0, 0, 7);
+        graphics.lineBetween(0, -14, 0, -9);
+        graphics.lineBetween(0, 9, 0, 14);
+        graphics.lineBetween(-14, 0, -9, 0);
+        graphics.lineBetween(9, 0, 14, 0);
+        break;
+      case "prism":
+        graphics.strokeTriangle(0, -11, 11, 10, -11, 10);
+        graphics.lineBetween(0, -11, 0, 10);
+        break;
+      case "ring":
+        graphics.strokeCircle(0, 0, 9);
+        graphics.strokeCircle(0, 0, 4);
+        break;
+      default:
+        graphics.strokeRect(-9, -9, 18, 18);
+        graphics.strokeRect(-4, -4, 8, 8);
+        break;
+    }
   }
 
   private updatePresentation(): void {
@@ -576,11 +761,19 @@ class LevelScene extends Phaser.Scene {
       .setY(cubeScreenY)
       .setRotation(isShip ? 0 : cubeRotation)
       .setFillStyle(fillColor);
+    this.playerCubeDetail
+      ?.setVisible(!isShip)
+      .setPosition(playerScreenX, cubeScreenY)
+      .setRotation(isShip ? 0 : cubeRotation);
     this.playerShip
       ?.setVisible(isShip)
       .setY(simulationCenterY)
       .setRotation(this.state.player.velocityY * 0.0006)
       .setFillStyle(fillColor);
+    this.playerShipDetail
+      ?.setVisible(isShip)
+      .setPosition(playerScreenX, simulationCenterY)
+      .setRotation(this.state.player.velocityY * 0.0006);
   }
 
   private publishSnapshot(force = false): void {
@@ -616,7 +809,11 @@ export interface BackdropController {
   ): void;
   setLevelPaused(paused: boolean): void;
   showLobby(): void;
-  showLevel(content: LevelContent, appearance?: CosmeticAppearance): void;
+  showLevel(
+    content: LevelContent,
+    appearance?: CosmeticAppearance,
+    theme?: LevelColorTheme,
+  ): void;
 }
 
 export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
@@ -625,6 +822,7 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
   let snapshotListener: ((snapshot: LevelSnapshot) => void) | undefined;
   let pendingLevelContent: LevelContent | undefined;
   let pendingAppearance: CosmeticAppearance | undefined;
+  let pendingTheme: LevelColorTheme | undefined;
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -662,6 +860,7 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
     game.scene.start(LEVEL_SCENE_KEY, {
       appearance: pendingAppearance,
       levelContent: pendingLevelContent ?? firstWakeLevel,
+      theme: pendingTheme,
     });
     (game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene).setSnapshotListener(
       snapshotListener,
@@ -708,9 +907,14 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
       requestedScene = LOBBY_SCENE_KEY;
       applyRequestedScene();
     },
-    showLevel: (content: LevelContent, appearance?: CosmeticAppearance) => {
+    showLevel: (
+      content: LevelContent,
+      appearance?: CosmeticAppearance,
+      theme?: LevelColorTheme,
+    ) => {
       pendingLevelContent = content;
       pendingAppearance = appearance;
+      pendingTheme = theme;
       requestedScene = LEVEL_SCENE_KEY;
       applyRequestedScene();
     },

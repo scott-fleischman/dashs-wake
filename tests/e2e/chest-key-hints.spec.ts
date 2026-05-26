@@ -17,7 +17,7 @@ test("chest rows tell the player where to earn the matching key", async ({
     "Earn from First Wake, Launch Sequence",
   );
   await expect(page.getByTestId("chest-chest-normal-key-hint")).toHaveText(
-    "Earn from Orbital Loop, Combined Run",
+    "Earn from Orbital Loop, Combined Run, Block Pulse",
   );
   await expect(page.getByTestId("chest-chest-hard-key-hint")).toContainText(
     "Trap Lane",

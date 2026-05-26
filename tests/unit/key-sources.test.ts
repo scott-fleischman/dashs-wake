@@ -10,7 +10,7 @@ describe("describeKeySource", () => {
 
   it("lists the normal-key sources by level name", () => {
     expect(describeKeySource("normal")).toBe(
-      "Earn from Orbital Loop, Combined Run",
+      "Earn from Orbital Loop, Combined Run, Block Pulse",
     );
   });
 

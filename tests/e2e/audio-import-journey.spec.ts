@@ -29,9 +29,17 @@ test("imports a local audio fixture and plays a synchronized generated level", a
   );
 
   await playButton.click();
+  await expect(
+    page.getByRole("button", { name: "Jump Space / Click" }),
+  ).toBeEnabled();
+  await page.keyboard.press("Space");
   await expect(page.getByTestId("level-audio")).toBeAttached({
     timeout: 10_000,
   });
+  for (let tap = 0; tap < 20; tap += 1) {
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(180);
+  }
   await expect(
     page.getByRole("dialog", { name: "Level complete" }),
   ).toBeVisible({ timeout: 15_000 });

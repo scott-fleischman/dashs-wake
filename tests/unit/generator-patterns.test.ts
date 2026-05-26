@@ -28,6 +28,14 @@ describe("generator pattern rules", () => {
     expect(permittedPatterns("intense", "hard")).toContain("spike");
   });
 
+  it("introduces solid blocks at normal difficulty and jump orbs at insane difficulty", () => {
+    expect(permittedPatterns("intense", "easy")).not.toContain("block");
+    expect(permittedPatterns("intense", "normal")).toContain("block");
+    expect(permittedPatterns("intense", "hard")).toContain("block");
+    expect(permittedPatterns("intense", "hard")).not.toContain("orb");
+    expect(permittedPatterns("intense", "insane")).toContain("orb");
+  });
+
   it("permits launch pads only on intense beats at hard difficulty or above", () => {
     expect(permittedPatterns("intense", "easy")).not.toContain("pad");
     expect(permittedPatterns("intense", "normal")).not.toContain("pad");

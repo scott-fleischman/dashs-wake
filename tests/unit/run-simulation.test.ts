@@ -117,6 +117,45 @@ describe("cube run simulation", () => {
   });
 });
 
+describe("solid blocks", () => {
+  const block: LevelEntity = {
+    type: "block",
+    height: 20,
+    width: 20,
+    x: 5,
+    y: 80,
+  };
+
+  it("kills a player who runs into a block side", () => {
+    const dead = tickRun(createRunState(rules), { jumpPressed: false }, 1000, rules, [
+      block,
+    ]);
+
+    expect(dead.status).toBe("dead");
+    expect(dead.deathCause).toBe("block");
+  });
+
+  it("allows a player to land on a block top", () => {
+    const falling: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: {
+        grounded: false,
+        mode: "cube",
+        velocityY: 10,
+        x: 9,
+        y: 79,
+      },
+      status: "running",
+    };
+
+    const landed = tickRun(falling, { jumpPressed: false }, 100, rules, [block]);
+
+    expect(landed.status).toBe("running");
+    expect(landed.player.y).toBe(block.y);
+  });
+});
+
 describe("ship mode portals and motion", () => {
   it("starts a new run in cube mode", () => {
     const state = createRunState(rules);

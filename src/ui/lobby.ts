@@ -59,19 +59,10 @@ const DESTINATIONS: readonly DestinationConfig[] = [
   { name: "Chest Room", route: "#chest-room", testId: "destination-chest-room" },
   { name: "Shop", route: "#shop", testId: "destination-shop" },
   { name: "Icon Customizer", route: "#customizer", testId: "destination-customizer" },
-  { name: "Settings", route: null, testId: "destination-settings" },
+  { name: "Settings", route: "#settings", testId: "destination-settings" },
 ];
 
 function destinationButton(destination: DestinationConfig): string {
-  if (destination.route === null) {
-    return `
-      <button class="destination future" type="button" aria-label="${destination.name} - Coming later" data-testid="${destination.testId}" disabled>
-        <span>${destination.name}</span>
-        <small>Coming later</small>
-      </button>
-    `;
-  }
-
   return `
     <button class="destination" type="button" data-action="navigate" data-route="${destination.route}" data-testid="${destination.testId}">
       <span>${destination.name}</span>
@@ -85,9 +76,10 @@ const KEY_TYPE_LABELS: Record<string, string> = {
   easy: "Easy",
   normal: "Normal",
   hard: "Hard",
+  insane: "Insane",
 };
 
-const KEY_TYPE_ORDER: readonly string[] = ["easy", "normal", "hard"];
+const KEY_TYPE_ORDER: readonly string[] = ["easy", "normal", "hard", "insane"];
 
 function keysText(label: string, count: number): string {
   return `${count} ${label} Key${count === 1 ? "" : "s"}`;
@@ -157,7 +149,7 @@ function renderEquippedIconChip(profile: PlayerProfile): string {
       : equipped.appearance.cubeShape === "diamond"
         ? " shape-diamond"
         : "";
-  return `<span class="profile-stat profile-equipped-icon" data-testid="profile-equipped-icon"><span class="cosmetic-swatch${shapeClass}" style="background: ${color}"></span>${equipped.name}</span>`;
+  return `<span class="profile-stat profile-equipped-icon" data-testid="profile-equipped-icon"><span class="cosmetic-swatch${shapeClass} motif-${equipped.appearance.motif}" style="background: ${color}"></span>${equipped.name}</span>`;
 }
 
 function renderProfileStats(profile: PlayerProfile): string {

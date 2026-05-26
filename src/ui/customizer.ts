@@ -51,6 +51,7 @@ export function mountCustomizer(
           statusTestId: `cosmetic-${testId}-equipped`,
           statusVisible: selectedId === item.id,
           swatchColor: item.appearance.fillRunning,
+          swatchMotif: item.appearance.motif,
           swatchShape: item.appearance.cubeShape,
           swatchTestId: `cosmetic-${testId}-swatch`,
         }),

@@ -6,7 +6,7 @@ test("lobby allows the user to scroll down to every level card", async ({
   await page.setViewportSize({ width: 1024, height: 600 });
   await page.goto("/");
 
-  await expect(page.getByTestId("level-5-play")).toBeAttached();
+  await expect(page.getByTestId("level-8-play")).toBeAttached();
 
   const scrollState = await page.evaluate(() => {
     const app = document.getElementById("app");
@@ -23,5 +23,5 @@ test("lobby allows the user to scroll down to every level card", async ({
   expect(scrollState.scrollable).toBe(true);
   expect(scrollState.scrolledBy).toBeGreaterThan(0);
 
-  await expect(page.getByTestId("level-5-play")).toBeInViewport();
+  await expect(page.getByTestId("level-8-play")).toBeInViewport();
 });

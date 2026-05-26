@@ -62,4 +62,25 @@ describe("seeded level generator", () => {
       expect(entity.x + entity.width).toBeLessThanOrEqual(result.finishX);
     }
   });
+
+  it("adds beat-synchronized solid blocks and ambience for normal generated runs", () => {
+    const result = generateLevel({
+      seed: 1234,
+      beatMap: FIXTURE_BEAT_MAP,
+      difficulty: "normal",
+    });
+
+    expect(result.entities.some((entity) => entity.type === "block")).toBe(true);
+    expect(result.entities.some((entity) => entity.type === "decoration")).toBe(true);
+
+    const gameplay = result.entities
+      .filter((entity) => entity.type !== "decoration")
+      .slice()
+      .sort((a, b) => a.x - b.x);
+    for (let index = 1; index < gameplay.length; index += 1) {
+      expect(gameplay[index]!.x - gameplay[index - 1]!.x).toBeGreaterThanOrEqual(
+        220,
+      );
+    }
+  });
 });

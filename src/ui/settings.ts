@@ -1,0 +1,118 @@
+import {
+  type GameplaySettings,
+  type LevelColorTheme,
+  type PlayerProfile,
+} from "../core/profile";
+import { buildRoomShell } from "./room-shell";
+
+interface SettingsActions {
+  onProfileChange: (next: PlayerProfile) => void;
+  onReturnToLobby: () => void;
+}
+
+const SPEED_CHOICES: readonly { label: string; value: number }[] = [
+  { label: "Relaxed (0.75x)", value: 0.75 },
+  { label: "Standard (1.00x)", value: 1 },
+  { label: "Rapid (1.25x)", value: 1.25 },
+  { label: "Hyper (1.50x)", value: 1.5 },
+];
+
+const THEME_CHOICES: readonly {
+  color: string;
+  id: LevelColorTheme;
+  label: string;
+}[] = [
+  { id: "neon", label: "Neon Tide", color: "#19d9f3" },
+  { id: "sunset", label: "Sunset Reactor", color: "#ff7958" },
+  { id: "forest", label: "Emerald Circuit", color: "#34e8b3" },
+  { id: "void", label: "Void Pulse", color: "#a45bff" },
+];
+
+function replaceSettings(
+  profile: PlayerProfile,
+  settings: GameplaySettings,
+): PlayerProfile {
+  return { ...profile, settings };
+}
+
+export function mountSettings(
+  root: HTMLElement,
+  profileRef: { current: PlayerProfile },
+  actions: SettingsActions,
+): () => void {
+  const render = (): void => {
+    const profile = profileRef.current;
+    root.replaceChildren();
+
+    const { main } = buildRoomShell("Settings", actions.onReturnToLobby);
+    main.classList.add("settings-room");
+    root.appendChild(main);
+
+    const panel = document.createElement("section");
+    panel.className = "settings-panel";
+    panel.setAttribute("aria-label", "Gameplay settings");
+    main.appendChild(panel);
+
+    const speedLabel = document.createElement("label");
+    speedLabel.className = "settings-field";
+    speedLabel.innerHTML = "<span>Run Speed</span>";
+    const speed = document.createElement("select");
+    speed.setAttribute("data-testid", "settings-speed");
+    for (const choice of SPEED_CHOICES) {
+      const option = document.createElement("option");
+      option.value = String(choice.value);
+      option.textContent = choice.label;
+      option.selected = choice.value === profile.settings.speedMultiplier;
+      speed.appendChild(option);
+    }
+    speed.addEventListener("change", () => {
+      actions.onProfileChange(
+        replaceSettings(profileRef.current, {
+          ...profileRef.current.settings,
+          speedMultiplier: Number(speed.value),
+        }),
+      );
+    });
+    speedLabel.appendChild(speed);
+    panel.appendChild(speedLabel);
+
+    const heading = document.createElement("p");
+    heading.className = "settings-label";
+    heading.textContent = "Level Color";
+    panel.appendChild(heading);
+
+    const themes = document.createElement("div");
+    themes.className = "theme-options";
+    for (const choice of THEME_CHOICES) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "theme-choice";
+      button.classList.toggle("selected", choice.id === profile.settings.levelColor);
+      button.setAttribute("data-testid", `settings-theme-${choice.id}`);
+      button.innerHTML = `<span style="--theme-color: ${choice.color}"></span>${choice.label}`;
+      button.addEventListener("click", () => {
+        actions.onProfileChange(
+          replaceSettings(profileRef.current, {
+            ...profileRef.current.settings,
+            levelColor: choice.id,
+          }),
+        );
+        render();
+      });
+      themes.appendChild(button);
+    }
+    panel.appendChild(themes);
+
+    const note = document.createElement("p");
+    note.className = "settings-note";
+    note.textContent =
+      "Run speed changes movement and timing. Theme colors apply on your next run.";
+    panel.appendChild(note);
+  };
+
+  render();
+
+  return () => {
+    root.replaceChildren();
+  };
+}

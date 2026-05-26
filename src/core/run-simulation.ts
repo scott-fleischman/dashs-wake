@@ -23,6 +23,15 @@ export interface PlatformEntity extends RectangularEntity {
   type: "platform";
 }
 
+export interface BlockEntity extends RectangularEntity {
+  type: "block";
+}
+
+export interface DecorationEntity extends RectangularEntity {
+  kind: "beam" | "diamond" | "pillar";
+  type: "decoration";
+}
+
 export interface SpikeEntity extends RectangularEntity {
   type: "spike";
 }
@@ -57,13 +66,15 @@ export interface OrbEntity extends RectangularEntity {
 }
 
 export type LevelEntity =
+  | BlockEntity
+  | DecorationEntity
   | GapEntity
   | OrbEntity
   | PadEntity
   | PlatformEntity
   | PortalEntity
   | SpikeEntity;
-export type DeathCause = "fall" | "spike" | "trap";
+export type DeathCause = "block" | "fall" | "spike" | "trap";
 export type RunStatus = "dead" | "running";
 
 export interface PlayerState {
@@ -154,7 +165,7 @@ function resolveLandingY(
 
   for (const entity of entities) {
     if (
-      entity.type === "platform" &&
+      (entity.type === "platform" || entity.type === "block") &&
       state.player.y <= entity.y &&
       proposedY >= entity.y &&
       overlapsHorizontally(proposedX, entity, rules)
@@ -399,6 +410,12 @@ export function tickRun(
             playerOverlapsRect(player.x, player.y, entity, rules),
         )
       ? "spike"
+      : entities.some(
+            (entity) =>
+              entity.type === "block" &&
+              playerOverlapsRect(player.x, player.y, entity, rules),
+          )
+        ? "block"
       : player.y >= rules.fallBoundaryY
         ? "fall"
         : undefined;

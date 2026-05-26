@@ -1,18 +1,18 @@
-# Official Level Music
+# Original Official Level Music
 
-The five bundled official-level tracks are selected loop variants from
-**Melodic EDM Loops** by **Fupi**, downloaded from OpenGameArt:
+The eight official-level tracks are original synthesized compositions made
+for **Dash's Wake**. They are generated reproducibly by
+`tools/compose-soundtrack.mjs` and are not sourced from third-party loops.
 
-https://opengameart.org/content/melodic-edm-loops
+Copyright: **Dash's Wake project contributors**.
 
-License: **Creative Commons Zero (CC0)**.
-
-| Level | Bundled File | Source File |
+| Level | Track | Bundled File |
 | --- | --- | --- |
-| First Wake | `level-1-brightmelodicedm.ogg` | `brightmelodicedm.ogg` |
-| Launch Sequence | `level-2-brightmelodicloopyedm.ogg` | `brightmelodicloopyedm.ogg` |
-| Orbital Loop | `level-3-brightmelodicskippyedm.ogg` | `brightmelodicskippyedm.ogg` |
-| Combined Run | `level-4-melodicloopyedm.ogg` | `melodicloopyedm.ogg` |
-| Trap Lane | `level-5-melodicskippyedm.ogg` | `melodicskippyedm.ogg` |
-
-The short CC0 loops are repeated during play to cover each course duration.
+| First Wake | Dawn Circuit | `level-1-dawn-circuit.ogg` |
+| Launch Sequence | Launch Relay | `level-2-launch-relay.ogg` |
+| Orbital Loop | Orbit Glass | `level-3-orbit-glass.ogg` |
+| Combined Run | Switchyard | `level-4-switchyard.ogg` |
+| Trap Lane | False Signal | `level-5-false-signal.ogg` |
+| Block Pulse | Block Pulse | `level-6-block-pulse.ogg` |
+| Skyline Step | Steel Skyline | `level-7-steel-skyline.ogg` |
+| Foundry Overdrive | Foundry Overdrive | `level-8-foundry-overdrive.ogg` |

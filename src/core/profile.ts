@@ -1,5 +1,17 @@
 import type { LevelEntity } from "./run-simulation";
 
+export type LevelColorTheme = "neon" | "sunset" | "forest" | "void";
+
+export interface GameplaySettings {
+  levelColor: LevelColorTheme;
+  speedMultiplier: number;
+}
+
+export const DEFAULT_GAMEPLAY_SETTINGS: GameplaySettings = {
+  levelColor: "neon",
+  speedMultiplier: 1,
+};
+
 export interface AuthoredLevelLayout {
   entities: readonly LevelEntity[];
   finishX: number;
@@ -29,6 +41,7 @@ export interface PlayerProfile {
   openedChestIds: readonly string[];
   ownedCosmetics: readonly string[];
   selectedCosmetics: Readonly<Record<string, string>>;
+  settings: GameplaySettings;
   unlockedLevels: readonly string[];
 }
 
@@ -152,6 +165,18 @@ export const OFFICIAL_LEVEL_COMPLETION_RULES: LevelCompletionRules = {
   },
   level_5: {
     keyAwarded: { type: "hard", amount: 1 },
+    unlocks: ["level_6"],
+  },
+  level_6: {
+    keyAwarded: { type: "normal", amount: 1 },
+    unlocks: ["level_7"],
+  },
+  level_7: {
+    keyAwarded: { type: "hard", amount: 1 },
+    unlocks: ["level_8"],
+  },
+  level_8: {
+    keyAwarded: { type: "insane", amount: 1 },
   },
 };
 
@@ -169,6 +194,7 @@ export function createProfile(): PlayerProfile {
     openedChestIds: [],
     ownedCosmetics: [DEFAULT_OWNED_COSMETIC],
     selectedCosmetics: { [DEFAULT_COSMETIC_CATEGORY]: DEFAULT_OWNED_COSMETIC },
+    settings: DEFAULT_GAMEPLAY_SETTINGS,
     unlockedLevels: [],
   };
 }

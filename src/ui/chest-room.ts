@@ -75,6 +75,7 @@ export function mountChestRoom(
           statusTestId: `chest-${testId}-opened`,
           statusVisible: opened,
           swatchColor: rewardCosmetic?.appearance.fillRunning,
+          swatchMotif: rewardCosmetic?.appearance.motif,
           swatchPlaceholder: true,
           swatchShape: rewardCosmetic?.appearance.cubeShape,
           swatchTestId: rewardCosmetic

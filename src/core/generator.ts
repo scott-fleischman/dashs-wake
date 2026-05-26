@@ -37,6 +37,7 @@ export function mulberry32(seed: number): RandomSource {
 
 const PLACE_THRESHOLD = 0.4;
 const FINISH_TAIL = 200;
+const MIN_GAMEPLAY_PIECE_SPACING = 220;
 
 export interface BeatContext {
   beatMs: number;
@@ -46,10 +47,12 @@ export interface BeatContext {
   random: number;
 }
 
-export type PatternId = "spike" | "pad";
+export type PatternId = "block" | "orb" | "pad" | "spike";
 
 export type BeatSelection =
   | { type: "skip" }
+  | { type: "block"; x: number }
+  | { type: "orb"; x: number }
   | { type: "pad"; x: number }
   | { type: "spike"; x: number };
 
@@ -81,6 +84,18 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
     produce: ({ x }) => ({ type: "spike", height: 30, width: 30, x, y: 270 }),
   },
   {
+    id: "block",
+    minDifficulty: "normal",
+    requiresIntensity: "intense",
+    produce: ({ x }) => ({
+      type: "block",
+      height: 54,
+      width: 54,
+      x,
+      y: 246,
+    }),
+  },
+  {
     id: "pad",
     minDifficulty: "hard",
     requiresIntensity: "intense",
@@ -94,10 +109,35 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
       y: 290,
     }),
   },
+  {
+    id: "orb",
+    minDifficulty: "insane",
+    requiresIntensity: "intense",
+    produce: ({ beatIndex, x }) => ({
+      type: "orb",
+      id: `generated-orb-${beatIndex}`,
+      effect: { kind: "impulse", magnitude: 720 },
+      height: 76,
+      width: 62,
+      x,
+      y: 174,
+    }),
+  },
 ];
 
 function findCapability(id: PatternId): PatternCapability | undefined {
   return PATTERN_CAPABILITIES.find((capability) => capability.id === id);
+}
+
+function hasGameplaySpacing(
+  candidateX: number,
+  entities: readonly LevelEntity[],
+): boolean {
+  return entities.every(
+    (entity) =>
+      entity.type === "decoration" ||
+      Math.abs(entity.x - candidateX) >= MIN_GAMEPLAY_PIECE_SPACING,
+  );
 }
 
 export function permittedPatterns(
@@ -137,11 +177,7 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
   );
   const patternId = permitted[idx]!;
 
-  if (patternId === "pad") {
-    return { type: "pad", x };
-  }
-
-  return { type: "spike", x };
+  return { type: patternId, x };
 }
 
 export function generateLevel(input: GeneratorInput): LevelContent {
@@ -160,6 +196,17 @@ export function generateLevel(input: GeneratorInput): LevelContent {
       random: rng(),
     });
 
+    if (index > 0 && index % 4 === 0) {
+      entities.push({
+        type: "decoration",
+        kind: index % 8 === 0 ? "diamond" : "beam",
+        height: 72,
+        width: 44,
+        x: Math.round((beatMs / 1000) * rules.horizontalSpeed),
+        y: 116,
+      });
+    }
+
     if (selection.type === "skip") {
       continue;
     }
@@ -167,9 +214,29 @@ export function generateLevel(input: GeneratorInput): LevelContent {
     const capability = findCapability(selection.type);
 
     if (capability) {
-      entities.push(
-        capability.produce({ beatIndex: index, x: selection.x }),
-      );
+      const candidate = capability.produce({ beatIndex: index, x: selection.x });
+      if (hasGameplaySpacing(candidate.x, entities)) {
+        entities.push(candidate);
+      }
+    }
+  }
+
+  if (
+    DIFFICULTY_RANK[input.difficulty] >= DIFFICULTY_RANK.normal &&
+    !entities.some((entity) => entity.type === "block")
+  ) {
+    const availableBeat = input.beatMap.beats
+      .slice(1)
+      .map((beatMs) => Math.round((beatMs / 1000) * rules.horizontalSpeed))
+      .find((x) => hasGameplaySpacing(x, entities));
+    if (availableBeat !== undefined) {
+      entities.push({
+        type: "block",
+        height: 54,
+        width: 54,
+        x: availableBeat,
+        y: 246,
+      });
     }
   }
 
@@ -240,11 +307,13 @@ function decideAiInput(
   }
 
   for (const entity of entities) {
-    if (entity.type !== "spike") {
+    if (entity.type !== "spike" && entity.type !== "block") {
       continue;
     }
     const distance = entity.x - state.player.x;
-    if (distance > 0 && distance < AI_PRE_JUMP_DISTANCE) {
+    const approachDistance =
+      entity.type === "block" ? AI_PRE_JUMP_DISTANCE * 2.2 : AI_PRE_JUMP_DISTANCE;
+    if (distance > 0 && distance < approachDistance) {
       return true;
     }
   }

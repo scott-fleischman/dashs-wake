@@ -40,7 +40,7 @@ function buildPurchaseConfirmation(
       : item.appearance.cubeShape === "diamond"
         ? " shape-diamond"
         : "";
-  swatch.className = `cosmetic-swatch confirm-swatch${shapeClass}`;
+  swatch.className = `cosmetic-swatch confirm-swatch${shapeClass} motif-${item.appearance.motif}`;
   swatch.style.background = `#${item.appearance.fillRunning
     .toString(16)
     .padStart(6, "0")}`;
@@ -132,6 +132,7 @@ export function mountShop(
           statusTestId: `cosmetic-${testId}-owned`,
           statusVisible: owned,
           swatchColor: item.appearance.fillRunning,
+          swatchMotif: item.appearance.motif,
           swatchShape: item.appearance.cubeShape,
           swatchTestId: `cosmetic-${testId}-swatch`,
         }),

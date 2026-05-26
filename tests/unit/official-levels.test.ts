@@ -9,17 +9,21 @@ import {
   validateLevelReachability,
 } from "../../src/content/first-wake";
 import { OFFICIAL_LEVEL_COMPLETION_RULES } from "../../src/core/profile";
+import { validateGeneratedPlayability } from "../../src/core/generator";
 import type { OrbEntity } from "../../src/core/run-simulation";
 
 describe("Official level catalog", () => {
-  it("publishes metadata for the five official launch levels in order", () => {
-    expect(officialLevelCatalog).toHaveLength(5);
+  it("publishes metadata for eight official levels in order", () => {
+    expect(officialLevelCatalog).toHaveLength(8);
     expect(officialLevelCatalog.map((level) => level.id)).toEqual([
       "level_1",
       "level_2",
       "level_3",
       "level_4",
       "level_5",
+      "level_6",
+      "level_7",
+      "level_8",
     ]);
   });
 
@@ -43,6 +47,15 @@ describe("Official level catalog", () => {
     expect(
       byId.get("level_5")?.unlockRequirement.requiredCompletedLevels,
     ).toEqual(["level_4"]);
+    expect(
+      byId.get("level_6")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_5"]);
+    expect(
+      byId.get("level_7")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_6"]);
+    expect(
+      byId.get("level_8")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_7"]);
   });
 
   it("names every level with a non-empty display string and difficulty", () => {
@@ -50,11 +63,11 @@ describe("Official level catalog", () => {
       expect(level.name.length).toBeGreaterThan(0);
       expect(level.difficulty.length).toBeGreaterThan(0);
       expect(level.track.audioPath).toMatch(/\.ogg$/);
-      expect(level.track.license).toBe("CC0");
+      expect(level.track.license).toBe("Original");
     }
   });
 
-  it("times each expanded course to its bundled CC0 electronic track", () => {
+  it("times each expanded course to its original bundled track", () => {
     for (const metadata of officialLevelCatalog) {
       const content = getOfficialLevelContent(metadata.id);
       const traversalMs =
@@ -175,6 +188,28 @@ describe("Official level catalog", () => {
     expect(
       validateLevelReachability(getOfficialLevelContent("level_5")).ok,
     ).toBe(true);
+  });
+
+  it("introduces beat-positioned blocks in the normal, hard, and insane courses", () => {
+    for (const id of ["level_6", "level_7", "level_8"]) {
+      const content = getOfficialLevelContent(id);
+      const blocks = content.entities.filter((entity) => entity.type === "block");
+      const decorations = content.entities.filter(
+        (entity) => entity.type === "decoration",
+      );
+
+      expect(blocks.length).toBeGreaterThan(0);
+      expect(decorations.length).toBeGreaterThan(0);
+      expect(validateLevelReachability(content).ok).toBe(true);
+    }
+  });
+
+  it("keeps each new block course playable on a conservative route", () => {
+    for (const id of ["level_6", "level_7", "level_8"]) {
+      const result = validateGeneratedPlayability(getOfficialLevelContent(id));
+      expect(result.issues, id).toEqual([]);
+      expect(result.ok, id).toBe(true);
+    }
   });
 
   it("preserves the unlock chain so each level unlocks its successor", () => {

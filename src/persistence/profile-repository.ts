@@ -13,7 +13,12 @@ export function loadProfile(): PlayerProfile {
     if (!raw) return createProfile();
     const record = JSON.parse(raw) as StoredRecord;
     if (record.version !== 1) return createProfile();
-    return { ...createProfile(), ...record.profile };
+    const defaults = createProfile();
+    return {
+      ...defaults,
+      ...record.profile,
+      settings: { ...defaults.settings, ...record.profile.settings },
+    };
   } catch {
     return createProfile();
   }

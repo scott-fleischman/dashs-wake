@@ -3,6 +3,11 @@ import { firstWakeLevel, type LevelContent } from "./first-wake";
 import { launchSequenceLevel } from "./launch-sequence";
 import { orbitalLoopLevel } from "./orbital-loop";
 import { trapLaneLevel } from "./trap-lane";
+import {
+  blockPulseLevel,
+  foundryOverdriveLevel,
+  skylineStepLevel,
+} from "./block-courses";
 import type { UnlockRequirement } from "../core/profile";
 import {
   getOfficialTrack,
@@ -70,6 +75,27 @@ export const officialLevelCatalog: readonly OfficialLevelMetadata[] = [
     track: trackFor("level_5"),
     unlockRequirement: { requiredCompletedLevels: ["level_4"] },
   },
+  {
+    id: "level_6",
+    name: "Block Pulse",
+    difficulty: "normal",
+    track: trackFor("level_6"),
+    unlockRequirement: { requiredCompletedLevels: ["level_5"] },
+  },
+  {
+    id: "level_7",
+    name: "Skyline Step",
+    difficulty: "hard",
+    track: trackFor("level_7"),
+    unlockRequirement: { requiredCompletedLevels: ["level_6"] },
+  },
+  {
+    id: "level_8",
+    name: "Foundry Overdrive",
+    difficulty: "insane",
+    track: trackFor("level_8"),
+    unlockRequirement: { requiredCompletedLevels: ["level_7"] },
+  },
 ];
 
 const LEVEL_CONTENT_BY_ID: Readonly<Record<string, LevelContent>> = {
@@ -78,6 +104,9 @@ const LEVEL_CONTENT_BY_ID: Readonly<Record<string, LevelContent>> = {
   level_3: orbitalLoopLevel,
   level_4: combinedRunLevel,
   level_5: trapLaneLevel,
+  level_6: blockPulseLevel,
+  level_7: skylineStepLevel,
+  level_8: foundryOverdriveLevel,
 };
 
 export function getOfficialLevelContent(id: string): LevelContent {

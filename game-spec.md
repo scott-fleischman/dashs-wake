@@ -94,7 +94,7 @@ Each official level should display:
 * Key reward
 * Locked/unlocked status
 
-At launch, there should be **5 official levels**.
+The expanded release contains **8 official levels**.
 
 ## 4.3 Generated Levels
 
@@ -262,7 +262,7 @@ Interpretation:
 
 ## 7. Official Launch Levels
 
-The game launches with **5 official levels**.
+The expanded release contains **8 official levels**.
 
 All first five levels use a simple cubey neon/electric visual style.
 
@@ -347,6 +347,18 @@ Adds:
 Purpose:
 
 * Act as the first serious challenge.
+
+## Levels 6-8: Block Courses
+
+Adds:
+
+* Solid landing blocks aligned to musical beats.
+* A Normal, Hard, and Insane progression of block patterns.
+* Theme-specific decorative geometry and original course music.
+
+Purpose:
+
+* Extend the official progression with block timing and vertical route choice.
 
 ## 8. Obstacles and Mechanics
 
@@ -513,6 +525,9 @@ Example unlock rules:
 | Level 3                | Complete Level 2                |
 | Level 4                | Complete Level 3                |
 | Level 5                | Complete Level 4                |
+| Level 6                | Complete Level 5                |
+| Level 7                | Complete Level 6                |
+| Level 8                | Complete Level 7                |
 | First Gauntlet         | Complete Level 2                |
 | Hard Generated Levels  | Complete Level 3                |
 | Demon Generated Levels | Complete Level 5 or spend coins |
@@ -612,7 +627,7 @@ Build the first version with:
 
 * Main menu/lobby
 * Icon selection
-* 5 official levels
+* 8 official levels
 * Cube movement
 * Ship movement
 * Spikes

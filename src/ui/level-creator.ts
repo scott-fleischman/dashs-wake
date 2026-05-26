@@ -5,9 +5,12 @@ import type {
 } from "../core/profile";
 import type { LevelEntity } from "../core/run-simulation";
 import { firstWakeLevel, type LevelContent } from "../content/first-wake";
+import { buildPlaceholderBeatMap } from "../content/beat-maps";
 
 type CreatorTool =
+  | "block"
   | "cube-portal"
+  | "decoration"
   | "erase"
   | "finish"
   | "orb"
@@ -16,17 +19,23 @@ type CreatorTool =
   | "spike";
 
 export interface CreatorSubmission {
-  audioFile: File;
+  audioFile?: File;
+  audioFileName?: string;
   layout: AuthoredLevelLayout;
   name: string;
 }
 
 interface LevelCreatorActions {
+  initial?: CreatorSubmission;
+  onPreview: (submission: CreatorSubmission) => void;
   onReturn: () => void;
   onSave: (submission: CreatorSubmission) => void;
 }
 
 const WORLD_SCALE = 0.22;
+const DISPLAY_GROUND_Y = 225;
+const GRID_PX = 20;
+const Y_SCALE = DISPLAY_GROUND_Y / firstWakeLevel.rules.groundY;
 const MIN_FINISH_X = 760;
 const DEFAULT_FINISH_X = 2900;
 const CANVAS_HEIGHT = 290;
@@ -38,27 +47,50 @@ interface ToolConfig {
 }
 
 const TOOL_CONFIGS: readonly ToolConfig[] = [
+  { id: "block", label: "Block", icon: "creator-icon-block" },
   { id: "spike", label: "Spike", icon: "creator-icon-spike" },
   { id: "pad", label: "Launch Pad", icon: "creator-icon-pad" },
   { id: "orb", label: "Jump Orb", icon: "creator-icon-orb" },
   { id: "ship-portal", label: "Ship Portal", icon: "creator-icon-portal" },
   { id: "cube-portal", label: "Cube Portal", icon: "creator-icon-portal cube" },
+  { id: "decoration", label: "Decor", icon: "creator-icon-decoration" },
   { id: "finish", label: "Finish Point", icon: "creator-icon-finish" },
   { id: "erase", label: "Erase", icon: "creator-icon-erase" },
 ];
 
-function snapX(x: number): number {
-  return Math.max(60, Math.round(x / 20) * 20);
+function snapDisplay(value: number): number {
+  return Math.round(value / GRID_PX) * GRID_PX;
+}
+
+function snapX(displayX: number): number {
+  return Math.max(60, Math.round(snapDisplay(displayX) / WORLD_SCALE));
+}
+
+function placementY(displayY: number, height: number): number {
+  const centeredTop = (snapDisplay(displayY) / Y_SCALE) - height / 2;
+  return Math.max(
+    0,
+    Math.min(firstWakeLevel.rules.groundY - height, Math.round(centeredTop)),
+  );
 }
 
 function entityForTool(
   tool: CreatorTool,
   id: string,
   x: number,
+  displayY: number,
 ): LevelEntity | undefined {
   switch (tool) {
+    case "block":
+      return {
+        type: "block",
+        height: 60,
+        width: 60,
+        x,
+        y: placementY(displayY, 60),
+      };
     case "spike":
-      return { type: "spike", height: 30, width: 30, x, y: 270 };
+      return { type: "spike", height: 30, width: 30, x, y: placementY(displayY, 30) };
     case "pad":
       return {
         type: "pad",
@@ -67,22 +99,31 @@ function entityForTool(
         height: 18,
         width: 40,
         x,
-        y: 290,
+        y: placementY(displayY, 18),
       };
     case "orb":
       return {
         type: "orb",
         id,
         effect: { kind: "impulse", magnitude: 720 },
-        height: 30,
-        width: 30,
+        height: 64,
+        width: 56,
         x,
-        y: 205,
+        y: placementY(displayY, 64),
       };
     case "ship-portal":
-      return { type: "portal", mode: "ship", height: 80, width: 12, x, y: 220 };
+      return { type: "portal", mode: "ship", height: 80, width: 12, x, y: placementY(displayY, 80) };
     case "cube-portal":
-      return { type: "portal", mode: "cube", height: 80, width: 12, x, y: 220 };
+      return { type: "portal", mode: "cube", height: 80, width: 12, x, y: placementY(displayY, 80) };
+    case "decoration":
+      return {
+        type: "decoration",
+        kind: "diamond",
+        height: 70,
+        width: 48,
+        x,
+        y: placementY(displayY, 70),
+      };
     default:
       return undefined;
   }
@@ -105,30 +146,50 @@ export function buildCreatedLevelRecord(
   submission: CreatorSubmission,
   audioBlobKey: string | undefined,
   analyzed: AnalyzedAudio | null,
+  existing?: GeneratedLevelRecord,
 ): GeneratedLevelRecord {
-  const durationMs = Math.round(
+  const courseDurationMs = Math.round(
     (submission.layout.finishX / firstWakeLevel.rules.horizontalSpeed) * 1000,
   );
-  const beats =
+  const analyzedBeats =
     analyzed && analyzed.beats.length > 0
-      ? analyzed.beats.filter((beat) => beat <= durationMs)
+      ? analyzed.beats.filter((beat) => beat <= courseDurationMs)
       : [];
+  const retainedBeats = existing?.beatMap.beats.filter(
+    (beat) => beat <= courseDurationMs,
+  );
+  const fallbackBeatMap = buildPlaceholderBeatMap(
+    submission.layout.finishX,
+    firstWakeLevel.rules.horizontalSpeed,
+  );
+  const beats =
+    analyzedBeats.length > 0
+      ? analyzedBeats
+      : retainedBeats && retainedBeats.length > 0
+        ? retainedBeats
+        : fallbackBeatMap.beats;
+  const audioFileName =
+    submission.audioFile?.name ?? submission.audioFileName ?? existing?.audioFileName;
+  const durationMs = audioFileName ? courseDurationMs : fallbackBeatMap.durationMs;
 
   return {
     authoredLayout: submission.layout,
-    ...(audioBlobKey ? { audioBlobKey } : {}),
-    audioFileName: submission.audioFile.name,
+    ...(audioBlobKey ?? existing?.audioBlobKey
+      ? { audioBlobKey: audioBlobKey ?? existing?.audioBlobKey }
+      : {}),
+    ...(audioFileName ? { audioFileName } : {}),
     beatIntensities:
-      analyzed && beats.length > 0
-        ? analyzed.beatIntensities.slice(0, beats.length)
-        : [],
+      analyzedBeats.length > 0 && analyzed
+        ? analyzed.beatIntensities.slice(0, analyzedBeats.length)
+        : existing?.beatIntensities.slice(0, beats.length) ??
+          beats.map(() => "quiet" as const),
     beatMap: { beats, durationMs },
     difficulty: "normal",
-    id: `created-level-${index}`,
+    id: existing?.id ?? `created-level-${index}`,
     name: submission.name,
-    seed: 3000 + index,
+    seed: existing?.seed ?? 3000 + index,
     source: "creator",
-    synced: analyzed != null && analyzed.beats.length > 0,
+    synced: analyzedBeats.length > 0 ? true : existing?.synced ?? false,
   };
 }
 
@@ -159,7 +220,10 @@ export function mountLevelCreator(
           <p class="kicker">Level Studio</p>
           <h1>Level Creator</h1>
         </div>
-        <button class="primary-button" type="button" data-action="save" disabled>Save Level</button>
+        <div class="creator-actions">
+          <button class="utility-button" type="button" data-action="preview">Playtest</button>
+          <button class="primary-button" type="button" data-action="save">Save Level</button>
+        </div>
       </header>
       <section class="creator-settings" aria-label="Level settings">
         <label>
@@ -170,12 +234,12 @@ export function mountLevelCreator(
           <span>Song</span>
           <input class="audio-upload" data-testid="creator-audio" type="file" accept="audio/*">
         </label>
-        <p class="creator-song-status" data-testid="creator-song-status">Choose a song to save this level.</p>
+        <p class="creator-song-status" data-testid="creator-song-status"></p>
         <p class="creator-finish-status" data-testid="creator-finish-status"></p>
       </section>
       <section class="creator-palette" aria-label="Build pieces"></section>
       <section class="creator-workspace" aria-label="Course editor">
-        <p class="creator-instruction">Select a piece, then click the course to place it. Orbs snap into the air; pads snap onto the floor.</p>
+        <p class="creator-instruction">Select a piece, then click a grid cell to place it at that height. Blocks are solid; decorations do not collide.</p>
         <div class="creator-scroll">
           <div class="creator-course" data-testid="creator-course" role="application" aria-label="Editable level area"></div>
         </div>
@@ -186,6 +250,7 @@ export function mountLevelCreator(
   const palette = root.querySelector<HTMLElement>(".creator-palette");
   const course = root.querySelector<HTMLElement>(".creator-course");
   const saveButton = root.querySelector<HTMLButtonElement>("[data-action='save']");
+  const previewButton = root.querySelector<HTMLButtonElement>("[data-action='preview']");
   const returnButton = root.querySelector<HTMLButtonElement>("[data-action='return']");
   const songInput = root.querySelector<HTMLInputElement>("[data-testid='creator-audio']");
   const nameInput = root.querySelector<HTMLInputElement>("[data-testid='creator-name']");
@@ -196,6 +261,7 @@ export function mountLevelCreator(
     !palette ||
     !course ||
     !saveButton ||
+    !previewButton ||
     !returnButton ||
     !songInput ||
     !nameInput ||
@@ -206,11 +272,22 @@ export function mountLevelCreator(
   }
 
   let selectedTool: CreatorTool = "spike";
-  let entities: LevelEntity[] = [];
-  let finishX = DEFAULT_FINISH_X;
-  let audioFile: File | undefined;
+  let entities: LevelEntity[] = [...(actions.initial?.layout.entities ?? [])];
+  let finishX = actions.initial?.layout.finishX ?? DEFAULT_FINISH_X;
+  let audioFile: File | undefined = actions.initial?.audioFile;
   let audioObjectUrl: string | undefined;
-  let nextEntityId = 1;
+  let nextEntityId = entities.reduce((next, entity) => {
+    if (!("id" in entity)) {
+      return next;
+    }
+    const suffix = Number(entity.id.match(/\d+$/)?.[0] ?? 0);
+    return Math.max(next, suffix + 1);
+  }, 1);
+
+  nameInput.value = actions.initial?.name ?? "My Song Level";
+  songStatus.textContent = actions.initial?.audioFileName
+    ? `${actions.initial.audioFileName} loaded from saved level.`
+    : "Optional: choose a song, or build with a metronome beat map.";
 
   for (const config of TOOL_CONFIGS) {
     const button = document.createElement("button");
@@ -243,7 +320,7 @@ export function mountLevelCreator(
       const marker = document.createElement("span");
       marker.className = classForEntity(entity);
       marker.style.left = `${entity.x * WORLD_SCALE}px`;
-      marker.style.top = `${(entity.y / firstWakeLevel.rules.groundY) * 225}px`;
+      marker.style.top = `${entity.y * Y_SCALE}px`;
       marker.style.width = `${Math.max(entity.width * WORLD_SCALE, entity.type === "portal" ? 8 : 12)}px`;
       marker.style.height = `${Math.max(entity.height * WORLD_SCALE, entity.type === "portal" ? 56 : 12)}px`;
       course.appendChild(marker);
@@ -259,7 +336,9 @@ export function mountLevelCreator(
 
   const onCourseClick = (event: MouseEvent): void => {
     const bounds = course.getBoundingClientRect();
-    const x = snapX((event.clientX - bounds.left) / WORLD_SCALE);
+    const displayX = event.clientX - bounds.left;
+    const displayY = Math.max(0, Math.min(DISPLAY_GROUND_Y, event.clientY - bounds.top));
+    const x = snapX(displayX);
 
     if (selectedTool === "finish") {
       finishX = Math.max(MIN_FINISH_X, x);
@@ -270,7 +349,10 @@ export function mountLevelCreator(
 
     if (selectedTool === "erase") {
       const nearbyIndex = entities.findIndex(
-        (entity) => Math.abs(entity.x - x) <= 45,
+        (entity) =>
+          entity.type !== "gap" &&
+          Math.abs(entity.x - x) <= 90 &&
+          Math.abs(entity.y * Y_SCALE - displayY) <= GRID_PX * 1.5,
       );
       if (nearbyIndex >= 0) {
         entities.splice(nearbyIndex, 1);
@@ -283,24 +365,35 @@ export function mountLevelCreator(
       return;
     }
 
-    const entity = entityForTool(selectedTool, `created-trigger-${nextEntityId}`, x);
-    if (entity) {
+    const entity = entityForTool(
+      selectedTool,
+      `created-trigger-${nextEntityId}`,
+      x,
+      displayY,
+    );
+    if (entity && entity.type !== "gap") {
       nextEntityId += 1;
-      entities = [...entities.filter((existing) => Math.abs(existing.x - x) > 18), entity];
+      entities = [
+        ...entities.filter(
+          (existing) =>
+            existing.type === "gap" ||
+            Math.abs(existing.x - x) > 45 ||
+            Math.abs(existing.y - entity.y) > 35,
+        ),
+        entity,
+      ];
       renderCourse();
     }
   };
 
   const onSongChange = (): void => {
     audioFile = songInput.files?.[0];
-    saveButton.disabled = !audioFile;
-
     if (audioObjectUrl) {
       URL.revokeObjectURL(audioObjectUrl);
       audioObjectUrl = undefined;
     }
     if (!audioFile) {
-      songStatus.textContent = "Choose a song to save this level.";
+      songStatus.textContent = "Optional: choose a song, or build with a metronome beat map.";
       return;
     }
 
@@ -322,11 +415,18 @@ export function mountLevelCreator(
   };
 
   const onSave = (): void => {
-    if (!audioFile) {
-      return;
-    }
     actions.onSave({
       audioFile,
+      audioFileName: actions.initial?.audioFileName,
+      layout: { entities, finishX },
+      name: nameInput.value.trim() || "My Song Level",
+    });
+  };
+
+  const onPreview = (): void => {
+    actions.onPreview({
+      audioFile,
+      audioFileName: actions.initial?.audioFileName,
       layout: { entities, finishX },
       name: nameInput.value.trim() || "My Song Level",
     });
@@ -335,6 +435,7 @@ export function mountLevelCreator(
   course.addEventListener("click", onCourseClick);
   songInput.addEventListener("change", onSongChange);
   saveButton.addEventListener("click", onSave);
+  previewButton.addEventListener("click", onPreview);
   returnButton.addEventListener("click", actions.onReturn);
   renderCourse();
 
@@ -345,6 +446,7 @@ export function mountLevelCreator(
     course.removeEventListener("click", onCourseClick);
     songInput.removeEventListener("change", onSongChange);
     saveButton.removeEventListener("click", onSave);
+    previewButton.removeEventListener("click", onPreview);
     returnButton.removeEventListener("click", actions.onReturn);
     root.replaceChildren();
   };

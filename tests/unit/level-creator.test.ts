@@ -48,4 +48,30 @@ describe("level creator records", () => {
     expect(content?.finishX).toBe(1900);
     expect(content?.entities).toEqual(submission().layout.entities);
   });
+
+  it("supports saving songless works in progress and editing an existing record in place", () => {
+    const draft: CreatorSubmission = {
+      layout: {
+        entities: [{ type: "block", height: 60, width: 60, x: 500, y: 240 }],
+        finishX: 1600,
+      },
+      name: "Block Draft",
+    };
+    const initial = buildCreatedLevelRecord(3, draft, undefined, null);
+    const revised = buildCreatedLevelRecord(
+      99,
+      { ...draft, name: "Block Draft Revised" },
+      undefined,
+      null,
+      initial,
+    );
+
+    expect(initial.audioFileName).toBeUndefined();
+    expect(initial.beatMap.beats.length).toBeGreaterThan(0);
+    expect(
+      Math.max(...initial.beatMap.beats),
+    ).toBeLessThanOrEqual(initial.beatMap.durationMs);
+    expect(revised.id).toBe(initial.id);
+    expect(revised.name).toBe("Block Draft Revised");
+  });
 });

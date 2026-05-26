@@ -11,20 +11,13 @@ test("lobby presents its destinations and lets the player choose Play", async ({
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
 
-  for (const destination of ["Settings"]) {
-    await expect(
-      page.getByRole("button", {
-        name: `${destination} - Coming later`,
-      }),
-    ).toBeVisible();
-  }
-
   for (const destinationTestId of [
     "destination-customizer",
     "destination-shop",
     "destination-chest-room",
     "destination-gauntlets",
     "destination-generated-levels",
+    "destination-settings",
   ]) {
     await expect(page.getByTestId(destinationTestId)).toBeEnabled();
   }
@@ -36,7 +29,7 @@ test("lobby presents its destinations and lets the player choose Play", async ({
     page.getByRole("heading", { name: "First Wake" }),
   ).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Running");
-  await expect(page.getByTestId("run-track")).toContainText("Bright Melodic EDM");
+  await expect(page.getByTestId("run-track")).toContainText("Dawn Circuit");
   await expect(page.getByTestId("official-level-audio")).toBeAttached();
 });
 

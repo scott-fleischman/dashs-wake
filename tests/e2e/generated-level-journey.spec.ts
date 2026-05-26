@@ -20,6 +20,18 @@ test("generates, persists, reopens, and completes a placeholder generated level"
 
   await playButton.click();
   await expect(
+    page.getByRole("button", { name: "Jump Space / Click" }),
+  ).toBeEnabled();
+  await page.keyboard.press("Space");
+  await expect
+    .poll(
+      async () =>
+        Number((await page.getByTestId("run-progress").textContent())?.replace("%", "")),
+      { intervals: [20], timeout: 5_000 },
+    )
+    .toBeGreaterThanOrEqual(27);
+  await page.keyboard.press("Space");
+  await expect(
     page.getByRole("dialog", { name: "Level complete" }),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("level-complete-reward")).toBeHidden();
