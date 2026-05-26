@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { cubeGroundExtent } from "../../src/game/player-presentation";
+import {
+  cubeGroundExtent,
+  groundedCubeCenterY,
+} from "../../src/game/player-presentation";
 
 describe("cubeGroundExtent", () => {
   it("keeps a rotating diamond grounded at its changing lower vertex", () => {
@@ -18,5 +21,12 @@ describe("cubeGroundExtent", () => {
 
   it("does not bob circular icons as they rotate", () => {
     expect(cubeGroundExtent("circle", 34, 34, Math.PI / 3)).toBe(17);
+  });
+});
+
+describe("groundedCubeCenterY", () => {
+  it("places a landed cube on a raised block surface instead of the floor", () => {
+    expect(groundedCubeCenterY(244, "rectangle", 34, 34, 0)).toBe(227);
+    expect(groundedCubeCenterY(300, "rectangle", 34, 34, 0)).toBe(283);
   });
 });

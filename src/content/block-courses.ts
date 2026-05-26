@@ -24,13 +24,13 @@ const BLOCK_PULSE_ENTITIES: readonly LevelEntity[] = [
   decor(beatX(2, 112), "diamond"),
   block(beatX(5, 112)),
   spike(beatX(8, 112)),
-  block(beatX(11, 112), 212, 88),
+  block(beatX(11, 112), 232, 68),
   decor(beatX(14, 112), "beam"),
   block(beatX(17, 112)),
   spike(beatX(20, 112)),
   block(beatX(25, 112)),
   decor(beatX(29, 112), "pillar"),
-  block(beatX(33, 112), 226, 74),
+  block(beatX(33, 112), 234, 66),
 ];
 
 export const blockPulseLevel: LevelContent = {
@@ -44,7 +44,7 @@ const SKYLINE_STEP_ENTITIES: readonly LevelEntity[] = [
   decor(beatX(3, 128), "pillar"),
   block(beatX(5, 128)),
   spike(beatX(8, 128)),
-  block(beatX(11, 128), 218, 82),
+  block(beatX(11, 128), 232, 68),
   {
     type: "pad",
     id: "level-7-pad-1",
@@ -58,7 +58,7 @@ const SKYLINE_STEP_ENTITIES: readonly LevelEntity[] = [
   decor(beatX(19, 128), "beam"),
   block(beatX(23, 128)),
   spike(beatX(27, 128)),
-  block(beatX(31, 128), 210, 90),
+  block(beatX(31, 128), 232, 68),
   block(beatX(38, 128)),
   decor(beatX(43, 128), "diamond"),
 ];
@@ -73,7 +73,7 @@ export const skylineStepLevel: LevelContent = {
 const FOUNDRY_OVERDRIVE_ENTITIES: readonly LevelEntity[] = [
   decor(beatX(3, 150), "beam"),
   block(beatX(6, 150)),
-  block(beatX(10, 150), 214, 86),
+  block(beatX(10, 150), 232, 68),
   {
     type: "orb",
     id: "level-8-orb-1",
@@ -87,7 +87,7 @@ const FOUNDRY_OVERDRIVE_ENTITIES: readonly LevelEntity[] = [
   spike(beatX(15, 150)),
   block(beatX(20, 150)),
   decor(beatX(24, 150), "diamond"),
-  block(beatX(28, 150), 226, 74),
+  block(beatX(28, 150), 234, 66),
   {
     type: "pad",
     id: "level-8-pad-1",
@@ -100,7 +100,7 @@ const FOUNDRY_OVERDRIVE_ENTITIES: readonly LevelEntity[] = [
   block(beatX(36, 150), 220, 80),
   block(beatX(43, 150)),
   spike(beatX(49, 150)),
-  block(beatX(54, 150), 208, 92),
+  block(beatX(54, 150), 232, 68),
   decor(beatX(58, 150), "pillar"),
 ];
 

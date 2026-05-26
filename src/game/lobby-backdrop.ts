@@ -12,7 +12,7 @@ import {
   tickRun,
   type RunState,
 } from "../core/run-simulation";
-import { cubeGroundExtent } from "./player-presentation";
+import { groundedCubeCenterY } from "./player-presentation";
 
 const LOBBY_SCENE_KEY = "lobby-backdrop";
 const LEVEL_SCENE_KEY = "level-run";
@@ -360,7 +360,9 @@ class LevelScene extends Phaser.Scene {
       const jumpPressed =
         this.state.player.mode === "ship"
           ? this.jumpHeld
-          : this.cubeJumpPending || this.cubeInputBufferMs > 0;
+          : this.cubeJumpPending ||
+            this.cubeInputBufferMs > 0 ||
+            (this.jumpHeld && this.state.player.grounded);
       const wasGrounded = this.state.player.grounded;
       const consumedCount = this.state.consumedTriggerIds.size;
       this.state = tickRun(
@@ -746,8 +748,8 @@ class LevelScene extends Phaser.Scene {
     const fillColor = playerFillFor(this.status, this.appearance);
     const cubeRotation = this.state.player.x / 62;
     const cubeScreenY = this.state.player.grounded
-      ? this.floorY -
-        cubeGroundExtent(
+      ? groundedCubeCenterY(
+          this.floorY + this.state.player.y - rules.groundY,
           this.appearance.cubeShape,
           rules.playerWidth,
           rules.playerHeight,

@@ -18,7 +18,7 @@ export async function tapAtPercents(
 }
 
 export async function completeFirstWake(page: Page): Promise<void> {
-  await tapAtPercents(page, [3, 10, 29, 35, 41, 63, 69, 77]);
+  await tapAtPercents(page, [3, 10, 29, 35, 42, 63, 70, 77]);
   await expect(
     page.getByRole("dialog", { name: "Level complete" }),
   ).toBeVisible({ timeout: 8_000 });

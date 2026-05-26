@@ -83,6 +83,25 @@ test("First Wake jumps when the run surface is clicked", async ({ page }) => {
   await expect(page.getByText("Jump registered")).toBeVisible();
 });
 
+test("First Wake repeats cube jumps while jump is held", async ({ page }) => {
+  await page.goto("/#play");
+
+  const progress = page.getByTestId("run-progress");
+  const readPercent = async (): Promise<number> =>
+    Number((await progress.textContent())?.replace("%", ""));
+
+  await expect.poll(readPercent, { intervals: [20] }).toBeGreaterThanOrEqual(3);
+  await page.keyboard.down("Space");
+  await expect
+    .poll(readPercent, { intervals: [20], timeout: 4_000 })
+    .toBeGreaterThanOrEqual(13);
+  await page.keyboard.up("Space");
+
+  await expect(
+    page.getByRole("dialog", { name: "Run failed" }),
+  ).toBeHidden();
+});
+
 test("First Wake reports progress, restarts after failure, and can be completed", async ({
   page,
 }) => {

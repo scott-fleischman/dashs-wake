@@ -31,7 +31,7 @@ test("unlocks Level 3 and completes the safe orb sequence", async ({
     24, 26,
     35, 37,
     47, 49,
-    60, 66,
+    60, 67,
   ]);
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });

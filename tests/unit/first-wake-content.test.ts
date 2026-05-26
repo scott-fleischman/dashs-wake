@@ -3,7 +3,12 @@ import {
   firstWakeLevel,
   validateLevelReachability,
 } from "../../src/content/first-wake";
-import type { PortalEntity } from "../../src/core/run-simulation";
+import {
+  createRunState,
+  tickRun,
+  type LevelEntity,
+  type PortalEntity,
+} from "../../src/core/run-simulation";
 
 const STARTER_MECHANIC_TYPES = new Set([
   "gap",
@@ -11,6 +16,52 @@ const STARTER_MECHANIC_TYPES = new Set([
   "portal",
   "spike",
 ]);
+
+function canClearContiguousSpikes(count: number): boolean {
+  const firstSpikeX = 300;
+  const spikes: readonly LevelEntity[] = Array.from(
+    { length: count },
+    (_, index) => ({
+      type: "spike",
+      height: 30,
+      width: 30,
+      x: firstSpikeX + index * 30,
+      y: 270,
+    }),
+  );
+  const endX =
+    firstSpikeX + count * 30 + firstWakeLevel.rules.playerWidth / 2;
+
+  for (let lead = 0; lead <= 200; lead += 1) {
+    let state = {
+      ...createRunState(firstWakeLevel.rules),
+      player: {
+        ...createRunState(firstWakeLevel.rules).player,
+        x: firstSpikeX - lead,
+      },
+    };
+
+    for (let tick = 0; tick < 120; tick += 1) {
+      state = tickRun(
+        state,
+        { jumpPressed: tick === 0 },
+        1000 / 60,
+        firstWakeLevel.rules,
+        spikes,
+      );
+
+      if (state.status === "dead") {
+        break;
+      }
+
+      if (state.player.x >= endX) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 describe("First Wake content contract", () => {
   it("uses the accelerated player pace", () => {
@@ -46,6 +97,11 @@ describe("First Wake content contract", () => {
 
     expect(result.ok).toBe(true);
     expect(result.issues).toEqual([]);
+  });
+
+  it("limits a normal cube jump to a tightly timed three-spike clear", () => {
+    expect(canClearContiguousSpikes(3)).toBe(true);
+    expect(canClearContiguousSpikes(4)).toBe(false);
   });
 
   it("flags content whose gap exceeds the jump arc", () => {

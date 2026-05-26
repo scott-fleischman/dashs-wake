@@ -52,3 +52,13 @@ export function cubeGroundExtent(
     rotation,
   );
 }
+
+export function groundedCubeCenterY(
+  surfaceY: number,
+  kind: CubeShapeKind,
+  width: number,
+  height: number,
+  rotation: number,
+): number {
+  return surfaceY - cubeGroundExtent(kind, width, height, rotation);
+}

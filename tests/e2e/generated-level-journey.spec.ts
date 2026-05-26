@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { tapAtPercents } from "./helpers/course-play";
 
 test("generates, persists, reopens, and completes a placeholder generated level", async ({
   page,
@@ -22,15 +23,7 @@ test("generates, persists, reopens, and completes a placeholder generated level"
   await expect(
     page.getByRole("button", { name: "Jump Space / Click" }),
   ).toBeEnabled();
-  await page.keyboard.press("Space");
-  await expect
-    .poll(
-      async () =>
-        Number((await page.getByTestId("run-progress").textContent())?.replace("%", "")),
-      { intervals: [20], timeout: 5_000 },
-    )
-    .toBeGreaterThanOrEqual(27);
-  await page.keyboard.press("Space");
+  await tapAtPercents(page, [5, 32], 5_000);
   await expect(
     page.getByRole("dialog", { name: "Level complete" }),
   ).toBeVisible({ timeout: 15_000 });

@@ -21,23 +21,23 @@ test("enters and completes the electric wake gauntlet", async ({ page }) => {
   await expect(kicker).toContainText("Stage 1 of 3");
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(13);
+    .toBeGreaterThanOrEqual(16);
   await page.keyboard.press("Space");
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(48);
+    .toBeGreaterThanOrEqual(50);
   await page.keyboard.press("Space");
 
   await expect(kicker).toContainText("Stage 2 of 3", { timeout: 5_000 });
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(13);
+    .toBeGreaterThanOrEqual(16);
   await page.keyboard.press("Space");
 
   await expect(kicker).toContainText("Stage 3 of 3", { timeout: 5_000 });
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(7);
+    .toBeGreaterThanOrEqual(10);
   await page.keyboard.press("Space");
   await expect
     .poll(readPercent, { intervals: [20], timeout: 6_000 })

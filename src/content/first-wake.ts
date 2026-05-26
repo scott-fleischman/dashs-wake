@@ -41,7 +41,7 @@ const FIRST_WAKE_RULES: RunRules = {
   gravity: 1250,
   groundY: 300,
   horizontalSpeed: PLAYER_HORIZONTAL_SPEED,
-  jumpVelocity: -540,
+  jumpVelocity: -430,
   playerHeight: 34,
   playerWidth: 34,
 };

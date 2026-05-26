@@ -23,7 +23,7 @@ test("unlocks Level 2 and completes the launch pad sequence", async ({
   ).toBeVisible();
 
   const progress = page.getByTestId("run-progress");
-  await tapAtPercents(page, [3, 19, 36, 54, 72]);
+  await tapAtPercents(page, [3, 19, 37, 55, 73]);
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
   await expect(completeDialog).toBeVisible({ timeout: 8_000 });

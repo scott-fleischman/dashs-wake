@@ -29,7 +29,7 @@ interface ModeCue {
 }
 
 const MODE_CUES: Record<LevelSnapshot["mode"], ModeCue> = {
-  cube: { label: "Cube", hint: "Tap to jump" },
+  cube: { label: "Cube", hint: "Hold to auto-jump" },
   ship: { label: "Ship", hint: "Hold to rise" },
 };
 
@@ -99,7 +99,7 @@ export function mountFirstWake(
         <strong class="hud-value" data-testid="run-progress">0%</strong>
         <p class="attempt-count" data-testid="attempt-count">Attempt 1</p>
         <p class="run-mode" data-testid="run-mode">Cube</p>
-        <p class="run-cue" data-testid="run-cue">Tap to jump</p>
+        <p class="run-cue" data-testid="run-cue">Hold to auto-jump</p>
         <p class="equipped-icon" data-testid="equipped-icon"></p>
       </section>
 

@@ -25,7 +25,7 @@ test("unlocks Level 4 and completes the combined run", async ({ page }) => {
   ).toBeVisible();
 
   const progress = page.getByTestId("run-progress");
-  await tapAtPercents(page, [2, 24, 26, 54, 56, 66]);
+  await tapAtPercents(page, [2, 25, 26, 54, 56, 67]);
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
   await expect(completeDialog).toBeVisible({ timeout: 10_000 });
