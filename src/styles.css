@@ -342,15 +342,17 @@ button {
 }
 
 .first-wake {
+  --first-wake-side-inset: clamp(1.25rem, 5vw, 4rem);
+  --first-wake-top-inset: clamp(1.4rem, 7vh, 3.8rem);
   height: 100%;
   position: relative;
   touch-action: none;
 }
 
 .first-wake-header {
-  left: clamp(1.25rem, 5vw, 4rem);
+  left: var(--first-wake-side-inset);
   position: absolute;
-  top: clamp(1.4rem, 7vh, 3.8rem);
+  top: var(--first-wake-top-inset);
 }
 
 .first-wake-header h1 {
@@ -384,9 +386,17 @@ button {
   letter-spacing: 0.14em;
   padding: 0.42rem 0.55rem 0.42rem 0.8rem;
   position: absolute;
-  right: clamp(1.25rem, 5vw, 4rem);
+  right: var(--first-wake-side-inset);
   text-transform: uppercase;
-  top: clamp(1.4rem, 7vh, 3.8rem);
+  top: var(--first-wake-top-inset);
+  z-index: 3;
+}
+
+.pause-overlay .run-speed-control {
+  justify-content: center;
+  margin: 0 0 0.35rem;
+  position: static;
+  width: 100%;
 }
 
 .run-speed-control select {
@@ -529,10 +539,13 @@ button {
 .run-controls {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.9rem;
+  justify-content: flex-end;
+  max-width: min(22rem, calc(100vw - (2 * var(--first-wake-side-inset))));
   position: absolute;
-  right: clamp(1.25rem, 5vw, 4rem);
-  top: clamp(1.4rem, 7vh, 3.8rem);
+  right: var(--first-wake-side-inset);
+  top: calc(var(--first-wake-top-inset) + 2.85rem);
 }
 
 .run-controls span {

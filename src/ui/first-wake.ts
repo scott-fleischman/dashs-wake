@@ -188,6 +188,7 @@ export function mountFirstWake(
   const cueReadout = root.querySelector<HTMLElement>("[data-testid='run-cue']");
   const runSurface = root.querySelector<HTMLElement>(".first-wake");
   const pulseButton = root.querySelector<HTMLButtonElement>("[data-action='pulse']");
+  const speedControl = root.querySelector<HTMLLabelElement>(".run-speed-control");
   const speedSelect = root.querySelector<HTMLSelectElement>("[data-testid='run-speed']");
   const pauseButton = root.querySelector<HTMLButtonElement>("[data-action='pause']");
   const resumeButton = root.querySelector<HTMLButtonElement>("[data-action='resume']");
@@ -222,6 +223,7 @@ export function mountFirstWake(
     !modeReadout ||
     !cueReadout ||
     !runSurface ||
+    !speedControl ||
     !speedSelect ||
     !pulseButton ||
     !pauseButton ||
@@ -258,6 +260,34 @@ export function mountFirstWake(
   speedSelect.addEventListener("change", () => {
     actions.onSpeedChange(Number(speedSelect.value));
   });
+
+  const speedHomeParent = speedControl.parentElement;
+  const speedHomeNextSibling = speedControl.nextElementSibling;
+  const failedOverlayActions =
+    failedOverlay.querySelector<HTMLElement>(".overlay-actions");
+  const completeOverlayActions =
+    completeOverlay.querySelector<HTMLElement>(".overlay-actions");
+
+  const placeSpeedControl = (
+    location: "corner" | "failed" | "complete",
+  ): void => {
+    if (location === "failed" && failedOverlayActions) {
+      failedOverlay.insertBefore(speedControl, failedOverlayActions);
+      return;
+    }
+
+    if (location === "complete" && completeOverlayActions) {
+      completeOverlay.insertBefore(speedControl, completeOverlayActions);
+      return;
+    }
+
+    if (speedHomeParent) {
+      speedHomeParent.insertBefore(
+        speedControl,
+        speedHomeNextSibling ?? null,
+      );
+    }
+  };
 
   const setPaused = (nextPaused: boolean): void => {
     if (runStatus !== "running") {
@@ -400,6 +430,15 @@ export function mountFirstWake(
     failedOverlay.hidden = snapshot.status !== "dead";
     completeOverlay.hidden = snapshot.status !== "complete";
     pulseButton.disabled = snapshot.status !== "running";
+    speedSelect.disabled = false;
+
+    if (snapshot.status === "dead") {
+      placeSpeedControl("failed");
+    } else if (snapshot.status === "complete") {
+      placeSpeedControl("complete");
+    } else {
+      placeSpeedControl("corner");
+    }
 
     if (!paused) {
       status.textContent = RUN_STATUS_LABELS[snapshot.status];
