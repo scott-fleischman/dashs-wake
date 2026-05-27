@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run --passWithNoTests",
-    "test:bootstrap": "vitest run tests/unit/module-bootstrap.test.ts",
+    "test:agent": "vitest run tests/unit/agent-gate.test.ts",
     "test:smoke": "playwright test tests/e2e/app-boot.spec.ts",
     "test:e2e": "playwright test",
-    "verify": "npm run build && npm run test:bootstrap && npm run test:smoke"
+    "verify": "npm run build && npm run test:agent && npm run test:smoke",
+    "verify:agent": "bash tools/verify-agent.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
