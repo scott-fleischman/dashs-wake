@@ -9,6 +9,7 @@ describe("generated level playability", () => {
   it("accepts a known playable level fixture", () => {
     const result = validateGeneratedPlayability(firstWakeLevel);
 
+    expect(result.issues).toEqual([]);
     expect(result.ok).toBe(true);
   });
 

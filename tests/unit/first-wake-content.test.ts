@@ -9,10 +9,10 @@ import {
   type LevelEntity,
   type PortalEntity,
 } from "../../src/core/run-simulation";
+import { buildSupportingTerrain } from "../../src/content/terrain";
 
 const STARTER_MECHANIC_TYPES = new Set([
-  "gap",
-  "platform",
+  "block",
   "portal",
   "spike",
 ]);
@@ -31,6 +31,7 @@ function canClearContiguousSpikes(count: number): boolean {
   );
   const endX =
     firstSpikeX + count * 30 + firstWakeLevel.rules.playerWidth / 2;
+  const entities = [...buildSupportingTerrain(endX + 100), ...spikes];
 
   for (let lead = 0; lead <= 200; lead += 1) {
     let state = {
@@ -47,7 +48,7 @@ function canClearContiguousSpikes(count: number): boolean {
         { jumpPressed: tick === 0 },
         1000 / 60,
         firstWakeLevel.rules,
-        spikes,
+        entities,
       );
 
       if (state.status === "dead") {
@@ -104,22 +105,16 @@ describe("First Wake content contract", () => {
     expect(canClearContiguousSpikes(4)).toBe(false);
   });
 
-  it("flags content whose gap exceeds the jump arc", () => {
-    const maxJump =
-      firstWakeLevel.rules.horizontalSpeed *
-      ((2 * Math.abs(firstWakeLevel.rules.jumpVelocity)) /
-        firstWakeLevel.rules.gravity);
-
+  it("flags content without an explicit starting support block", () => {
     const result = validateLevelReachability({
       ...firstWakeLevel,
-      entities: [
-        ...firstWakeLevel.entities,
-        { type: "gap", width: maxJump + 10, x: 30 },
-      ],
+      entities: firstWakeLevel.entities.filter(
+        (entity) => entity.type !== "block",
+      ),
     });
 
     expect(result.ok).toBe(false);
-    expect(result.issues.join(" ")).toMatch(/gap/i);
+    expect(result.issues.join(" ")).toMatch(/supporting block/i);
   });
 
   it("teaches ship mode through repeated ship and cube portal passages", () => {
@@ -138,7 +133,7 @@ describe("First Wake content contract", () => {
     }
   });
 
-  it("authors a wide, safe ship corridor without hazards between its portals", () => {
+  it("authors a bounded beginner ship corridor rather than open-air flight", () => {
     const portals = firstWakeLevel.entities.filter(
       (entity): entity is PortalEntity => entity.type === "portal",
     );
@@ -152,13 +147,24 @@ describe("First Wake content contract", () => {
     const minCorridorWidth = 5 * firstWakeLevel.rules.playerWidth;
     expect(corridorWidth).toBeGreaterThanOrEqual(minCorridorWidth);
 
-    const hazardsInCorridor = firstWakeLevel.entities.filter(
+    const blocksInCorridor = firstWakeLevel.entities.filter(
       (entity) =>
-        (entity.type === "spike" || entity.type === "gap") &&
+        entity.type === "block" &&
         entity.x + entity.width > shipPortal!.x &&
         entity.x < cubePortal!.x,
     );
-    expect(hazardsInCorridor).toEqual([]);
+    expect(
+      blocksInCorridor.some(
+        (block) =>
+          block.y + block.height <
+          firstWakeLevel.rules.spawnY - firstWakeLevel.rules.playerHeight,
+      ),
+    ).toBe(true);
+    expect(
+      blocksInCorridor.some(
+        (block) => block.y > firstWakeLevel.rules.spawnY,
+      ),
+    ).toBe(true);
   });
 
   it("flags entities whose right edge extends past the finish line", () => {

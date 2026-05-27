@@ -11,6 +11,11 @@ import {
   PLAYER_HORIZONTAL_SPEED,
 } from "./level-pace";
 import { buildOfficialBeatMap } from "./official-soundtrack";
+import {
+  SPAWN_SURFACE_Y,
+  withSupportingTerrain,
+  type FlightChannel,
+} from "./terrain";
 
 export interface BeatMap {
   beats: readonly number[];
@@ -37,36 +42,52 @@ export interface ValidationResult {
 const MIN_SHIP_CORRIDOR_WIDTH_RATIO = 5;
 
 const FIRST_WAKE_RULES: RunRules = {
-  fallBoundaryY: 420,
+  fallBoundaryY: 500,
   gravity: 1250,
-  groundY: 300,
   horizontalSpeed: PLAYER_HORIZONTAL_SPEED,
   jumpVelocity: -430,
   playerHeight: 34,
   playerWidth: 34,
+  spawnY: SPAWN_SURFACE_Y,
 };
 
 const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
   { type: "spike", height: 30, width: 30, x: 190, y: 270 },
   { type: "spike", height: 30, width: 30, x: 455, y: 270 },
-  { type: "portal", mode: "ship", height: 80, width: 12, x: 650, y: 220 },
-  { type: "portal", mode: "cube", height: 80, width: 12, x: 1020, y: 220 },
-  { type: "spike", height: 30, width: 30, x: 1190, y: 270 },
+  { type: "portal", mode: "ship", height: 374, width: 12, x: 650, y: 36 },
+  { type: "portal", mode: "cube", height: 374, width: 12, x: 1020, y: 36 },
   { type: "spike", height: 30, width: 30, x: 1450, y: 270 },
   { type: "spike", height: 30, width: 30, x: 1690, y: 270 },
-  { type: "portal", mode: "ship", height: 80, width: 12, x: 1920, y: 220 },
-  { type: "portal", mode: "cube", height: 80, width: 12, x: 2320, y: 220 },
-  { type: "spike", height: 30, width: 30, x: 2520, y: 270 },
+  { type: "portal", mode: "ship", height: 374, width: 12, x: 1920, y: 36 },
+  { type: "portal", mode: "cube", height: 374, width: 12, x: 2320, y: 36 },
   { type: "spike", height: 30, width: 30, x: 2790, y: 270 },
   { type: "spike", height: 30, width: 30, x: 3080, y: 270 },
 ];
 
-const FIRST_WAKE_FINISH_X = 3918;
+const FIRST_WAKE_FINISH_X = paceAuthoredX(3918);
+const FIRST_WAKE_FLIGHT_CHANNELS: readonly FlightChannel[] = [
+  {
+    startX: paceAuthoredX(620),
+    endX: paceAuthoredX(1020) + 240,
+    ceilingEndX: paceAuthoredX(1020) + 18,
+    lowerSurfaceY: 330,
+  },
+  {
+    startX: paceAuthoredX(1890),
+    endX: paceAuthoredX(2320) + 240,
+    ceilingEndX: paceAuthoredX(2320) + 18,
+    lowerSurfaceY: 330,
+  },
+];
 
 export const firstWakeLevel: LevelContent = {
   beatMap: buildOfficialBeatMap("level_1"),
-  entities: paceAuthoredEntities(FIRST_WAKE_ENTITIES),
-  finishX: paceAuthoredX(FIRST_WAKE_FINISH_X),
+  entities: withSupportingTerrain(
+    paceAuthoredEntities(FIRST_WAKE_ENTITIES),
+    FIRST_WAKE_FINISH_X,
+    FIRST_WAKE_FLIGHT_CHANNELS,
+  ),
+  finishX: FIRST_WAKE_FINISH_X,
   rules: FIRST_WAKE_RULES,
 };
 
@@ -82,12 +103,6 @@ const validateHazardReachability: LevelValidator = (level) => {
   const maxJump = maxJumpDistance(level.rules);
 
   for (const entity of level.entities) {
-    if (entity.type === "gap" && entity.width >= maxJump) {
-      issues.push(
-        `Gap at x=${entity.x} is wider than the max jump (${entity.width} >= ${maxJump.toFixed(2)}).`,
-      );
-    }
-
     if (entity.type === "spike" && entity.width >= maxJump) {
       issues.push(
         `Spike at x=${entity.x} is wider than the max jump (${entity.width} >= ${maxJump.toFixed(2)}).`,
@@ -110,6 +125,20 @@ const validateEntityBounds: LevelValidator = (level) => {
   }
 
   return issues;
+};
+
+const validateSpawnSupport: LevelValidator = (level) => {
+  const spawnSupported = level.entities.some(
+    (entity) =>
+      entity.type === "block" &&
+      entity.y === level.rules.spawnY &&
+      entity.x <= level.rules.playerWidth / 2 &&
+      entity.x + entity.width > -level.rules.playerWidth / 2,
+  );
+
+  return spawnSupported
+    ? []
+    : ["The player spawn has no supporting block terrain."];
 };
 
 const validateShipCorridors: LevelValidator = (level) => {
@@ -150,6 +179,27 @@ const validateShipCorridors: LevelValidator = (level) => {
         `Ship corridor at x=${shipPortal.x} is too tight (${corridorWidth} < ${minCorridorWidth}).`,
       );
     }
+
+    const corridorBlocks = level.entities.filter(
+      (entity) =>
+        entity.type === "block" &&
+        entity.x < nextCubePortal.x &&
+        entity.x + entity.width > shipPortal.x,
+    );
+    const hasCeiling = corridorBlocks.some(
+      (block) =>
+        block.y + block.height <=
+        level.rules.spawnY - level.rules.playerHeight,
+    );
+    const hasLowerWall = corridorBlocks.some(
+      (block) => block.y > level.rules.spawnY,
+    );
+
+    if (!hasCeiling || !hasLowerWall) {
+      issues.push(
+        `Ship corridor at x=${shipPortal.x} must be bounded by upper and lower blocks.`,
+      );
+    }
   }
 
   return issues;
@@ -186,6 +236,7 @@ const validateRequiredTriggers: LevelValidator = (level) => {
 const LEVEL_VALIDATORS: readonly LevelValidator[] = [
   validateHazardReachability,
   validateEntityBounds,
+  validateSpawnSupport,
   validateShipCorridors,
   validateRequiredTriggers,
 ];

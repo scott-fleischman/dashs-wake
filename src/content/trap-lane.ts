@@ -2,6 +2,7 @@ import type { LevelEntity, RunRules } from "../core/run-simulation";
 import { paceAuthoredEntities, paceAuthoredX } from "./level-pace";
 import { buildOfficialBeatMap } from "./official-soundtrack";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
+import { withSupportingTerrain, type FlightChannel } from "./terrain";
 
 const TRAP_LANE_RULES: RunRules = firstWakeLevel.rules;
 
@@ -19,21 +20,21 @@ const TRAP_LANE_ENTITIES: readonly LevelEntity[] = [
   { type: "spike", height: 30, width: 30, x: 480, y: 270 },
   { type: "spike", height: 30, width: 30, x: 510, y: 270 },
   { type: "spike", height: 30, width: 30, x: 540, y: 270 },
-  { type: "portal", mode: "ship", height: 80, width: 12, x: 770, y: 220 },
-  { type: "portal", mode: "cube", height: 80, width: 12, x: 1180, y: 220 },
-  { type: "spike", height: 30, width: 30, x: 1350, y: 270 },
+  { type: "portal", mode: "ship", height: 374, width: 12, x: 770, y: 36 },
+  { type: "portal", mode: "cube", height: 374, width: 12, x: 1180, y: 36 },
+  { type: "spike", height: 30, width: 30, x: 1510, y: 300 },
   {
     type: "orb",
     id: "level-5-orb-safe",
     effect: { kind: "impulse", magnitude: 720 },
     height: 90,
     width: 72,
-    x: 1355,
-    y: 175,
+    x: 1515,
+    y: 205,
   },
-  { type: "spike", height: 30, width: 30, x: 1400, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 1430, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 1460, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 1560, y: 300 },
+  { type: "spike", height: 30, width: 30, x: 1590, y: 300 },
+  { type: "spike", height: 30, width: 30, x: 1620, y: 300 },
   { type: "spike", height: 30, width: 30, x: 1980, y: 270 },
   {
     type: "orb",
@@ -99,11 +100,24 @@ const TRAP_LANE_ENTITIES: readonly LevelEntity[] = [
   { type: "spike", height: 30, width: 30, x: 4610, y: 270 },
 ];
 
-const TRAP_LANE_FINISH_X = 5218;
+const TRAP_LANE_FINISH_X = paceAuthoredX(5218);
+const TRAP_LANE_FLIGHT_CHANNELS: readonly FlightChannel[] = [
+  {
+    startX: paceAuthoredX(740),
+    endX: paceAuthoredX(1650),
+    ceilingEndX: paceAuthoredX(1180) + 18,
+    ceilingBottomY: 70,
+    lowerSurfaceY: 330,
+  },
+];
 
 export const trapLaneLevel: LevelContent = {
   beatMap: buildOfficialBeatMap("level_5"),
-  entities: paceAuthoredEntities(TRAP_LANE_ENTITIES),
-  finishX: paceAuthoredX(TRAP_LANE_FINISH_X),
+  entities: withSupportingTerrain(
+    paceAuthoredEntities(TRAP_LANE_ENTITIES),
+    TRAP_LANE_FINISH_X,
+    TRAP_LANE_FLIGHT_CHANNELS,
+  ),
+  finishX: TRAP_LANE_FINISH_X,
   rules: TRAP_LANE_RULES,
 };

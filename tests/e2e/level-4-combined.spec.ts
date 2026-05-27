@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { tapAtPercents } from "./helpers/course-play";
+import {
+  hoverThroughShipPassage,
+  tapAtPercents,
+  waitUntilPercent,
+} from "./helpers/course-play";
 import { seedProfile } from "./helpers/profile-storage";
 
 test.setTimeout(45_000);
@@ -25,7 +29,13 @@ test("unlocks Level 4 and completes the combined run", async ({ page }) => {
   ).toBeVisible();
 
   const progress = page.getByTestId("run-progress");
-  await tapAtPercents(page, [2, 25, 26, 54, 56, 67]);
+  await tapAtPercents(page, [2]);
+  await waitUntilPercent(page, 14);
+  await hoverThroughShipPassage(page);
+  await tapAtPercents(page, [25, 27, 28, 29]);
+  await waitUntilPercent(page, 43);
+  await hoverThroughShipPassage(page);
+  await tapAtPercents(page, [54, 57, 59, 67]);
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
   await expect(completeDialog).toBeVisible({ timeout: 10_000 });

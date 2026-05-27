@@ -11,49 +11,81 @@ import {
 const rules: RunRules = {
   fallBoundaryY: 120,
   gravity: 20,
-  groundY: 100,
   horizontalSpeed: 10,
   jumpVelocity: -10,
   playerHeight: 10,
   playerWidth: 10,
+  spawnY: 100,
+};
+
+const startingTerrain: LevelEntity = {
+  type: "block",
+  height: 30,
+  width: 200,
+  x: 0,
+  y: rules.spawnY,
 };
 
 describe("cube run simulation", () => {
-  it("moves forward at a fixed speed while grounded", () => {
-    const state = tickRun(createRunState(rules), { jumpPressed: false }, 500, rules);
+  it("moves forward at a fixed speed while supported by a block", () => {
+    const state = tickRun(
+      createRunState(rules),
+      { jumpPressed: false },
+      500,
+      rules,
+      [startingTerrain],
+    );
 
     expect(state.elapsedMs).toBe(500);
     expect(state.player.x).toBeCloseTo(5);
-    expect(state.player.y).toBe(rules.groundY);
+    expect(state.player.y).toBe(rules.spawnY);
     expect(state.player.grounded).toBe(true);
   });
 
-  it("jumps only from the ground and falls back under gravity", () => {
-    const takeoff = tickRun(createRunState(rules), { jumpPressed: true }, 100, rules);
+  it("jumps only from a supporting block and falls back onto it", () => {
+    const takeoff = tickRun(
+      createRunState(rules),
+      { jumpPressed: true },
+      100,
+      rules,
+      [startingTerrain],
+    );
 
     expect(takeoff.player.x).toBeCloseTo(1);
     expect(takeoff.player.y).toBeCloseTo(99.2);
     expect(takeoff.player.velocityY).toBeCloseTo(-8);
     expect(takeoff.player.grounded).toBe(false);
 
-    const airborneAttempt = tickRun(takeoff, { jumpPressed: true }, 100, rules);
+    const airborneAttempt = tickRun(
+      takeoff,
+      { jumpPressed: true },
+      100,
+      rules,
+      [startingTerrain],
+    );
 
     expect(airborneAttempt.player.velocityY).toBeCloseTo(-6);
     expect(airborneAttempt.player.y).toBeCloseTo(98.6);
 
     let landed = airborneAttempt;
     for (let frame = 0; frame < 10; frame += 1) {
-      landed = tickRun(landed, { jumpPressed: false }, 100, rules);
+      landed = tickRun(
+        landed,
+        { jumpPressed: false },
+        100,
+        rules,
+        [startingTerrain],
+      );
     }
 
-    expect(landed.player.y).toBe(rules.groundY);
+    expect(landed.player.y).toBe(rules.spawnY);
     expect(landed.player.velocityY).toBe(0);
     expect(landed.player.grounded).toBe(true);
   });
 
-  it("lands safely on the top of a platform", () => {
-    const platform: LevelEntity = {
-      type: "platform",
+  it("lands safely on top of a raised block", () => {
+    const ledge: LevelEntity = {
+      type: "block",
       height: 4,
       width: 20,
       x: 5,
@@ -72,10 +104,10 @@ describe("cube run simulation", () => {
       status: "running",
     };
 
-    const landed = tickRun(fallingState, { jumpPressed: false }, 100, rules, [platform]);
+    const landed = tickRun(fallingState, { jumpPressed: false }, 100, rules, [ledge]);
 
     expect(landed.status).toBe("running");
-    expect(landed.player.y).toBe(platform.y);
+    expect(landed.player.y).toBe(ledge.y);
     expect(landed.player.velocityY).toBe(0);
     expect(landed.player.grounded).toBe(true);
   });
@@ -89,17 +121,22 @@ describe("cube run simulation", () => {
       y: 90,
     };
 
-    const dead = tickRun(createRunState(rules), { jumpPressed: false }, 500, rules, [spike]);
+    const dead = tickRun(createRunState(rules), { jumpPressed: false }, 500, rules, [
+      startingTerrain,
+      spike,
+    ]);
 
     expect(dead.status).toBe("dead");
     expect(dead.deathCause).toBe("spike");
   });
 
-  it("falls through gaps and resets a dead run to its start state", () => {
-    const gap: LevelEntity = {
-      type: "gap",
-      width: 30,
+  it("falls where blocks are absent and resets a dead run to its start state", () => {
+    const shortLedge: LevelEntity = {
+      type: "block",
+      height: 30,
+      width: 8,
       x: 0,
+      y: rules.spawnY,
     };
     const atGap: RunState = {
       ...createRunState(rules),
@@ -109,7 +146,9 @@ describe("cube run simulation", () => {
       },
     };
 
-    const dead = tickRun(atGap, { jumpPressed: false }, 1000, rules, [gap]);
+    const dead = tickRun(atGap, { jumpPressed: false }, 1000, rules, [
+      shortLedge,
+    ]);
 
     expect(dead.status).toBe("dead");
     expect(dead.deathCause).toBe("fall");
@@ -128,6 +167,7 @@ describe("solid blocks", () => {
 
   it("kills a player who runs into a block side", () => {
     const dead = tickRun(createRunState(rules), { jumpPressed: false }, 1000, rules, [
+      startingTerrain,
       block,
     ]);
 
@@ -175,10 +215,44 @@ describe("ship mode portals and motion", () => {
 
     let state = createRunState(rules);
     for (let frame = 0; frame < 5; frame += 1) {
-      state = tickRun(state, { jumpPressed: false }, 100, rules, [shipPortal]);
+      state = tickRun(state, { jumpPressed: false }, 100, rules, [
+        startingTerrain,
+        shipPortal,
+      ]);
     }
 
     expect(state.player.mode).toBe("ship");
+  });
+
+  it("stabilizes vertical velocity when a falling cube enters ship mode", () => {
+    const shipPortal: LevelEntity = {
+      type: "portal",
+      mode: "ship",
+      height: 30,
+      width: 10,
+      x: 4,
+      y: 70,
+    };
+    const falling: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: {
+        grounded: false,
+        mode: "cube",
+        velocityY: 12,
+        x: 5,
+        y: 85,
+      },
+      status: "running",
+    };
+
+    const entered = tickRun(falling, { jumpPressed: false }, 100, rules, [
+      shipPortal,
+    ]);
+
+    expect(entered.player.mode).toBe("ship");
+    expect(entered.player.velocityY).toBe(0);
+    expect(entered.player.grounded).toBe(false);
   });
 
   it("rises while jump is held in ship mode and falls when released", () => {
@@ -204,6 +278,39 @@ describe("ship mode portals and motion", () => {
     const released = tickRun(held, { jumpPressed: false }, 100, rules);
 
     expect(released.player.velocityY).toBeGreaterThan(held.player.velocityY);
+  });
+
+  it("crashes a ship against a lower block rather than landing on it", () => {
+    const lowerBlock: LevelEntity = {
+      type: "block",
+      height: 20,
+      width: 30,
+      x: 4,
+      y: 80,
+    };
+    const fallingShip: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: {
+        grounded: false,
+        mode: "ship",
+        velocityY: 10,
+        x: 5,
+        y: 79.5,
+      },
+      status: "running",
+    };
+
+    const collided = tickRun(
+      fallingShip,
+      { jumpPressed: false },
+      100,
+      rules,
+      [lowerBlock],
+    );
+
+    expect(collided.status).toBe("dead");
+    expect(collided.deathCause).toBe("block");
   });
 
   it("returns to cube mode when the ship traverses a cube portal", () => {

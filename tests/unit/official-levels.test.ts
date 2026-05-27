@@ -89,7 +89,7 @@ describe("Official level catalog", () => {
     expect(pads.length).toBeGreaterThan(0);
     expect(orbs).toEqual([]);
     for (const pad of pads) {
-      expect(pad.y).toBeGreaterThanOrEqual(level2.rules.groundY - pad.height);
+      expect(pad.y).toBeGreaterThanOrEqual(level2.rules.spawnY - pad.height);
     }
   });
 
@@ -113,9 +113,9 @@ describe("Official level catalog", () => {
     for (const id of requiredIds) {
       const orb = orbs.find((entity) => entity.id === id);
       expect(orb).toBeDefined();
-      expect(orb!.y).toBeLessThan(level3.rules.groundY - orb!.height);
+      expect(orb!.y).toBeLessThan(level3.rules.spawnY - orb!.height);
       expect(orb!.y + orb!.height).toBeLessThanOrEqual(
-        level3.rules.groundY - level3.rules.playerHeight,
+        level3.rules.spawnY - level3.rules.playerHeight,
       );
     }
   });
@@ -165,15 +165,15 @@ describe("Official level catalog", () => {
     expect(trapChoiceOrbs.length).toBeGreaterThan(0);
     for (const orb of trapChoiceOrbs) {
       expect(orb.effect.kind).toBe("impulse");
-      expect(orb.y).toBeLessThan(level5.rules.groundY - orb.height);
+      expect(orb.y).toBeLessThan(level5.rules.spawnY - orb.height);
       expect(orb.y + orb.height).toBeLessThanOrEqual(
-        level5.rules.groundY - level5.rules.playerHeight,
+        level5.rules.spawnY - level5.rules.playerHeight,
       );
       expect(
         level5.entities.some(
           (entity) =>
             entity.type === "spike" &&
-            entity.y < level5.rules.groundY - entity.height &&
+            entity.y < level5.rules.spawnY - entity.height &&
             entity.x > orb.x &&
             entity.x < orb.x + 100,
         ),

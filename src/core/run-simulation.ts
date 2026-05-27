@@ -1,11 +1,11 @@
 export interface RunRules {
   fallBoundaryY: number;
   gravity: number;
-  groundY: number;
   horizontalSpeed: number;
   jumpVelocity: number;
   playerHeight: number;
   playerWidth: number;
+  spawnY: number;
 }
 
 export interface RunInput {
@@ -19,10 +19,6 @@ interface RectangularEntity {
   y: number;
 }
 
-export interface PlatformEntity extends RectangularEntity {
-  type: "platform";
-}
-
 export interface BlockEntity extends RectangularEntity {
   type: "block";
 }
@@ -34,12 +30,6 @@ export interface DecorationEntity extends RectangularEntity {
 
 export interface SpikeEntity extends RectangularEntity {
   type: "spike";
-}
-
-export interface GapEntity {
-  type: "gap";
-  width: number;
-  x: number;
 }
 
 export type PlayerMode = "cube" | "ship";
@@ -68,10 +58,8 @@ export interface OrbEntity extends RectangularEntity {
 export type LevelEntity =
   | BlockEntity
   | DecorationEntity
-  | GapEntity
   | OrbEntity
   | PadEntity
-  | PlatformEntity
   | PortalEntity
   | SpikeEntity;
 export type DeathCause = "block" | "fall" | "spike" | "trap";
@@ -102,7 +90,7 @@ export function createRunState(rules: RunRules): RunState {
       mode: "cube",
       velocityY: 0,
       x: 0,
-      y: rules.groundY,
+      y: rules.spawnY,
     },
     status: "running",
   };
@@ -131,17 +119,6 @@ function overlapsHorizontally(
   return playerRight > entity.x && playerLeft < entity.x + entity.width;
 }
 
-function supportsPlayerAtGround(
-  playerX: number,
-  entities: readonly LevelEntity[],
-  rules: RunRules,
-): boolean {
-  return !entities.some(
-    (entity) =>
-      entity.type === "gap" && overlapsHorizontally(playerX, entity, rules),
-  );
-}
-
 function resolveLandingY(
   state: RunState,
   proposedX: number,
@@ -150,22 +127,15 @@ function resolveLandingY(
   entities: readonly LevelEntity[],
   rules: RunRules,
 ): number | undefined {
-  if (velocityY < 0) {
+  if (state.player.mode !== "cube" || velocityY < 0) {
     return undefined;
   }
 
   const surfaces: number[] = [];
 
-  if (
-    proposedY >= rules.groundY &&
-    supportsPlayerAtGround(proposedX, entities, rules)
-  ) {
-    surfaces.push(rules.groundY);
-  }
-
   for (const entity of entities) {
     if (
-      (entity.type === "platform" || entity.type === "block") &&
+      entity.type === "block" &&
       state.player.y <= entity.y &&
       proposedY >= entity.y &&
       overlapsHorizontally(proposedX, entity, rules)
@@ -203,10 +173,8 @@ type VelocityStrategy = (
 const VELOCITY_STRATEGIES: Record<PlayerMode, VelocityStrategy> = {
   cube: (player, _input, elapsedSeconds, rules) =>
     player.velocityY + rules.gravity * elapsedSeconds,
-  ship: (player, input, elapsedSeconds, rules) => {
-    const acceleration = input.jumpPressed ? -rules.gravity : rules.gravity;
-    return player.velocityY + acceleration * elapsedSeconds;
-  },
+  ship: (_player, input, _elapsedSeconds, rules) =>
+    (input.jumpPressed ? -1 : 1) * Math.abs(rules.jumpVelocity) * 0.6,
 };
 
 function computeNextVelocityY(
@@ -384,10 +352,11 @@ export function tickRun(
     entities,
     rules,
   );
+  const enteredShip = state.player.mode !== "ship" && nextMode === "ship";
   const player: PlayerState = {
-    grounded: landed,
+    grounded: enteredShip ? false : landed,
     mode: nextMode,
-    velocityY: landed ? 0 : velocityY,
+    velocityY: enteredShip ? 0 : landed ? 0 : velocityY,
     x: proposedX,
     y: placedY,
   };

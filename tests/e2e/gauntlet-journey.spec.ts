@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import {
+  hoverThroughShipPassage,
+  waitUntilPercent,
+} from "./helpers/course-play";
 import { seedProfile } from "./helpers/profile-storage";
 
 test("enters and completes the electric wake gauntlet", async ({ page }) => {
@@ -39,14 +43,14 @@ test("enters and completes the electric wake gauntlet", async ({ page }) => {
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
     .toBeGreaterThanOrEqual(10);
   await page.keyboard.press("Space");
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 6_000 })
-    .toBeGreaterThanOrEqual(78);
-  await page.keyboard.press("Space");
+  await waitUntilPercent(page, 43, 6_000);
+  await hoverThroughShipPassage(page, 6_000);
+  await page.keyboard.down("Space");
 
   await expect(
     page.getByRole("dialog", { name: "Gauntlet complete" }),
   ).toBeVisible({ timeout: 6_000 });
+  await page.keyboard.up("Space");
   await expect(page.getByTestId("gauntlet-complete-reward")).toHaveText(
     "Earned: 150 Coins + 1 Hard Key",
   );

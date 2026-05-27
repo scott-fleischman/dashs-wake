@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { tapAtPercents } from "./helpers/course-play";
+import {
+  hoverThroughShipPassage,
+  tapAtPercents,
+  waitUntilPercent,
+} from "./helpers/course-play";
 import { seedProfile } from "./helpers/profile-storage";
 
 test("activating a lure orb launches the cube into visible trap spikes", async ({ page }) => {
@@ -22,7 +26,10 @@ test("activating a lure orb launches the cube into visible trap spikes", async (
   await expect(page.getByRole("heading", { name: "Trap Lane" })).toBeVisible();
 
   const progress = page.getByTestId("run-progress");
-  await tapAtPercents(page, [2, 24, 26, 36, 38]);
+  await tapAtPercents(page, [2]);
+  await waitUntilPercent(page, 14);
+  await hoverThroughShipPassage(page);
+  await tapAtPercents(page, [24, 27, 29, 36, 38]);
 
   const failedDialog = page.getByRole("dialog", { name: "Run failed" });
   await expect(failedDialog).toBeVisible({ timeout: 5_000 });

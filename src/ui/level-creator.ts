@@ -6,6 +6,10 @@ import type {
 import type { LevelEntity } from "../core/run-simulation";
 import { firstWakeLevel, type LevelContent } from "../content/first-wake";
 import { buildPlaceholderBeatMap } from "../content/beat-maps";
+import {
+  buildSupportingTerrain,
+  TERRAIN_DEPTH_Y,
+} from "../content/terrain";
 
 type CreatorTool =
   | "block"
@@ -33,12 +37,11 @@ interface LevelCreatorActions {
 }
 
 const WORLD_SCALE = 0.22;
-const DISPLAY_GROUND_Y = 225;
 const GRID_PX = 20;
-const Y_SCALE = DISPLAY_GROUND_Y / firstWakeLevel.rules.groundY;
 const MIN_FINISH_X = 760;
 const DEFAULT_FINISH_X = 2900;
 const CANVAS_HEIGHT = 290;
+const Y_SCALE = CANVAS_HEIGHT / TERRAIN_DEPTH_Y;
 
 interface ToolConfig {
   icon: string;
@@ -70,7 +73,7 @@ function placementY(displayY: number, height: number): number {
   const centeredTop = (snapDisplay(displayY) / Y_SCALE) - height / 2;
   return Math.max(
     0,
-    Math.min(firstWakeLevel.rules.groundY - height, Math.round(centeredTop)),
+    Math.min(TERRAIN_DEPTH_Y - height, Math.round(centeredTop)),
   );
 }
 
@@ -239,7 +242,7 @@ export function mountLevelCreator(
       </section>
       <section class="creator-palette" aria-label="Build pieces"></section>
       <section class="creator-workspace" aria-label="Course editor">
-        <p class="creator-instruction">Select a piece, then click a grid cell to place it at that height. Blocks are solid; decorations do not collide.</p>
+        <p class="creator-instruction">The starter path is made of solid blocks. Place or erase blocks to build ledges, drops, ceilings, and flight corridors; decorations do not collide.</p>
         <div class="creator-scroll">
           <div class="creator-course" data-testid="creator-course" role="application" aria-label="Editable level area"></div>
         </div>
@@ -272,8 +275,10 @@ export function mountLevelCreator(
   }
 
   let selectedTool: CreatorTool = "spike";
-  let entities: LevelEntity[] = [...(actions.initial?.layout.entities ?? [])];
   let finishX = actions.initial?.layout.finishX ?? DEFAULT_FINISH_X;
+  let entities: LevelEntity[] = [
+    ...(actions.initial?.layout.entities ?? buildSupportingTerrain(finishX)),
+  ];
   let audioFile: File | undefined = actions.initial?.audioFile;
   let audioObjectUrl: string | undefined;
   let nextEntityId = entities.reduce((next, entity) => {
@@ -314,21 +319,19 @@ export function mountLevelCreator(
     course.replaceChildren();
 
     for (const entity of entities) {
-      if (entity.type === "gap") {
-        continue;
-      }
       const marker = document.createElement("span");
       marker.className = classForEntity(entity);
       marker.style.left = `${entity.x * WORLD_SCALE}px`;
       marker.style.top = `${entity.y * Y_SCALE}px`;
       marker.style.width = `${Math.max(entity.width * WORLD_SCALE, entity.type === "portal" ? 8 : 12)}px`;
-      marker.style.height = `${Math.max(entity.height * WORLD_SCALE, entity.type === "portal" ? 56 : 12)}px`;
+      marker.style.height = `${Math.max(entity.height * Y_SCALE, entity.type === "portal" ? 56 : 12)}px`;
       course.appendChild(marker);
     }
 
     const finish = document.createElement("span");
     finish.className = "creator-finish";
     finish.style.left = `${finishX * WORLD_SCALE}px`;
+    finish.style.top = `${firstWakeLevel.rules.spawnY * Y_SCALE - 102}px`;
     finish.innerHTML = "<small>Finish</small>";
     course.appendChild(finish);
     finishStatus.textContent = worldDurationLabel(finishX);
@@ -337,7 +340,7 @@ export function mountLevelCreator(
   const onCourseClick = (event: MouseEvent): void => {
     const bounds = course.getBoundingClientRect();
     const displayX = event.clientX - bounds.left;
-    const displayY = Math.max(0, Math.min(DISPLAY_GROUND_Y, event.clientY - bounds.top));
+    const displayY = Math.max(0, Math.min(CANVAS_HEIGHT, event.clientY - bounds.top));
     const x = snapX(displayX);
 
     if (selectedTool === "finish") {
@@ -350,7 +353,6 @@ export function mountLevelCreator(
     if (selectedTool === "erase") {
       const nearbyIndex = entities.findIndex(
         (entity) =>
-          entity.type !== "gap" &&
           Math.abs(entity.x - x) <= 90 &&
           Math.abs(entity.y * Y_SCALE - displayY) <= GRID_PX * 1.5,
       );
@@ -371,12 +373,12 @@ export function mountLevelCreator(
       x,
       displayY,
     );
-    if (entity && entity.type !== "gap") {
+    if (entity) {
       nextEntityId += 1;
       entities = [
         ...entities.filter(
           (existing) =>
-            existing.type === "gap" ||
+            existing.type !== entity.type ||
             Math.abs(existing.x - x) > 45 ||
             Math.abs(existing.y - entity.y) > 35,
         ),

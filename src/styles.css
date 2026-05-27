@@ -1076,17 +1076,6 @@ kbd {
   position: relative;
 }
 
-.creator-course::after {
-  background: #0d1d2d;
-  border-top: 3px solid rgba(25, 217, 243, 0.78);
-  bottom: 0;
-  content: "";
-  height: 65px;
-  left: 0;
-  position: absolute;
-  right: 0;
-}
-
 .creator-entity {
   display: block;
   pointer-events: none;
@@ -1102,8 +1091,7 @@ kbd {
   transform: translateY(-8px);
 }
 
-.creator-entity.block,
-.creator-entity.platform {
+.creator-entity.block {
   background: #154d69;
   border: 2px solid #19d9f3;
   min-height: 24px;
@@ -1145,7 +1133,6 @@ kbd {
 
 .creator-finish {
   border-left: 3px solid #19d9f3;
-  bottom: 64px;
   color: #ecfcff;
   display: block;
   height: 102px;

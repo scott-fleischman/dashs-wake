@@ -2,6 +2,7 @@ import type { LevelEntity, RunRules } from "../core/run-simulation";
 import { paceAuthoredEntities, paceAuthoredX } from "./level-pace";
 import { buildOfficialBeatMap } from "./official-soundtrack";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
+import { withSupportingTerrain } from "./terrain";
 
 const LAUNCH_SEQUENCE_RULES: RunRules = firstWakeLevel.rules;
 
@@ -73,11 +74,14 @@ const LAUNCH_SEQUENCE_ENTITIES: readonly LevelEntity[] = [
   { type: "spike", height: 30, width: 30, x: 3310, y: 270 },
 ];
 
-const LAUNCH_SEQUENCE_FINISH_X = 3918;
+const LAUNCH_SEQUENCE_FINISH_X = paceAuthoredX(3918);
 
 export const launchSequenceLevel: LevelContent = {
   beatMap: buildOfficialBeatMap("level_2"),
-  entities: paceAuthoredEntities(LAUNCH_SEQUENCE_ENTITIES),
-  finishX: paceAuthoredX(LAUNCH_SEQUENCE_FINISH_X),
+  entities: withSupportingTerrain(
+    paceAuthoredEntities(LAUNCH_SEQUENCE_ENTITIES),
+    LAUNCH_SEQUENCE_FINISH_X,
+  ),
+  finishX: LAUNCH_SEQUENCE_FINISH_X,
   rules: LAUNCH_SEQUENCE_RULES,
 };

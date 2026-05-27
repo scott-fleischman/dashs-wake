@@ -70,11 +70,20 @@ describe("seeded level generator", () => {
       difficulty: "normal",
     });
 
-    expect(result.entities.some((entity) => entity.type === "block")).toBe(true);
+    expect(
+      result.entities.some(
+        (entity) =>
+          entity.type === "block" && entity.y < result.rules.spawnY,
+      ),
+    ).toBe(true);
     expect(result.entities.some((entity) => entity.type === "decoration")).toBe(true);
 
     const gameplay = result.entities
-      .filter((entity) => entity.type !== "decoration")
+      .filter(
+        (entity) =>
+          entity.type !== "decoration" &&
+          !(entity.type === "block" && entity.y === result.rules.spawnY),
+      )
       .slice()
       .sort((a, b) => a.x - b.x);
     for (let index = 1; index < gameplay.length; index += 1) {

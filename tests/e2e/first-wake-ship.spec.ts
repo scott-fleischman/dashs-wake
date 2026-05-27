@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { tapAtPercents } from "./helpers/course-play";
+import {
+  hoverThroughShipPassage,
+  tapAtPercents,
+} from "./helpers/course-play";
 
 test("First Wake completes through cube and ship modes", async ({ page }) => {
   await page.goto("/#play");
@@ -12,10 +15,11 @@ test("First Wake completes through cube and ship modes", async ({ page }) => {
 
   await tapAtPercents(page, [3, 10]);
 
-  await expect(mode).toHaveText("Ship", { timeout: 5_000 });
-  await expect(mode).toHaveText("Cube", { timeout: 5_000 });
+  await hoverThroughShipPassage(page);
 
-  await tapAtPercents(page, [29, 35, 42, 63, 70, 77]);
+  await tapAtPercents(page, [25, 29, 35, 42]);
+  await hoverThroughShipPassage(page);
+  await tapAtPercents(page, [61, 62, 63, 70, 77]);
 
   const completeDialog = page.getByRole("dialog", { name: "Level complete" });
   await expect(completeDialog).toBeVisible({ timeout: 8_000 });

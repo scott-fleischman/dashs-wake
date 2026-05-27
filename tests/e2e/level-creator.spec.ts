@@ -56,7 +56,7 @@ test("creates a song-backed authored level with placed pieces and reopens it", a
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Return to Lobby" }).click();
   await page.getByTestId("created-level-1-edit").click();
-  await expect(page.locator(".creator-entity.block")).toBeVisible();
+  expect(await page.locator(".creator-entity.block").count()).toBeGreaterThan(0);
   await page.getByTestId("creator-name").fill("Revised Course");
   await page.getByRole("button", { name: "Save Level" }).click();
   await expect(page.getByTestId("created-level-1-name")).toHaveText("Revised Course");

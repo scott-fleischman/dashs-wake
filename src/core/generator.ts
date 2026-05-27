@@ -13,6 +13,7 @@ import {
   type RunState,
 } from "./run-simulation";
 import type { OfficialLevelDifficulty } from "../content/official-levels";
+import { buildSupportingTerrain } from "../content/terrain";
 
 export type Intensity = "intense" | "quiet";
 
@@ -184,6 +185,9 @@ export function generateLevel(input: GeneratorInput): LevelContent {
   const rng = mulberry32(input.seed);
   const rules = firstWakeLevel.rules;
   const entities: LevelEntity[] = [];
+  const finishX =
+    Math.round((input.beatMap.durationMs / 1000) * rules.horizontalSpeed) +
+    FINISH_TAIL;
 
   for (let index = 0; index < input.beatMap.beats.length; index += 1) {
     const beatMs = input.beatMap.beats[index]!;
@@ -240,13 +244,9 @@ export function generateLevel(input: GeneratorInput): LevelContent {
     }
   }
 
-  const finishX =
-    Math.round((input.beatMap.durationMs / 1000) * rules.horizontalSpeed) +
-    FINISH_TAIL;
-
   return {
     beatMap: input.beatMap,
-    entities,
+    entities: [...buildSupportingTerrain(finishX), ...entities],
     finishX,
     rules,
   };
@@ -289,7 +289,12 @@ function decideAiInput(
   rules: RunRules,
 ): boolean {
   if (state.player.mode === "ship") {
-    return false;
+    const channelCenterY = rules.spawnY - rules.playerHeight * 1.7;
+    return (
+      state.player.y > channelCenterY ||
+      (state.player.velocityY > 90 &&
+        state.player.y > channelCenterY - rules.playerHeight)
+    );
   }
 
   const overlappingOrb = aiOrbOverlap(state.player, entities, rules);
@@ -308,6 +313,9 @@ function decideAiInput(
 
   for (const entity of entities) {
     if (entity.type !== "spike" && entity.type !== "block") {
+      continue;
+    }
+    if (entity.type === "block" && entity.y >= state.player.y) {
       continue;
     }
     const distance = entity.x - state.player.x;

@@ -1,6 +1,7 @@
 import type { LevelEntity } from "../core/run-simulation";
 import { buildOfficialBeatMap } from "./official-soundtrack";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
+import { withSupportingTerrain } from "./terrain";
 
 function beatX(beat: number, bpm: number): number {
   return Math.round(
@@ -35,7 +36,7 @@ const BLOCK_PULSE_ENTITIES: readonly LevelEntity[] = [
 
 export const blockPulseLevel: LevelContent = {
   beatMap: buildOfficialBeatMap("level_6"),
-  entities: BLOCK_PULSE_ENTITIES,
+  entities: withSupportingTerrain(BLOCK_PULSE_ENTITIES, 4680),
   finishX: 4680,
   rules: firstWakeLevel.rules,
 };
@@ -65,7 +66,7 @@ const SKYLINE_STEP_ENTITIES: readonly LevelEntity[] = [
 
 export const skylineStepLevel: LevelContent = {
   beatMap: buildOfficialBeatMap("level_7"),
-  entities: SKYLINE_STEP_ENTITIES,
+  entities: withSupportingTerrain(SKYLINE_STEP_ENTITIES, 5380),
   finishX: 5380,
   rules: firstWakeLevel.rules,
 };
@@ -106,7 +107,7 @@ const FOUNDRY_OVERDRIVE_ENTITIES: readonly LevelEntity[] = [
 
 export const foundryOverdriveLevel: LevelContent = {
   beatMap: buildOfficialBeatMap("level_8"),
-  entities: FOUNDRY_OVERDRIVE_ENTITIES,
+  entities: withSupportingTerrain(FOUNDRY_OVERDRIVE_ENTITIES, 5940),
   expectedRoute: { requiredTriggerIds: ["level-8-orb-1", "level-8-pad-1"] },
   finishX: 5940,
   rules: firstWakeLevel.rules,

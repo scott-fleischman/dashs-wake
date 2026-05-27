@@ -25,7 +25,7 @@ describe("cubeGroundExtent", () => {
 });
 
 describe("groundedCubeCenterY", () => {
-  it("places a landed cube on a raised block surface instead of the floor", () => {
+  it("places a landed cube on block surfaces at different heights", () => {
     expect(groundedCubeCenterY(244, "rectangle", 34, 34, 0)).toBe(227);
     expect(groundedCubeCenterY(300, "rectangle", 34, 34, 0)).toBe(283);
   });

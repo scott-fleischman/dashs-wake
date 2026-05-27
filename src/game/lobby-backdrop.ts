@@ -73,11 +73,16 @@ class LobbyBackdropScene extends Phaser.Scene {
       skyline.fillRect(x, horizon - buildingHeight, 54, buildingHeight);
     }
 
-    const track = this.add.graphics();
-    track.lineStyle(3, 0x19d9f3, 0.36);
-    track.lineBetween(0, horizon, width, horizon);
-    track.lineStyle(1, 0x7c47ff, 0.46);
-    track.lineBetween(0, horizon + 10, width, horizon + 10);
+    const blocks = this.add.graphics();
+    for (let x = -24; x < width + 40; x += 72) {
+      const top = horizon + ((x / 72) % 3 === 1 ? -22 : 0);
+      blocks.fillStyle(0x0d1d2d, 1);
+      blocks.fillRect(x, top, 66, height - top);
+      blocks.lineStyle(2, 0x19d9f3, 0.34);
+      blocks.strokeRect(x, top, 66, height - top);
+      blocks.lineStyle(1, 0xa45bff, 0.32);
+      blocks.lineBetween(x + 8, top + 14, x + 56, top + 14);
+    }
 
     this.pulseHalo = this.add
       .circle(centerX, height * 0.45, Math.min(width, height) * 0.235, 0x19d9f3, 0)
@@ -136,10 +141,8 @@ const ORB_STYLE = {
 
 interface LevelPalette {
   accent: number;
-  accentSecondary: number;
   block: number;
   decoration: number;
-  floor: number;
   skyBottom: number;
   skyTop: number;
   spike: number;
@@ -148,40 +151,32 @@ interface LevelPalette {
 const LEVEL_PALETTES: Record<LevelColorTheme, LevelPalette> = {
   neon: {
     accent: 0x19d9f3,
-    accentSecondary: 0xa45bff,
     block: 0x154d69,
     decoration: 0x19d9f3,
-    floor: 0x0d1d2d,
     skyBottom: 0x112037,
     skyTop: 0x07111d,
     spike: 0xff437d,
   },
   sunset: {
     accent: 0xff7958,
-    accentSecondary: 0xffc857,
     block: 0x723548,
     decoration: 0xffc857,
-    floor: 0x2b1724,
     skyBottom: 0x45243c,
     skyTop: 0x150f1b,
     spike: 0xffdc78,
   },
   forest: {
     accent: 0x34e8b3,
-    accentSecondary: 0x19d9f3,
     block: 0x125545,
     decoration: 0x34e8b3,
-    floor: 0x0b2624,
     skyBottom: 0x103b38,
     skyTop: 0x061817,
     spike: 0xff6682,
   },
   void: {
     accent: 0xa45bff,
-    accentSecondary: 0xff7adf,
     block: 0x342363,
     decoration: 0xa45bff,
-    floor: 0x120f2c,
     skyBottom: 0x211541,
     skyTop: 0x09081b,
     spike: 0xff437d,
@@ -302,7 +297,7 @@ class LevelScene extends Phaser.Scene {
   private courseLayer?: Phaser.GameObjects.Container;
   private cubeJumpPending = false;
   private cubeInputBufferMs = 0;
-  private floorY = 0;
+  private worldOffsetY = 0;
   private jumpHeld = false;
   private lastSnapshotKey = "";
   private levelContent: LevelContent = firstWakeLevel;
@@ -480,7 +475,8 @@ class LevelScene extends Phaser.Scene {
     const palette = LEVEL_PALETTES[this.theme];
 
     this.children.removeAll();
-    this.floorY = height * 0.71;
+    const spawnScreenY = height * 0.71;
+    this.worldOffsetY = spawnScreenY - rules.spawnY;
 
     const wash = this.add.graphics();
     wash.fillGradientStyle(
@@ -494,22 +490,11 @@ class LevelScene extends Phaser.Scene {
 
     const horizon = this.add.graphics();
     horizon.lineStyle(1, palette.accent, 0.16);
-    for (let y = this.floorY - 150; y < this.floorY; y += 38) {
+    for (let y = spawnScreenY - 150; y < spawnScreenY; y += 38) {
       horizon.lineBetween(0, y, width, y);
     }
 
     this.courseLayer = this.add.container(0, 0);
-
-    const track = this.add.graphics();
-    track.fillStyle(palette.floor, 1);
-    track.fillRect(-180, this.floorY, finishX + width, height - this.floorY);
-    track.lineStyle(3, palette.accent, 0.75);
-    track.lineBetween(-180, this.floorY, finishX + width, this.floorY);
-    track.lineStyle(2, palette.accentSecondary, 0.44);
-    for (let x = 30; x < finishX + width; x += 110) {
-      track.lineBetween(x, this.floorY + 35, x + 48, this.floorY + 35);
-    }
-    this.courseLayer.add(track);
 
     const hazards = this.add.graphics();
     hazards.fillStyle(palette.spike, 1);
@@ -518,7 +503,7 @@ class LevelScene extends Phaser.Scene {
         continue;
       }
 
-      const y = this.floorY + entity.y - rules.groundY;
+      const y = this.worldOffsetY + entity.y;
       hazards.fillTriangle(
         entity.x,
         y + entity.height,
@@ -532,10 +517,10 @@ class LevelScene extends Phaser.Scene {
 
     const blocks = this.add.graphics();
     for (const entity of entities) {
-      if (entity.type !== "block" && entity.type !== "platform") {
+      if (entity.type !== "block") {
         continue;
       }
-      const y = this.floorY + entity.y - rules.groundY;
+      const y = this.worldOffsetY + entity.y;
       blocks.fillStyle(palette.block, 0.96);
       blocks.fillRect(entity.x, y, entity.width, entity.height);
       blocks.lineStyle(2, palette.accent, 0.8);
@@ -550,7 +535,7 @@ class LevelScene extends Phaser.Scene {
       if (entity.type !== "decoration") {
         continue;
       }
-      const y = this.floorY + entity.y - rules.groundY;
+      const y = this.worldOffsetY + entity.y;
       decorations.lineStyle(2, palette.decoration, 0.27);
       if (entity.kind === "diamond") {
         decorations.strokeTriangle(
@@ -582,7 +567,7 @@ class LevelScene extends Phaser.Scene {
         continue;
       }
 
-      const y = this.floorY + entity.y - rules.groundY;
+      const y = this.worldOffsetY + entity.y;
       const portalColor = PORTAL_STYLE[entity.mode];
       portals.fillStyle(portalColor, 0.18);
       portals.fillRect(entity.x, y, entity.width, entity.height);
@@ -597,7 +582,7 @@ class LevelScene extends Phaser.Scene {
         continue;
       }
 
-      const y = this.floorY + entity.y - rules.groundY;
+      const y = this.worldOffsetY + entity.y;
       pads.fillStyle(PAD_STYLE.fill, 0.85);
       pads.fillRect(entity.x, y, entity.width, entity.height);
       pads.lineStyle(2, PAD_STYLE.stroke, 0.95);
@@ -614,7 +599,7 @@ class LevelScene extends Phaser.Scene {
       }
 
       const centerX = entity.x + entity.width / 2;
-      const centerY = this.floorY + entity.y - rules.groundY + entity.height / 2;
+      const centerY = this.worldOffsetY + entity.y + entity.height / 2;
       const radius = Math.min(entity.width, entity.height) / 2;
 
       orbs.fillStyle(ORB_STYLE.fill, 0.55);
@@ -627,13 +612,14 @@ class LevelScene extends Phaser.Scene {
     this.courseLayer.add(orbs);
 
     const finishGate = this.add.graphics();
+    const finishBaseY = this.worldOffsetY + rules.spawnY;
     finishGate.lineStyle(4, palette.accent, 0.85);
-    finishGate.lineBetween(finishX, this.floorY - 132, finishX, this.floorY);
+    finishGate.lineBetween(finishX, finishBaseY - 132, finishX, finishBaseY);
     finishGate.lineStyle(2, 0xecfcff, 0.62);
-    finishGate.strokeCircle(finishX, this.floorY - 145, 10);
+    finishGate.strokeCircle(finishX, finishBaseY - 145, 10);
     this.courseLayer.add(finishGate);
     this.courseLayer.add(
-      this.add.text(finishX - 30, this.floorY - 177, "FINISH", {
+      this.add.text(finishX - 30, finishBaseY - 177, "FINISH", {
         color: "#ecfcff",
         fontFamily: "Arial, sans-serif",
         fontSize: "12px",
@@ -642,7 +628,7 @@ class LevelScene extends Phaser.Scene {
     );
 
     const playerScreenX = width * 0.22;
-    const playerScreenY = this.floorY - rules.playerHeight / 2;
+    const playerScreenY = finishBaseY - rules.playerHeight / 2;
     const initialFill = playerFillFor(this.status, this.appearance);
 
     this.playerCube = applyPlayerStrokeStyle(
@@ -673,17 +659,6 @@ class LevelScene extends Phaser.Scene {
     this.playerShipDetail = this.add.graphics();
     this.drawPlayerDetail(this.playerCubeDetail, false);
     this.drawPlayerDetail(this.playerShipDetail, true);
-
-    this.add
-      .rectangle(
-        playerScreenX,
-        this.floorY + 2,
-        80,
-        3,
-        this.appearance.fillRunning,
-        0.28,
-      )
-      .setOrigin(0.5, 0);
 
     this.updatePresentation();
   }
@@ -740,16 +715,15 @@ class LevelScene extends Phaser.Scene {
     const rules = this.levelContent.rules;
     const playerScreenX = this.scale.width * 0.22;
     const simulationCenterY =
-      this.floorY +
+      this.worldOffsetY +
       this.state.player.y -
-      rules.groundY -
       rules.playerHeight / 2;
     const isShip = this.state.player.mode === "ship";
     const fillColor = playerFillFor(this.status, this.appearance);
     const cubeRotation = this.state.player.x / 62;
     const cubeScreenY = this.state.player.grounded
       ? groundedCubeCenterY(
-          this.floorY + this.state.player.y - rules.groundY,
+          this.worldOffsetY + this.state.player.y,
           this.appearance.cubeShape,
           rules.playerWidth,
           rules.playerHeight,

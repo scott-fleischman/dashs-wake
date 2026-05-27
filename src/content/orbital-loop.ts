@@ -2,6 +2,7 @@ import type { LevelEntity, RunRules } from "../core/run-simulation";
 import { paceAuthoredEntities, paceAuthoredX } from "./level-pace";
 import { buildOfficialBeatMap } from "./official-soundtrack";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
+import { withSupportingTerrain } from "./terrain";
 
 const ORBITAL_LOOP_RULES: RunRules = firstWakeLevel.rules;
 
@@ -77,11 +78,14 @@ const ORBITAL_LOOP_ENTITIES: readonly LevelEntity[] = [
   { type: "spike", height: 30, width: 30, x: 3540, y: 270 },
 ];
 
-const ORBITAL_LOOP_FINISH_X = 5218;
+const ORBITAL_LOOP_FINISH_X = paceAuthoredX(5218);
 
 export const orbitalLoopLevel: LevelContent = {
   beatMap: buildOfficialBeatMap("level_3"),
-  entities: paceAuthoredEntities(ORBITAL_LOOP_ENTITIES),
+  entities: withSupportingTerrain(
+    paceAuthoredEntities(ORBITAL_LOOP_ENTITIES),
+    ORBITAL_LOOP_FINISH_X,
+  ),
   expectedRoute: {
     requiredTriggerIds: [
       REQUIRED_ORB_ID,
@@ -91,6 +95,6 @@ export const orbitalLoopLevel: LevelContent = {
       "level-3-orb-5",
     ],
   },
-  finishX: paceAuthoredX(ORBITAL_LOOP_FINISH_X),
+  finishX: ORBITAL_LOOP_FINISH_X,
   rules: ORBITAL_LOOP_RULES,
 };
