@@ -471,6 +471,39 @@ export function tickRun(
   const trapActivated = activatedOrbs.some(
     (orb) => orb.effect.kind === "kill",
   );
+  const SURFACE_EPSILON = 1.25;
+  const blockFatalCollision = entities.some((entity) => {
+    if (entity.type !== "block") {
+      return false;
+    }
+    if (!playerOverlapsBlock(player.x, player.y, entity, rules)) {
+      return false;
+    }
+    const currentSurfaceY = blockSurfaceY(entity, player.x, rules.playerWidth);
+    const onSurfaceNow =
+      player.velocityY >= 0 &&
+      Math.abs(player.y - currentSurfaceY) <= SURFACE_EPSILON;
+
+    if (!onSurfaceNow) {
+      return true;
+    }
+
+    const wasOverlapping = playerOverlapsBlock(
+      state.player.x,
+      state.player.y,
+      entity,
+      rules,
+    );
+    const previousSurfaceY = blockSurfaceY(
+      entity,
+      state.player.x,
+      rules.playerWidth,
+    );
+    const wasOnOrAboveSurface =
+      state.player.y <= previousSurfaceY + SURFACE_EPSILON;
+
+    return !(wasOverlapping || wasOnOrAboveSurface);
+  });
   const deathCause: DeathCause | undefined = trapActivated
     ? "trap"
     : entities.some(
@@ -479,11 +512,7 @@ export function tickRun(
             playerOverlapsSpike(player.x, player.y, entity, rules),
         )
       ? "spike"
-      : entities.some(
-            (entity) =>
-              entity.type === "block" &&
-              playerOverlapsBlock(player.x, player.y, entity, rules),
-          )
+      : blockFatalCollision
         ? "block"
       : player.y >= rules.fallBoundaryY
         ? "fall"

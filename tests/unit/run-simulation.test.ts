@@ -250,6 +250,35 @@ describe("solid blocks", () => {
     expect(landed.status).toBe("running");
     expect(landed.player.y).toBeCloseTo(84);
   });
+
+  it("does not crash while traversing an incline surface", () => {
+    const incline: LevelEntity = {
+      type: "block",
+      shape: "ramp-up",
+      height: 20,
+      width: 60,
+      x: 0,
+      y: 80,
+    };
+    const onIncline: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: {
+        grounded: true,
+        mode: "cube",
+        velocityY: 0,
+        x: 20,
+        y: 91.6666666667,
+      },
+      status: "running",
+    };
+
+    const next = tickRun(onIncline, { jumpPressed: false }, 100, rules, [incline]);
+
+    expect(next.status).toBe("running");
+    expect(next.deathCause).toBeUndefined();
+    expect(next.player.grounded).toBe(true);
+  });
 });
 
 describe("ship mode portals and motion", () => {
