@@ -15,6 +15,7 @@ test("opening a chest that awards a cosmetic adds it to the customizer", async (
   await page.getByTestId("destination-chest-room").click();
   await page.getByTestId("chest-chest-normal-open").click();
   await expect(page.getByTestId("chest-chest-normal-opened")).toBeVisible();
+  await page.getByRole("dialog", { name: "Chest opened" }).getByRole("button", { name: "Continue" }).click();
   await page.getByTestId("room-back").click();
 
   await expect(page.getByTestId("profile-coins")).toHaveText("120 Coins");

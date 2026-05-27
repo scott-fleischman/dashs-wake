@@ -8,6 +8,12 @@ import {
   foundryOverdriveLevel,
   skylineStepLevel,
 } from "./block-courses";
+import {
+  apexCircuitLevel,
+  highlineAscentLevel,
+  riftStairLevel,
+  tunnelVectorLevel,
+} from "./vertical-courses";
 import type { UnlockRequirement } from "../core/profile";
 import {
   getOfficialTrack,
@@ -96,6 +102,34 @@ export const officialLevelCatalog: readonly OfficialLevelMetadata[] = [
     track: trackFor("level_8"),
     unlockRequirement: { requiredCompletedLevels: ["level_7"] },
   },
+  {
+    id: "level_9",
+    name: "Highline Ascent",
+    difficulty: "hard",
+    track: trackFor("level_9"),
+    unlockRequirement: { requiredCompletedLevels: ["level_8"] },
+  },
+  {
+    id: "level_10",
+    name: "Tunnel Vector",
+    difficulty: "harder",
+    track: trackFor("level_10"),
+    unlockRequirement: { requiredCompletedLevels: ["level_9"] },
+  },
+  {
+    id: "level_11",
+    name: "Rift Stair",
+    difficulty: "insane",
+    track: trackFor("level_11"),
+    unlockRequirement: { requiredCompletedLevels: ["level_10"] },
+  },
+  {
+    id: "level_12",
+    name: "Apex Circuit",
+    difficulty: "insane",
+    track: trackFor("level_12"),
+    unlockRequirement: { requiredCompletedLevels: ["level_11"] },
+  },
 ];
 
 const LEVEL_CONTENT_BY_ID: Readonly<Record<string, LevelContent>> = {
@@ -107,6 +141,10 @@ const LEVEL_CONTENT_BY_ID: Readonly<Record<string, LevelContent>> = {
   level_6: blockPulseLevel,
   level_7: skylineStepLevel,
   level_8: foundryOverdriveLevel,
+  level_9: highlineAscentLevel,
+  level_10: tunnelVectorLevel,
+  level_11: riftStairLevel,
+  level_12: apexCircuitLevel,
 };
 
 export function getOfficialLevelContent(id: string): LevelContent {

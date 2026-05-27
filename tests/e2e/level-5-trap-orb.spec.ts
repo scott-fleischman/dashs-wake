@@ -19,6 +19,7 @@ test("activating a lure orb launches the cube into visible trap spikes", async (
     unlockedLevels: ["level_5"],
   });
   await page.reload();
+  await page.getByTestId("destination-official-levels").click();
 
   await expect(page.getByTestId("level-5-status")).toHaveText("Unlocked");
   await page.getByTestId("level-5-play").click();

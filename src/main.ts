@@ -14,6 +14,7 @@ import {
   mountGeneratedLevelsRoom,
 } from "./ui/generated-levels-room";
 import { mountLobby } from "./ui/lobby";
+import { mountOfficialLevelsRoom } from "./ui/levels-room";
 import { mountShop } from "./ui/shop";
 import { mountSettings } from "./ui/settings";
 import {
@@ -320,6 +321,19 @@ function renderRoute(): void {
     backdrop.showLobby();
     disposeView = mountSettings(root, profileRef, {
       onProfileChange: updateProfile,
+      onReturnToLobby: () => {
+        window.location.hash = "";
+      },
+    });
+    return;
+  }
+
+  if (hash === "#levels") {
+    backdrop.showLobby();
+    disposeView = mountOfficialLevelsRoom(root, profile, {
+      onPlay: (levelId) => {
+        window.location.hash = `#play/${levelId}`;
+      },
       onReturnToLobby: () => {
         window.location.hash = "";
       },
@@ -731,7 +745,7 @@ function renderRoute(): void {
         },
         onRestart: restartAudioPlayback,
         onReturnHome: () => {
-          window.location.hash = "";
+          window.location.hash = "#levels";
         },
       },
     );

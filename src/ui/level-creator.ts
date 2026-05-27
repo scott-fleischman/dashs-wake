@@ -3,13 +3,14 @@ import type {
   AuthoredLevelLayout,
   GeneratedLevelRecord,
 } from "../core/profile";
-import type { LevelEntity } from "../core/run-simulation";
+import type {
+  BlockEntity,
+  BlockShape,
+  LevelEntity,
+} from "../core/run-simulation";
 import { firstWakeLevel, type LevelContent } from "../content/first-wake";
 import { buildPlaceholderBeatMap } from "../content/beat-maps";
-import {
-  buildSupportingTerrain,
-  TERRAIN_DEPTH_Y,
-} from "../content/terrain";
+import { buildSupportingTerrain, TERRAIN_DEPTH_Y } from "../content/terrain";
 
 type CreatorTool =
   | "block"
@@ -21,6 +22,7 @@ type CreatorTool =
   | "pad"
   | "ship-portal"
   | "spike";
+type CreatorMode = "build" | "edit";
 
 export interface CreatorSubmission {
   audioFile?: File;
@@ -36,12 +38,10 @@ interface LevelCreatorActions {
   onSave: (submission: CreatorSubmission) => void;
 }
 
-const WORLD_SCALE = 0.22;
-const GRID_PX = 20;
+const GRID_SIZE = 20;
 const MIN_FINISH_X = 760;
 const DEFAULT_FINISH_X = 2900;
-const CANVAS_HEIGHT = 290;
-const Y_SCALE = CANVAS_HEIGHT / TERRAIN_DEPTH_Y;
+const ZOOM_CHOICES = [0.35, 0.5, 0.7, 1] as const;
 
 interface ToolConfig {
   icon: string;
@@ -61,71 +61,84 @@ const TOOL_CONFIGS: readonly ToolConfig[] = [
   { id: "erase", label: "Erase", icon: "creator-icon-erase" },
 ];
 
-function snapDisplay(value: number): number {
-  return Math.round(value / GRID_PX) * GRID_PX;
+function snapWorld(value: number): number {
+  return Math.round(value / GRID_SIZE) * GRID_SIZE;
 }
 
-function snapX(displayX: number): number {
-  return Math.max(60, Math.round(snapDisplay(displayX) / WORLD_SCALE));
-}
-
-function placementY(displayY: number, height: number): number {
-  const centeredTop = (snapDisplay(displayY) / Y_SCALE) - height / 2;
-  return Math.max(
-    0,
-    Math.min(TERRAIN_DEPTH_Y - height, Math.round(centeredTop)),
-  );
+function placementTop(worldY: number, height: number): number {
+  return Math.max(0, Math.min(TERRAIN_DEPTH_Y - height, snapWorld(worldY)));
 }
 
 function entityForTool(
   tool: CreatorTool,
   id: string,
   x: number,
-  displayY: number,
+  worldY: number,
 ): LevelEntity | undefined {
   switch (tool) {
     case "block":
       return {
         type: "block",
-        height: 60,
-        width: 60,
+        shape: "rectangle",
+        height: GRID_SIZE * 2,
+        width: GRID_SIZE * 2,
         x,
-        y: placementY(displayY, 60),
+        y: placementTop(worldY, GRID_SIZE * 2),
       };
     case "spike":
-      return { type: "spike", height: 30, width: 30, x, y: placementY(displayY, 30) };
+      return {
+        type: "spike",
+        height: GRID_SIZE * 2,
+        width: GRID_SIZE * 2,
+        x,
+        y: placementTop(worldY, GRID_SIZE * 2),
+      };
     case "pad":
       return {
         type: "pad",
         id,
         impulse: 720,
-        height: 18,
-        width: 40,
+        height: GRID_SIZE,
+        width: GRID_SIZE * 3,
         x,
-        y: placementY(displayY, 18),
+        y: placementTop(worldY, GRID_SIZE),
       };
     case "orb":
       return {
         type: "orb",
         id,
         effect: { kind: "impulse", magnitude: 720 },
-        height: 64,
-        width: 56,
+        height: GRID_SIZE * 3,
+        width: GRID_SIZE * 3,
         x,
-        y: placementY(displayY, 64),
+        y: placementTop(worldY, GRID_SIZE * 3),
       };
     case "ship-portal":
-      return { type: "portal", mode: "ship", height: 80, width: 12, x, y: placementY(displayY, 80) };
+      return {
+        type: "portal",
+        mode: "ship",
+        height: GRID_SIZE * 5,
+        width: GRID_SIZE,
+        x,
+        y: placementTop(worldY, GRID_SIZE * 5),
+      };
     case "cube-portal":
-      return { type: "portal", mode: "cube", height: 80, width: 12, x, y: placementY(displayY, 80) };
+      return {
+        type: "portal",
+        mode: "cube",
+        height: GRID_SIZE * 5,
+        width: GRID_SIZE,
+        x,
+        y: placementTop(worldY, GRID_SIZE * 5),
+      };
     case "decoration":
       return {
         type: "decoration",
         kind: "diamond",
-        height: 70,
-        width: 48,
+        height: GRID_SIZE * 3,
+        width: GRID_SIZE * 3,
         x,
-        y: placementY(displayY, 70),
+        y: placementTop(worldY, GRID_SIZE * 3),
       };
     default:
       return undefined;
@@ -135,6 +148,9 @@ function entityForTool(
 function classForEntity(entity: LevelEntity): string {
   if (entity.type === "portal") {
     return `creator-entity portal ${entity.mode}`;
+  }
+  if (entity.type === "block" && entity.shape && entity.shape !== "rectangle") {
+    return `creator-entity block shape-${entity.shape}`;
   }
   return `creator-entity ${entity.type}`;
 }
@@ -240,9 +256,37 @@ export function mountLevelCreator(
         <p class="creator-song-status" data-testid="creator-song-status"></p>
         <p class="creator-finish-status" data-testid="creator-finish-status"></p>
       </section>
+      <section class="creator-toolbar" aria-label="Editing controls">
+        <div class="creator-modes">
+          <button class="utility-button selected" type="button" data-testid="creator-mode-build">Build</button>
+          <button class="utility-button" type="button" data-testid="creator-mode-edit">Edit</button>
+        </div>
+        <label class="creator-paint-toggle"><input type="checkbox" data-testid="creator-paint"> Swipe paint blocks</label>
+        <div class="creator-zoom" aria-label="Zoom">
+          <button class="utility-button" type="button" data-testid="creator-zoom-out">-</button>
+          <span data-testid="creator-zoom-label">50%</span>
+          <button class="utility-button" type="button" data-testid="creator-zoom-in">+</button>
+        </div>
+      </section>
       <section class="creator-palette" aria-label="Build pieces"></section>
+      <section class="creator-edit-panel" aria-label="Selected shape" hidden>
+        <p data-testid="creator-selection-status">Select a shape on the grid.</p>
+        <label>X <input type="number" step="${GRID_SIZE}" data-testid="creator-edit-x"></label>
+        <label>Y <input type="number" step="${GRID_SIZE}" data-testid="creator-edit-y"></label>
+        <label>Width <input type="number" min="${GRID_SIZE}" step="${GRID_SIZE}" data-testid="creator-edit-width"></label>
+        <label>Height <input type="number" min="${GRID_SIZE}" step="${GRID_SIZE}" data-testid="creator-edit-height"></label>
+        <label>Block Shape
+          <select data-testid="creator-edit-shape">
+            <option value="rectangle">Rectangle</option>
+            <option value="ramp-up">Ramp Up</option>
+            <option value="ramp-down">Ramp Down</option>
+          </select>
+        </label>
+        <button class="primary-button" type="button" data-testid="creator-edit-apply">Apply</button>
+        <button class="utility-button danger" type="button" data-testid="creator-edit-delete">Delete</button>
+      </section>
       <section class="creator-workspace" aria-label="Course editor">
-        <p class="creator-instruction">The starter path is made of solid blocks. Place or erase blocks to build ledges, drops, ceilings, and flight corridors; decorations do not collide.</p>
+        <p class="creator-instruction">Every cell is placeable. Build mode paints obstacles; Edit mode selects, sizes, moves, and turns blocks into ramps.</p>
         <div class="creator-scroll">
           <div class="creator-course" data-testid="creator-course" role="application" aria-label="Editable level area"></div>
         </div>
@@ -250,44 +294,55 @@ export function mountLevelCreator(
     </main>
   `;
 
-  const palette = root.querySelector<HTMLElement>(".creator-palette");
-  const course = root.querySelector<HTMLElement>(".creator-course");
-  const saveButton = root.querySelector<HTMLButtonElement>("[data-action='save']");
-  const previewButton = root.querySelector<HTMLButtonElement>("[data-action='preview']");
-  const returnButton = root.querySelector<HTMLButtonElement>("[data-action='return']");
-  const songInput = root.querySelector<HTMLInputElement>("[data-testid='creator-audio']");
-  const nameInput = root.querySelector<HTMLInputElement>("[data-testid='creator-name']");
-  const songStatus = root.querySelector<HTMLElement>("[data-testid='creator-song-status']");
-  const finishStatus = root.querySelector<HTMLElement>("[data-testid='creator-finish-status']");
+  const requireElement = <T extends HTMLElement>(selector: string): T => {
+    const element = root.querySelector<T>(selector);
+    if (!element) throw new Error("Level creator did not mount correctly.");
+    return element;
+  };
 
-  if (
-    !palette ||
-    !course ||
-    !saveButton ||
-    !previewButton ||
-    !returnButton ||
-    !songInput ||
-    !nameInput ||
-    !songStatus ||
-    !finishStatus
-  ) {
-    throw new Error("Level creator did not mount correctly.");
-  }
+  const palette = requireElement<HTMLElement>(".creator-palette");
+  const editPanel = requireElement<HTMLElement>(".creator-edit-panel");
+  const course = requireElement<HTMLElement>(".creator-course");
+  const saveButton = requireElement<HTMLButtonElement>("[data-action='save']");
+  const previewButton = requireElement<HTMLButtonElement>("[data-action='preview']");
+  const returnButton = requireElement<HTMLButtonElement>("[data-action='return']");
+  const songInput = requireElement<HTMLInputElement>("[data-testid='creator-audio']");
+  const nameInput = requireElement<HTMLInputElement>("[data-testid='creator-name']");
+  const songStatus = requireElement<HTMLElement>("[data-testid='creator-song-status']");
+  const finishStatus = requireElement<HTMLElement>("[data-testid='creator-finish-status']");
+  const buildButton = requireElement<HTMLButtonElement>("[data-testid='creator-mode-build']");
+  const editButton = requireElement<HTMLButtonElement>("[data-testid='creator-mode-edit']");
+  const paintToggle = requireElement<HTMLInputElement>("[data-testid='creator-paint']");
+  const zoomOut = requireElement<HTMLButtonElement>("[data-testid='creator-zoom-out']");
+  const zoomIn = requireElement<HTMLButtonElement>("[data-testid='creator-zoom-in']");
+  const zoomLabel = requireElement<HTMLElement>("[data-testid='creator-zoom-label']");
+  const selectionStatus = requireElement<HTMLElement>("[data-testid='creator-selection-status']");
+  const editX = requireElement<HTMLInputElement>("[data-testid='creator-edit-x']");
+  const editY = requireElement<HTMLInputElement>("[data-testid='creator-edit-y']");
+  const editWidth = requireElement<HTMLInputElement>("[data-testid='creator-edit-width']");
+  const editHeight = requireElement<HTMLInputElement>("[data-testid='creator-edit-height']");
+  const editShape = requireElement<HTMLSelectElement>("[data-testid='creator-edit-shape']");
+  const editApply = requireElement<HTMLButtonElement>("[data-testid='creator-edit-apply']");
+  const editDelete = requireElement<HTMLButtonElement>("[data-testid='creator-edit-delete']");
 
+  let mode: CreatorMode = "build";
   let selectedTool: CreatorTool = "spike";
+  let selectedIndex: number | undefined;
+  let zoomIndex = 1;
   let finishX = actions.initial?.layout.finishX ?? DEFAULT_FINISH_X;
   let entities: LevelEntity[] = [
     ...(actions.initial?.layout.entities ?? buildSupportingTerrain(finishX)),
   ];
   let audioFile: File | undefined = actions.initial?.audioFile;
   let audioObjectUrl: string | undefined;
+  let painting = false;
   let nextEntityId = entities.reduce((next, entity) => {
-    if (!("id" in entity)) {
-      return next;
-    }
+    if (!("id" in entity)) return next;
     const suffix = Number(entity.id.match(/\d+$/)?.[0] ?? 0);
     return Math.max(next, suffix + 1);
   }, 1);
+
+  const zoom = (): number => ZOOM_CHOICES[zoomIndex];
 
   nameInput.value = actions.initial?.name ?? "My Song Level";
   songStatus.textContent = actions.initial?.audioFileName
@@ -304,101 +359,180 @@ export function mountLevelCreator(
     button.addEventListener("click", () => {
       selectedTool = config.id;
       for (const toolButton of palette.querySelectorAll<HTMLElement>(".creator-tool")) {
-        toolButton.classList.toggle(
-          "selected",
-          toolButton.dataset.tool === selectedTool,
-        );
+        toolButton.classList.toggle("selected", toolButton.dataset.tool === selectedTool);
       }
     });
     palette.appendChild(button);
   }
 
+  const renderSelection = (): void => {
+    const entity = selectedIndex === undefined ? undefined : entities[selectedIndex];
+    selectionStatus.textContent = entity
+      ? `Editing ${entity.type} at ${entity.x}, ${entity.y}`
+      : "Select a shape on the grid.";
+    for (const input of [editX, editY, editWidth, editHeight, editShape, editApply, editDelete]) {
+      input.toggleAttribute("disabled", !entity);
+    }
+    if (!entity) return;
+    editX.value = String(entity.x);
+    editY.value = String(entity.y);
+    editWidth.value = String(entity.width);
+    editHeight.value = String(entity.height);
+    editShape.value =
+      entity.type === "block" ? entity.shape ?? "rectangle" : "rectangle";
+    editShape.disabled = entity.type !== "block";
+  };
+
   const renderCourse = (): void => {
-    const displayWidth = Math.max(980, (finishX + 380) * WORLD_SCALE);
-    course.style.width = `${displayWidth}px`;
+    const scale = zoom();
+    course.classList.toggle("creator-editing", mode === "edit");
+    course.style.width = `${Math.max(980, (finishX + 380) * scale)}px`;
+    course.style.height = `${TERRAIN_DEPTH_Y * scale}px`;
+    course.style.setProperty("--creator-grid-size", `${GRID_SIZE * scale}px`);
+    zoomLabel.textContent = `${Math.round(scale * 100)}%`;
+    zoomOut.disabled = zoomIndex === 0;
+    zoomIn.disabled = zoomIndex === ZOOM_CHOICES.length - 1;
     course.replaceChildren();
 
-    for (const entity of entities) {
+    entities.forEach((entity, index) => {
       const marker = document.createElement("span");
-      marker.className = classForEntity(entity);
-      marker.style.left = `${entity.x * WORLD_SCALE}px`;
-      marker.style.top = `${entity.y * Y_SCALE}px`;
-      marker.style.width = `${Math.max(entity.width * WORLD_SCALE, entity.type === "portal" ? 8 : 12)}px`;
-      marker.style.height = `${Math.max(entity.height * Y_SCALE, entity.type === "portal" ? 56 : 12)}px`;
+      marker.className = `${classForEntity(entity)}${selectedIndex === index ? " selected" : ""}`;
+      marker.dataset.entityIndex = String(index);
+      marker.style.left = `${entity.x * scale}px`;
+      marker.style.top = `${entity.y * scale}px`;
+      marker.style.width = `${entity.width * scale}px`;
+      marker.style.height = `${entity.height * scale}px`;
       course.appendChild(marker);
-    }
+    });
 
     const finish = document.createElement("span");
     finish.className = "creator-finish";
-    finish.style.left = `${finishX * WORLD_SCALE}px`;
-    finish.style.top = `${firstWakeLevel.rules.spawnY * Y_SCALE - 102}px`;
+    finish.style.left = `${finishX * scale}px`;
+    finish.style.top = `${Math.max(0, (firstWakeLevel.rules.spawnY - 102) * scale)}px`;
+    finish.style.height = `${102 * scale}px`;
     finish.innerHTML = "<small>Finish</small>";
     course.appendChild(finish);
     finishStatus.textContent = worldDurationLabel(finishX);
+    renderSelection();
   };
 
-  const onCourseClick = (event: MouseEvent): void => {
-    const bounds = course.getBoundingClientRect();
-    const displayX = event.clientX - bounds.left;
-    const displayY = Math.max(0, Math.min(CANVAS_HEIGHT, event.clientY - bounds.top));
-    const x = snapX(displayX);
+  const setMode = (next: CreatorMode): void => {
+    mode = next;
+    buildButton.classList.toggle("selected", mode === "build");
+    editButton.classList.toggle("selected", mode === "edit");
+    palette.hidden = mode !== "build";
+    editPanel.hidden = mode !== "edit";
+    if (mode === "build") selectedIndex = undefined;
+    renderCourse();
+  };
 
+  const pointerWorld = (event: PointerEvent): { x: number; y: number } => {
+    const bounds = course.getBoundingClientRect();
+    return {
+      x: Math.max(0, snapWorld((event.clientX - bounds.left) / zoom())),
+      y: Math.max(
+        0,
+        Math.min(TERRAIN_DEPTH_Y - GRID_SIZE, snapWorld((event.clientY - bounds.top) / zoom())),
+      ),
+    };
+  };
+
+  const placeAtPointer = (event: PointerEvent): void => {
+    const { x, y } = pointerWorld(event);
     if (selectedTool === "finish") {
       finishX = Math.max(MIN_FINISH_X, x);
       entities = entities.filter((entity) => entity.x + entity.width < finishX);
       renderCourse();
       return;
     }
-
     if (selectedTool === "erase") {
-      const nearbyIndex = entities.findIndex(
-        (entity) =>
-          Math.abs(entity.x - x) <= 90 &&
-          Math.abs(entity.y * Y_SCALE - displayY) <= GRID_PX * 1.5,
-      );
-      if (nearbyIndex >= 0) {
-        entities.splice(nearbyIndex, 1);
+      let index = -1;
+      for (let i = entities.length - 1; i >= 0; i -= 1) {
+        const entity = entities[i]!;
+        if (
+          x >= entity.x &&
+          x < entity.x + entity.width &&
+          y >= entity.y &&
+          y < entity.y + entity.height
+        ) {
+          index = i;
+          break;
+        }
+      }
+      if (index >= 0) {
+        entities.splice(index, 1);
         renderCourse();
       }
       return;
     }
-
-    if (x >= finishX - 40) {
-      return;
-    }
-
-    const entity = entityForTool(
-      selectedTool,
-      `created-trigger-${nextEntityId}`,
-      x,
-      displayY,
+    if (x >= finishX - GRID_SIZE) return;
+    const entity = entityForTool(selectedTool, `created-trigger-${nextEntityId}`, x, y);
+    if (!entity) return;
+    const duplicate = entities.some(
+      (existing) =>
+        existing.type === entity.type &&
+        existing.x === entity.x &&
+        existing.y === entity.y,
     );
-    if (entity) {
+    if (!duplicate) {
       nextEntityId += 1;
-      entities = [
-        ...entities.filter(
-          (existing) =>
-            existing.type !== entity.type ||
-            Math.abs(existing.x - x) > 45 ||
-            Math.abs(existing.y - entity.y) > 35,
-        ),
-        entity,
-      ];
+      entities.push(entity);
       renderCourse();
     }
   };
 
+  const onPointerDown = (event: PointerEvent): void => {
+    if (mode === "edit") {
+      const marker = (event.target as HTMLElement).closest<HTMLElement>("[data-entity-index]");
+      selectedIndex = marker ? Number(marker.dataset.entityIndex) : undefined;
+      renderCourse();
+      return;
+    }
+    placeAtPointer(event);
+    painting = paintToggle.checked && (selectedTool === "block" || selectedTool === "erase");
+    if (painting) course.setPointerCapture(event.pointerId);
+  };
+
+  const onPointerMove = (event: PointerEvent): void => {
+    if (painting && mode === "build") placeAtPointer(event);
+  };
+
+  const stopPainting = (): void => {
+    painting = false;
+  };
+
+  const onApplyEdit = (): void => {
+    if (selectedIndex === undefined || !entities[selectedIndex]) return;
+    const current = entities[selectedIndex];
+    const changed = {
+      ...current,
+      x: Math.max(0, snapWorld(Number(editX.value) || 0)),
+      y: placementTop(Number(editY.value) || 0, Math.max(GRID_SIZE, snapWorld(Number(editHeight.value) || GRID_SIZE))),
+      width: Math.max(GRID_SIZE, snapWorld(Number(editWidth.value) || GRID_SIZE)),
+      height: Math.max(GRID_SIZE, snapWorld(Number(editHeight.value) || GRID_SIZE)),
+      ...(current.type === "block"
+        ? { shape: editShape.value as BlockShape }
+        : {}),
+    } as LevelEntity;
+    entities[selectedIndex] = changed;
+    renderCourse();
+  };
+
+  const onDeleteSelection = (): void => {
+    if (selectedIndex === undefined) return;
+    entities.splice(selectedIndex, 1);
+    selectedIndex = undefined;
+    renderCourse();
+  };
+
   const onSongChange = (): void => {
     audioFile = songInput.files?.[0];
-    if (audioObjectUrl) {
-      URL.revokeObjectURL(audioObjectUrl);
-      audioObjectUrl = undefined;
-    }
+    if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+    audioObjectUrl = undefined;
     if (!audioFile) {
       songStatus.textContent = "Optional: choose a song, or build with a metronome beat map.";
       return;
     }
-
     songStatus.textContent = `${audioFile.name} selected. Loading song length...`;
     audioObjectUrl = URL.createObjectURL(audioFile);
     const audio = new Audio(audioObjectUrl);
@@ -409,47 +543,47 @@ export function mountLevelCreator(
       }
       finishX = Math.max(
         MIN_FINISH_X,
-        Math.round(audio.duration * firstWakeLevel.rules.horizontalSpeed),
+        snapWorld(audio.duration * firstWakeLevel.rules.horizontalSpeed),
       );
       songStatus.textContent = `${audioFile?.name ?? "Song"} loaded. Finish starts at the end of the song; use Finish Point to change it.`;
       renderCourse();
     });
   };
 
-  const onSave = (): void => {
-    actions.onSave({
-      audioFile,
-      audioFileName: actions.initial?.audioFileName,
-      layout: { entities, finishX },
-      name: nameInput.value.trim() || "My Song Level",
-    });
+  const submission = (): CreatorSubmission => ({
+    audioFile,
+    audioFileName: actions.initial?.audioFileName,
+    layout: { entities, finishX },
+    name: nameInput.value.trim() || "My Song Level",
+  });
+
+  const onZoomOut = (): void => {
+    zoomIndex = Math.max(0, zoomIndex - 1);
+    renderCourse();
+  };
+  const onZoomIn = (): void => {
+    zoomIndex = Math.min(ZOOM_CHOICES.length - 1, zoomIndex + 1);
+    renderCourse();
   };
 
-  const onPreview = (): void => {
-    actions.onPreview({
-      audioFile,
-      audioFileName: actions.initial?.audioFileName,
-      layout: { entities, finishX },
-      name: nameInput.value.trim() || "My Song Level",
-    });
-  };
-
-  course.addEventListener("click", onCourseClick);
+  buildButton.addEventListener("click", () => setMode("build"));
+  editButton.addEventListener("click", () => setMode("edit"));
+  zoomOut.addEventListener("click", onZoomOut);
+  zoomIn.addEventListener("click", onZoomIn);
+  editApply.addEventListener("click", onApplyEdit);
+  editDelete.addEventListener("click", onDeleteSelection);
+  course.addEventListener("pointerdown", onPointerDown);
+  course.addEventListener("pointermove", onPointerMove);
+  course.addEventListener("pointerup", stopPainting);
+  course.addEventListener("pointercancel", stopPainting);
   songInput.addEventListener("change", onSongChange);
-  saveButton.addEventListener("click", onSave);
-  previewButton.addEventListener("click", onPreview);
+  saveButton.addEventListener("click", () => actions.onSave(submission()));
+  previewButton.addEventListener("click", () => actions.onPreview(submission()));
   returnButton.addEventListener("click", actions.onReturn);
-  renderCourse();
+  setMode("build");
 
   return () => {
-    if (audioObjectUrl) {
-      URL.revokeObjectURL(audioObjectUrl);
-    }
-    course.removeEventListener("click", onCourseClick);
-    songInput.removeEventListener("change", onSongChange);
-    saveButton.removeEventListener("click", onSave);
-    previewButton.removeEventListener("click", onPreview);
-    returnButton.removeEventListener("click", actions.onReturn);
+    if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
     root.replaceChildren();
   };
 }

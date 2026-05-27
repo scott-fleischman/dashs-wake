@@ -42,10 +42,23 @@ function tileRun(
   return blocks;
 }
 
+export function buildSurfaceRun(
+  startX: number,
+  endX: number,
+  y: number,
+): readonly BlockEntity[] {
+  return tileRun(startX, endX, y, TERRAIN_DEPTH_Y - y);
+}
+
 function flightChannelBlocks(channel: FlightChannel): BlockEntity[] {
   const ceilingBottomY = channel.ceilingBottomY ?? 36;
   const ceilingEndX = Math.min(channel.ceilingEndX ?? channel.endX, channel.endX);
   const lowerSurfaceY = channel.lowerSurfaceY ?? 410;
+  const rampWidth =
+    lowerSurfaceY > SPAWN_SURFACE_Y
+      ? Math.min(120, channel.endX - channel.startX)
+      : 0;
+  const lowerRunEndX = channel.endX - rampWidth;
   const blocks = [
     ...tileRun(
       channel.startX,
@@ -55,11 +68,22 @@ function flightChannelBlocks(channel: FlightChannel): BlockEntity[] {
     ),
     ...tileRun(
       channel.startX,
-      channel.endX,
+      lowerRunEndX,
       lowerSurfaceY,
       TERRAIN_DEPTH_Y - lowerSurfaceY,
     ),
   ];
+
+  if (rampWidth > 0) {
+    blocks.push({
+      type: "block",
+      shape: "ramp-up",
+      height: lowerSurfaceY - SPAWN_SURFACE_Y,
+      width: rampWidth,
+      x: lowerRunEndX,
+      y: SPAWN_SURFACE_Y,
+    });
+  }
 
   for (const gate of channel.gates ?? []) {
     blocks.push(

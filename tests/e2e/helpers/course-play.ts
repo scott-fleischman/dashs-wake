@@ -26,14 +26,16 @@ export async function tapAtPercents(
 }
 
 export async function completeFirstWake(page: Page): Promise<void> {
-  await tapAtPercents(page, [3, 10]);
   await hoverThroughShipPassage(page);
-  await tapAtPercents(page, [25, 29, 35, 42]);
+  await waitUntilPercent(page, 32);
   await hoverThroughShipPassage(page);
-  await tapAtPercents(page, [61, 62, 63, 70, 77]);
+  await tapAtPercents(page, [69]);
+  await waitUntilPercent(page, 74);
+  await page.keyboard.down("Space");
   await expect(
     page.getByRole("dialog", { name: "Level complete" }),
   ).toBeVisible({ timeout: 8_000 });
+  await page.keyboard.up("Space");
 }
 
 export async function hoverThroughShipPassage(
@@ -41,32 +43,8 @@ export async function hoverThroughShipPassage(
   timeout = 8_000,
 ): Promise<void> {
   const mode = page.getByTestId("run-mode");
-  const enteringFromCube = (await mode.textContent()) !== "Ship";
-
-  if (enteringFromCube) {
-    await page.keyboard.down("Space");
-  }
-
+  await page.keyboard.down("Space");
   await expect(mode).toHaveText("Ship", { timeout });
-
-  if (enteringFromCube) {
-    await page.waitForTimeout(110);
-    await page.keyboard.up("Space");
-  }
-
-  await expect
-    .poll(
-      async () => {
-        if ((await mode.textContent()) !== "Ship") {
-          return "Cube";
-        }
-        await page.keyboard.down("Space");
-        await page.waitForTimeout(90);
-        await page.keyboard.up("Space");
-        await page.waitForTimeout(90);
-        return (await mode.textContent()) ?? "";
-      },
-      { intervals: [0], timeout },
-    )
-    .toBe("Cube");
+  await page.keyboard.up("Space");
+  await expect(mode).toHaveText("Cube", { timeout });
 }

@@ -23,22 +23,14 @@ test("enters and completes the electric wake gauntlet", async ({ page }) => {
     Number((await progress.textContent())?.replace("%", ""));
 
   await expect(kicker).toContainText("Stage 1 of 3");
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(16);
-  await page.keyboard.press("Space");
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(50);
-  await page.keyboard.press("Space");
-
+  await page.keyboard.down("Space");
   await expect(kicker).toContainText("Stage 2 of 3", { timeout: 5_000 });
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(16);
-  await page.keyboard.press("Space");
+  await page.keyboard.up("Space");
+  await page.waitForTimeout(100);
+  await page.keyboard.down("Space");
 
   await expect(kicker).toContainText("Stage 3 of 3", { timeout: 5_000 });
+  await page.keyboard.up("Space");
   await expect
     .poll(readPercent, { intervals: [20], timeout: 3_000 })
     .toBeGreaterThanOrEqual(10);

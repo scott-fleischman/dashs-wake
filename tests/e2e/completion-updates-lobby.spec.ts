@@ -7,6 +7,7 @@ test("completing a level updates lobby status, unlocks, and coins", async ({
   await page.goto("/");
 
   await expect(page.getByTestId("profile-coins")).toHaveText("0 Coins");
+  await page.getByTestId("destination-official-levels").click();
   await expect(page.getByTestId("level-1-status")).toHaveText("Unlocked");
   await expect(page.getByTestId("level-2-status")).toHaveText("Locked");
 

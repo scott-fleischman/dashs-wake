@@ -8,6 +8,7 @@ test("replaying a level within one mount shows no reward the second time", async
 }) => {
   await page.goto("/");
 
+  await page.getByTestId("destination-official-levels").click();
   await page.getByTestId("level-1-play").click();
   await expect(page.getByRole("heading", { name: "First Wake" })).toBeVisible();
 

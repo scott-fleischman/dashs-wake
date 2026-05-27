@@ -13,6 +13,10 @@ test("creates a song-backed authored level with placed pieces and reopens it", a
   await expect(page.getByTestId("creator-tool-block")).toContainText("Block");
   await expect(page.getByTestId("creator-tool-orb")).toContainText("Jump Orb");
   await expect(page.getByTestId("creator-tool-finish")).toContainText("Finish Point");
+  await expect(page.getByTestId("creator-zoom-label")).toHaveText("50%");
+  await page.getByTestId("creator-zoom-in").click();
+  await expect(page.getByTestId("creator-zoom-label")).toHaveText("70%");
+  await page.getByTestId("creator-zoom-out").click();
 
   await page.getByTestId("creator-audio").setInputFiles({
     name: "creator-fixture.wav",
@@ -35,6 +39,20 @@ test("creates a song-backed authored level with placed pieces and reopens it", a
   await page.getByTestId("creator-course").click({ position: { x: 360, y: 130 } });
   await page.getByTestId("creator-tool-block").click();
   await page.getByTestId("creator-course").click({ position: { x: 500, y: 165 } });
+  const beforePaint = await page.locator(".creator-entity.block").count();
+  await page.getByTestId("creator-paint").check();
+  await page.getByTestId("creator-course").dragTo(page.getByTestId("creator-course"), {
+    sourcePosition: { x: 530, y: 70 },
+    targetPosition: { x: 620, y: 70 },
+  });
+  expect(await page.locator(".creator-entity.block").count()).toBeGreaterThan(beforePaint);
+  await page.getByTestId("creator-mode-edit").click();
+  await page.locator(".creator-entity.block").last().click();
+  await page.getByTestId("creator-edit-width").fill("120");
+  await page.getByTestId("creator-edit-height").fill("80");
+  await page.getByTestId("creator-edit-shape").selectOption("ramp-up");
+  await page.getByTestId("creator-edit-apply").click();
+  await expect(page.locator(".creator-entity.block.shape-ramp-up.selected")).toBeVisible();
   await page.getByRole("button", { name: "Playtest" }).click();
 
   await expect(page.getByText("Creator Playtest")).toBeVisible();

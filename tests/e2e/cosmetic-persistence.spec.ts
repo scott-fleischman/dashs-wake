@@ -25,6 +25,7 @@ test("equipped cosmetic survives a page reload and reaches the level HUD", async
     "Spark",
   );
 
+  await page.getByTestId("destination-official-levels").click();
   await page.getByTestId("level-1-play").click();
   await expect(page.getByTestId("equipped-icon")).toHaveText("Spark");
 });

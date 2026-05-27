@@ -11,10 +11,10 @@ interface SettingsActions {
 }
 
 const SPEED_CHOICES: readonly { label: string; value: number }[] = [
-  { label: "Relaxed (0.75x)", value: 0.75 },
-  { label: "Standard (1.00x)", value: 1 },
-  { label: "Rapid (1.25x)", value: 1.25 },
-  { label: "Hyper (1.50x)", value: 1.5 },
+  { label: "Slow (1.00x)", value: 1 },
+  { label: "Normal (1.50x)", value: 1.5 },
+  { label: "Fast (2.00x)", value: 2 },
+  { label: "Extreme (3.00x)", value: 3 },
 ];
 
 const THEME_CHOICES: readonly {
@@ -106,7 +106,7 @@ export function mountSettings(
     const note = document.createElement("p");
     note.className = "settings-note";
     note.textContent =
-      "Run speed changes movement and timing. Theme colors apply on your next run.";
+      "Slow matches the original pace. Normal matches the former Hyper speed; faster settings change movement and timing.";
     panel.appendChild(note);
   };
 

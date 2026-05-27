@@ -11,6 +11,7 @@ describe("chest rewards", () => {
     for (const chest of chestCatalog) {
       expect(chest.id.length).toBeGreaterThan(0);
       expect(chest.keyType.length).toBeGreaterThan(0);
+      expect(chest.rewardPool.length).toBeGreaterThan(1);
     }
   });
 
@@ -25,18 +26,18 @@ describe("chest rewards", () => {
   it("offers a chest for every key type levels can award", () => {
     const keyTypes = new Set(chestCatalog.map((chest) => chest.keyType));
 
-    for (const required of ["easy", "normal", "hard"]) {
+    for (const required of ["easy", "normal", "hard", "insane", "demon"]) {
       expect(keyTypes.has(required)).toBe(true);
     }
   });
 
-  it("consumes one key of the chest's type and grants the deterministic reward on first open", () => {
+  it("consumes one key of the chest's type and grants a reward on first open", () => {
     const profile = {
       ...createProfile(),
       keys: { easy: 2 },
     };
 
-    const result = applyOpenChest(profile, STARTER_CHEST_ID);
+    const result = applyOpenChest(profile, STARTER_CHEST_ID, () => 0);
 
     expect(result.profile.keys["easy"]).toBe(1);
     expect(result.profile.openedChestIds).toContain(STARTER_CHEST_ID);
@@ -86,7 +87,7 @@ describe("chest rewards", () => {
       keys: { normal: 1 },
     };
 
-    const result = applyOpenChest(profile, "chest-normal");
+    const result = applyOpenChest(profile, "chest-normal", () => 0);
 
     expect(result.granted.cosmeticAwarded).toBeDefined();
     expect(result.profile.ownedCosmetics).toContain(
@@ -97,5 +98,21 @@ describe("chest rewards", () => {
     );
     expect(result.profile.keys["normal"]).toBe(0);
     expect(result.profile.openedChestIds).toContain("chest-normal");
+  });
+
+  it("selects different pooled rewards according to the random roll", () => {
+    const low = applyOpenChest(
+      { ...createProfile(), keys: { insane: 1 } },
+      "chest-insane",
+      () => 0,
+    );
+    const high = applyOpenChest(
+      { ...createProfile(), keys: { insane: 1 } },
+      "chest-insane",
+      () => 0.99,
+    );
+
+    expect(low.granted).not.toEqual(high.granted);
+    expect(high.granted.keysAwarded?.demon).toBe(1);
   });
 });

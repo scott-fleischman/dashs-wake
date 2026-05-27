@@ -13,8 +13,8 @@ import { validateGeneratedPlayability } from "../../src/core/generator";
 import type { OrbEntity } from "../../src/core/run-simulation";
 
 describe("Official level catalog", () => {
-  it("publishes metadata for eight official levels in order", () => {
-    expect(officialLevelCatalog).toHaveLength(8);
+  it("publishes metadata for twelve official levels in order", () => {
+    expect(officialLevelCatalog).toHaveLength(12);
     expect(officialLevelCatalog.map((level) => level.id)).toEqual([
       "level_1",
       "level_2",
@@ -24,6 +24,10 @@ describe("Official level catalog", () => {
       "level_6",
       "level_7",
       "level_8",
+      "level_9",
+      "level_10",
+      "level_11",
+      "level_12",
     ]);
   });
 
@@ -56,6 +60,18 @@ describe("Official level catalog", () => {
     expect(
       byId.get("level_8")?.unlockRequirement.requiredCompletedLevels,
     ).toEqual(["level_7"]);
+    expect(
+      byId.get("level_9")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_8"]);
+    expect(
+      byId.get("level_10")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_9"]);
+    expect(
+      byId.get("level_11")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_10"]);
+    expect(
+      byId.get("level_12")?.unlockRequirement.requiredCompletedLevels,
+    ).toEqual(["level_11"]);
   });
 
   it("names every level with a non-empty display string and difficulty", () => {
@@ -209,6 +225,30 @@ describe("Official level catalog", () => {
       const result = validateGeneratedPlayability(getOfficialLevelContent(id));
       expect(result.issues, id).toEqual([]);
       expect(result.ok, id).toBe(true);
+    }
+  });
+
+  it("authors expanded courses with vertical ramps and bounded ship corridors", () => {
+    for (const id of ["level_9", "level_10", "level_11", "level_12"]) {
+      const content = getOfficialLevelContent(id);
+      expect(
+        content.entities.some(
+          (entity) =>
+            entity.type === "block" &&
+            entity.shape !== undefined &&
+            entity.shape !== "rectangle",
+        ),
+      ).toBe(true);
+      expect(content.finishX).toBeGreaterThanOrEqual(5000);
+    }
+    for (const id of ["level_10", "level_12"]) {
+      const entities = getOfficialLevelContent(id).entities;
+      expect(
+        entities.some((entity) => entity.type === "portal" && entity.mode === "ship"),
+      ).toBe(true);
+      expect(
+        entities.some((entity) => entity.type === "block" && entity.y === 0),
+      ).toBe(true);
     }
   });
 

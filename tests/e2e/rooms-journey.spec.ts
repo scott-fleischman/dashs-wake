@@ -31,8 +31,10 @@ test("opens customizer, shop, and chest room and equips a cosmetic visible in ga
   await expect(page.getByRole("heading", { name: "Chest Room" })).toBeVisible();
   await page.getByTestId("chest-chest-starter-open").click();
   await expect(page.getByTestId("chest-chest-starter-opened")).toBeVisible();
+  await page.getByRole("dialog", { name: "Chest opened" }).getByRole("button", { name: "Continue" }).click();
   await page.getByTestId("room-back").click();
 
+  await page.getByTestId("destination-official-levels").click();
   await page.getByTestId("level-1-play").click();
   await expect(page.getByTestId("equipped-icon")).toHaveText("Spark");
 });

@@ -14,6 +14,7 @@ test("unlocks Level 2 and completes the launch pad sequence", async ({
     unlockedLevels: ["level_2"],
   });
   await page.reload();
+  await page.getByTestId("destination-official-levels").click();
 
   await expect(page.getByTestId("level-2-status")).toHaveText("Unlocked");
   await page.getByTestId("level-2-play").click();

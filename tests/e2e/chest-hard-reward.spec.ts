@@ -17,6 +17,7 @@ test("chest-hard grants its coins and the icon-pulse cosmetic", async ({
   await page.getByTestId("destination-chest-room").click();
   await page.getByTestId("chest-chest-hard-open").click();
   await expect(page.getByTestId("chest-chest-hard-opened")).toBeVisible();
+  await page.getByRole("dialog", { name: "Chest opened" }).getByRole("button", { name: "Continue" }).click();
   await page.getByTestId("room-back").click();
 
   await expect(page.getByTestId("profile-coins")).toHaveText("200 Coins");

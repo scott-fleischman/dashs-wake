@@ -228,7 +228,7 @@ function createPlayerCube(
 
 function createPlayerShip(
   scene: Phaser.Scene,
-  kind: ShipShapeKind,
+  _kind: ShipShapeKind,
   x: number,
   y: number,
   width: number,
@@ -237,49 +237,19 @@ function createPlayerShip(
 ): Phaser.GameObjects.Shape {
   const halfWidth = width / 2;
   const halfHeight = height / 2;
-  if (kind === "arrow") {
-    return scene.add.polygon(
-      x,
-      y,
-      [
-        -halfWidth,
-        -halfHeight,
-        halfWidth,
-        0,
-        -halfWidth * 0.4,
-        0,
-        -halfWidth,
-        halfHeight,
-      ],
-      fill,
-    );
-  }
-  if (kind === "dart") {
-    return scene.add.polygon(
-      x,
-      y,
-      [
-        -halfWidth,
-        -halfHeight * 0.7,
-        halfWidth,
-        0,
-        -halfWidth,
-        halfHeight * 0.7,
-        -halfWidth * 0.3,
-        0,
-      ],
-      fill,
-    );
-  }
-  return scene.add.triangle(
+  return scene.add.polygon(
     x,
     y,
-    -halfWidth,
-    -halfHeight,
-    halfWidth,
-    0,
-    -halfWidth,
-    halfHeight,
+    [
+      -halfWidth,
+      -halfHeight * 0.62,
+      halfWidth,
+      0,
+      -halfWidth,
+      halfHeight * 0.62,
+      -halfWidth * 0.48,
+      0,
+    ],
     fill,
   );
 }
@@ -304,9 +274,7 @@ class LevelScene extends Phaser.Scene {
   private onSnapshot?: (snapshot: LevelSnapshot) => void;
   private paused = false;
   private playerCube?: Phaser.GameObjects.Shape;
-  private playerCubeDetail?: Phaser.GameObjects.Graphics;
   private playerShip?: Phaser.GameObjects.Shape;
-  private playerShipDetail?: Phaser.GameObjects.Graphics;
   private state: RunState = createRunState(firstWakeLevel.rules);
   private status: LevelSnapshot["status"] = "running";
   private theme: LevelColorTheme = "neon";
@@ -522,11 +490,47 @@ class LevelScene extends Phaser.Scene {
       }
       const y = this.worldOffsetY + entity.y;
       blocks.fillStyle(palette.block, 0.96);
-      blocks.fillRect(entity.x, y, entity.width, entity.height);
       blocks.lineStyle(2, palette.accent, 0.8);
-      blocks.strokeRect(entity.x, y, entity.width, entity.height);
-      blocks.lineStyle(1, palette.accent, 0.35);
-      blocks.lineBetween(entity.x + 8, y + 10, entity.x + entity.width - 8, y + 10);
+      if (entity.shape === "ramp-up") {
+        blocks.fillTriangle(
+          entity.x,
+          y + entity.height,
+          entity.x + entity.width,
+          y,
+          entity.x + entity.width,
+          y + entity.height,
+        );
+        blocks.strokeTriangle(
+          entity.x,
+          y + entity.height,
+          entity.x + entity.width,
+          y,
+          entity.x + entity.width,
+          y + entity.height,
+        );
+      } else if (entity.shape === "ramp-down") {
+        blocks.fillTriangle(
+          entity.x,
+          y,
+          entity.x + entity.width,
+          y + entity.height,
+          entity.x,
+          y + entity.height,
+        );
+        blocks.strokeTriangle(
+          entity.x,
+          y,
+          entity.x + entity.width,
+          y + entity.height,
+          entity.x,
+          y + entity.height,
+        );
+      } else {
+        blocks.fillRect(entity.x, y, entity.width, entity.height);
+        blocks.strokeRect(entity.x, y, entity.width, entity.height);
+        blocks.lineStyle(1, palette.accent, 0.35);
+        blocks.lineBetween(entity.x + 8, y + 10, entity.x + entity.width - 8, y + 10);
+      }
     }
     this.courseLayer.add(blocks);
 
@@ -655,60 +659,7 @@ class LevelScene extends Phaser.Scene {
       ),
     ).setVisible(false);
 
-    this.playerCubeDetail = this.add.graphics();
-    this.playerShipDetail = this.add.graphics();
-    this.drawPlayerDetail(this.playerCubeDetail, false);
-    this.drawPlayerDetail(this.playerShipDetail, true);
-
     this.updatePresentation();
-  }
-
-  private drawPlayerDetail(
-    graphics: Phaser.GameObjects.Graphics,
-    isShip: boolean,
-  ): void {
-    const accent = this.appearance.accent;
-    graphics.clear();
-    graphics.lineStyle(2, accent, 0.95);
-
-    if (isShip) {
-      graphics.lineBetween(-11, 0, 4, 0);
-      graphics.lineBetween(-9, -5, -14, 0);
-      graphics.lineBetween(-14, 0, -9, 5);
-      return;
-    }
-
-    switch (this.appearance.motif) {
-      case "bolt":
-        graphics.lineBetween(4, -12, -5, 0);
-        graphics.lineBetween(-5, 0, 3, 0);
-        graphics.lineBetween(3, 0, -4, 12);
-        break;
-      case "circuit":
-        graphics.strokeRect(-9, -9, 18, 18);
-        graphics.lineBetween(-15, 0, -9, 0);
-        graphics.lineBetween(9, 0, 15, 0);
-        break;
-      case "flare":
-        graphics.strokeCircle(0, 0, 7);
-        graphics.lineBetween(0, -14, 0, -9);
-        graphics.lineBetween(0, 9, 0, 14);
-        graphics.lineBetween(-14, 0, -9, 0);
-        graphics.lineBetween(9, 0, 14, 0);
-        break;
-      case "prism":
-        graphics.strokeTriangle(0, -11, 11, 10, -11, 10);
-        graphics.lineBetween(0, -11, 0, 10);
-        break;
-      case "ring":
-        graphics.strokeCircle(0, 0, 9);
-        graphics.strokeCircle(0, 0, 4);
-        break;
-      default:
-        graphics.strokeRect(-9, -9, 18, 18);
-        graphics.strokeRect(-4, -4, 8, 8);
-        break;
-    }
   }
 
   private updatePresentation(): void {
@@ -737,19 +688,11 @@ class LevelScene extends Phaser.Scene {
       .setY(cubeScreenY)
       .setRotation(isShip ? 0 : cubeRotation)
       .setFillStyle(fillColor);
-    this.playerCubeDetail
-      ?.setVisible(!isShip)
-      .setPosition(playerScreenX, cubeScreenY)
-      .setRotation(isShip ? 0 : cubeRotation);
     this.playerShip
       ?.setVisible(isShip)
       .setY(simulationCenterY)
       .setRotation(this.state.player.velocityY * 0.0006)
       .setFillStyle(fillColor);
-    this.playerShipDetail
-      ?.setVisible(isShip)
-      .setPosition(playerScreenX, simulationCenterY)
-      .setRotation(this.state.player.velocityY * 0.0006);
   }
 
   private publishSnapshot(force = false): void {

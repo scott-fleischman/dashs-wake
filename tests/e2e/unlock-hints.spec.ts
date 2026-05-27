@@ -5,6 +5,7 @@ test("locked level cards and gauntlets show what to clear next", async ({
 }) => {
   await page.goto("/");
 
+  await page.getByTestId("destination-official-levels").click();
   await expect(page.getByTestId("level-2-unlock-hint")).toHaveText(
     "Clear First Wake",
   );
@@ -12,6 +13,7 @@ test("locked level cards and gauntlets show what to clear next", async ({
     "Clear Launch Sequence",
   );
 
+  await page.getByTestId("room-back").click();
   await page.getByTestId("destination-gauntlets").click();
   await expect(page.getByTestId("gauntlet-electric-wake-start")).toBeDisabled();
   await expect(

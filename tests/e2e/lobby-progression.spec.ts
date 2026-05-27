@@ -13,6 +13,7 @@ test("lobby renders status, difficulty, and best percent for every official leve
     unlockedLevels: ["level_2", "level_3"],
   });
   await page.reload();
+  await page.getByTestId("destination-official-levels").click();
 
   await expect(page.getByTestId("level-1-status")).toHaveText("Complete");
   await expect(page.getByTestId("level-2-status")).toHaveText("Complete");

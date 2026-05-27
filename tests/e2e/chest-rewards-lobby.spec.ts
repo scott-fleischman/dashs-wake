@@ -19,6 +19,9 @@ test("opening a chest grants its reward and the lobby reflects the new balance",
 
   await page.getByTestId("chest-chest-starter-open").click();
   await expect(page.getByTestId("chest-chest-starter-opened")).toBeVisible();
+  await expect(page.getByTestId("chest-reward-reveal")).toBeVisible();
+  await expect(page.getByTestId("chest-reward-text")).toContainText("You got:");
+  await page.getByRole("dialog", { name: "Chest opened" }).getByRole("button", { name: "Continue" }).click();
 
   await page.getByTestId("room-back").click();
 

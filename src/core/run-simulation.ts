@@ -19,7 +19,10 @@ interface RectangularEntity {
   y: number;
 }
 
+export type BlockShape = "rectangle" | "ramp-up" | "ramp-down";
+
 export interface BlockEntity extends RectangularEntity {
+  shape?: BlockShape;
   type: "block";
 }
 
@@ -127,20 +130,24 @@ function resolveLandingY(
   entities: readonly LevelEntity[],
   rules: RunRules,
 ): number | undefined {
-  if (state.player.mode !== "cube" || velocityY < 0) {
+  if (velocityY < 0) {
     return undefined;
   }
 
   const surfaces: number[] = [];
 
   for (const entity of entities) {
+    if (entity.type !== "block" || !overlapsHorizontally(proposedX, entity, rules)) {
+      continue;
+    }
+
+    const currentSurfaceY = blockSurfaceY(entity, state.player.x, rules.playerWidth);
+    const proposedSurfaceY = blockSurfaceY(entity, proposedX, rules.playerWidth);
     if (
-      entity.type === "block" &&
-      state.player.y <= entity.y &&
-      proposedY >= entity.y &&
-      overlapsHorizontally(proposedX, entity, rules)
+      state.player.y <= currentSurfaceY + 0.01 &&
+      proposedY >= proposedSurfaceY
     ) {
-      surfaces.push(entity.y);
+      surfaces.push(proposedSurfaceY);
     }
   }
 
@@ -163,6 +170,95 @@ function playerOverlapsRect(
   );
 }
 
+function blockSurfaceY(
+  block: BlockEntity,
+  playerX: number,
+  playerWidth: number,
+): number {
+  const shape = block.shape ?? "rectangle";
+  if (shape === "rectangle") {
+    return block.y;
+  }
+
+  const contactX =
+    shape === "ramp-up"
+      ? playerX + playerWidth / 2
+      : playerX - playerWidth / 2;
+  const ratio = Math.max(0, Math.min(1, (contactX - block.x) / block.width));
+  return shape === "ramp-up"
+    ? block.y + block.height * (1 - ratio)
+    : block.y + block.height * ratio;
+}
+
+function playerOverlapsBlock(
+  playerX: number,
+  playerY: number,
+  block: BlockEntity,
+  rules: RunRules,
+): boolean {
+  if ((block.shape ?? "rectangle") === "rectangle") {
+    return playerOverlapsRect(playerX, playerY, block, rules);
+  }
+
+  const playerTop = playerY - rules.playerHeight;
+  return (
+    overlapsHorizontally(playerX, block, rules) &&
+    playerY > blockSurfaceY(block, playerX, rules.playerWidth) &&
+    playerTop < block.y + block.height
+  );
+}
+
+interface CollisionPoint {
+  x: number;
+  y: number;
+}
+
+function projectionsOverlap(
+  first: readonly CollisionPoint[],
+  second: readonly CollisionPoint[],
+  axis: CollisionPoint,
+): boolean {
+  const firstProjection = first.map((point) => point.x * axis.x + point.y * axis.y);
+  const secondProjection = second.map((point) => point.x * axis.x + point.y * axis.y);
+  return (
+    Math.max(...firstProjection) > Math.min(...secondProjection) &&
+    Math.max(...secondProjection) > Math.min(...firstProjection)
+  );
+}
+
+function playerOverlapsSpike(
+  playerX: number,
+  playerY: number,
+  spike: SpikeEntity,
+  rules: RunRules,
+): boolean {
+  const left = playerX - rules.playerWidth / 2;
+  const right = playerX + rules.playerWidth / 2;
+  const top = playerY - rules.playerHeight;
+  const bottom = playerY;
+  const player = [
+    { x: left, y: top },
+    { x: right, y: top },
+    { x: right, y: bottom },
+    { x: left, y: bottom },
+  ];
+  const triangle = [
+    { x: spike.x, y: spike.y + spike.height },
+    { x: spike.x + spike.width / 2, y: spike.y },
+    { x: spike.x + spike.width, y: spike.y + spike.height },
+  ];
+  const axes = [
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    ...triangle.map((point, index) => {
+      const next = triangle[(index + 1) % triangle.length];
+      return { x: -(next.y - point.y), y: next.x - point.x };
+    }),
+  ];
+
+  return axes.every((axis) => projectionsOverlap(player, triangle, axis));
+}
+
 type VelocityStrategy = (
   player: PlayerState,
   input: RunInput,
@@ -173,8 +269,12 @@ type VelocityStrategy = (
 const VELOCITY_STRATEGIES: Record<PlayerMode, VelocityStrategy> = {
   cube: (player, _input, elapsedSeconds, rules) =>
     player.velocityY + rules.gravity * elapsedSeconds,
-  ship: (_player, input, _elapsedSeconds, rules) =>
-    (input.jumpPressed ? -1 : 1) * Math.abs(rules.jumpVelocity) * 0.6,
+  ship: (player, input, elapsedSeconds, rules) => {
+    const maxVelocity = Math.abs(rules.jumpVelocity) * 0.68;
+    const acceleration = rules.gravity * (input.jumpPressed ? -0.86 : 0.68);
+    const velocity = player.velocityY + acceleration * elapsedSeconds;
+    return Math.max(-maxVelocity, Math.min(maxVelocity, velocity));
+  },
 };
 
 function computeNextVelocityY(
@@ -376,13 +476,13 @@ export function tickRun(
     : entities.some(
           (entity) =>
             entity.type === "spike" &&
-            playerOverlapsRect(player.x, player.y, entity, rules),
+            playerOverlapsSpike(player.x, player.y, entity, rules),
         )
       ? "spike"
       : entities.some(
             (entity) =>
               entity.type === "block" &&
-              playerOverlapsRect(player.x, player.y, entity, rules),
+              playerOverlapsBlock(player.x, player.y, entity, rules),
           )
         ? "block"
       : player.y >= rules.fallBoundaryY

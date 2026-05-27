@@ -130,6 +130,34 @@ describe("cube run simulation", () => {
     expect(dead.deathCause).toBe("spike");
   });
 
+  it("does not kill the cube in empty rectangular space above a spike slope", () => {
+    const spike: LevelEntity = {
+      type: "spike",
+      height: 20,
+      width: 20,
+      x: 40,
+      y: 70,
+    };
+    const grazingCorner: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: {
+        grounded: false,
+        mode: "cube",
+        velocityY: 0,
+        x: 40,
+        y: 77,
+      },
+      status: "running",
+    };
+
+    const state = tickRun(grazingCorner, { jumpPressed: false }, 0, rules, [
+      spike,
+    ]);
+
+    expect(state.status).toBe("running");
+  });
+
   it("falls where blocks are absent and resets a dead run to its start state", () => {
     const shortLedge: LevelEntity = {
       type: "block",
@@ -193,6 +221,34 @@ describe("solid blocks", () => {
 
     expect(landed.status).toBe("running");
     expect(landed.player.y).toBe(block.y);
+  });
+
+  it("lands on a sloped ramp surface", () => {
+    const ramp: LevelEntity = {
+      type: "block",
+      shape: "ramp-up",
+      height: 20,
+      width: 20,
+      x: 0,
+      y: 80,
+    };
+    const falling: RunState = {
+      consumedTriggerIds: new Set(),
+      elapsedMs: 0,
+      player: {
+        grounded: false,
+        mode: "cube",
+        velocityY: 10,
+        x: 10,
+        y: 84,
+      },
+      status: "running",
+    };
+
+    const landed = tickRun(falling, { jumpPressed: false }, 100, rules, [ramp]);
+
+    expect(landed.status).toBe("running");
+    expect(landed.player.y).toBeCloseTo(84);
   });
 });
 
@@ -280,7 +336,7 @@ describe("ship mode portals and motion", () => {
     expect(released.player.velocityY).toBeGreaterThan(held.player.velocityY);
   });
 
-  it("crashes a ship against a lower block rather than landing on it", () => {
+  it("lets a ship settle onto a lower block surface", () => {
     const lowerBlock: LevelEntity = {
       type: "block",
       height: 20,
@@ -309,8 +365,9 @@ describe("ship mode portals and motion", () => {
       [lowerBlock],
     );
 
-    expect(collided.status).toBe("dead");
-    expect(collided.deathCause).toBe("block");
+    expect(collided.status).toBe("running");
+    expect(collided.player.y).toBe(lowerBlock.y);
+    expect(collided.player.grounded).toBe(true);
   });
 
   it("returns to cube mode when the ship traverses a cube portal", () => {

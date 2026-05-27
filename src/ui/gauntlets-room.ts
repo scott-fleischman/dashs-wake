@@ -82,6 +82,7 @@ export function mountGauntletsRoom(
     root.replaceChildren();
 
     const { list, main } = buildRoomShell("Gauntlets", actions.onReturnToLobby);
+    main.classList.add("gauntlets-room");
     root.appendChild(main);
 
     for (const gauntlet of gauntletCatalog) {

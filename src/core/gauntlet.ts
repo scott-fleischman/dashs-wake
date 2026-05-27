@@ -110,6 +110,30 @@ export const gauntletCatalog: readonly GauntletEntry[] = [
       keysAwarded: { hard: 1 },
     },
   },
+  {
+    id: "skyline-trial",
+    name: "Skyline Trial Gauntlet",
+    stages: ["skyline-trial-1", "skyline-trial-2", "skyline-trial-3"],
+    unlockRequirement: {
+      requiredCompletedLevels: ["level_4"],
+    },
+    reward: {
+      coinsAwarded: 225,
+      keysAwarded: { insane: 1 },
+    },
+  },
+  {
+    id: "void-circuit",
+    name: "Void Circuit Gauntlet",
+    stages: ["void-circuit-1", "void-circuit-2", "void-circuit-3"],
+    unlockRequirement: {
+      requiredCompletedLevels: ["level_7"],
+    },
+    reward: {
+      coinsAwarded: 320,
+      keysAwarded: { insane: 1 },
+    },
+  },
 ];
 
 function findGauntlet(gauntletId: string): GauntletEntry | undefined {

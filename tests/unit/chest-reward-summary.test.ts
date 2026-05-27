@@ -27,4 +27,8 @@ describe("chest reward summary", () => {
   it("returns an empty string for an empty reward shape", () => {
     expect(chestRewardSummary({})).toBe("");
   });
+
+  it("describes key rewards revealed from a random chest", () => {
+    expect(chestRewardSummary({ keysAwarded: { demon: 1 } })).toBe("1 Demon Key");
+  });
 });

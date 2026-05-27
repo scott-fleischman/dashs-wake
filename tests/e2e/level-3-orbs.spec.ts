@@ -16,6 +16,7 @@ test("unlocks Level 3 and completes the safe orb sequence", async ({
     unlockedLevels: ["level_2", "level_3"],
   });
   await page.reload();
+  await page.getByTestId("destination-official-levels").click();
 
   await expect(page.getByTestId("level-3-status")).toHaveText("Unlocked");
   await page.getByTestId("level-3-play").click();

@@ -20,6 +20,7 @@ test("unlocks Level 4 and completes the combined run", async ({ page }) => {
     unlockedLevels: ["level_4"],
   });
   await page.reload();
+  await page.getByTestId("destination-official-levels").click();
 
   await expect(page.getByTestId("level-4-status")).toHaveText("Unlocked");
   await page.getByTestId("level-4-play").click();

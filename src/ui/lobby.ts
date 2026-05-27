@@ -77,9 +77,10 @@ const KEY_TYPE_LABELS: Record<string, string> = {
   normal: "Normal",
   hard: "Hard",
   insane: "Insane",
+  demon: "Demon",
 };
 
-const KEY_TYPE_ORDER: readonly string[] = ["easy", "normal", "hard", "insane"];
+const KEY_TYPE_ORDER: readonly string[] = ["easy", "normal", "hard", "insane", "demon"];
 
 function keysText(label: string, count: number): string {
   return `${count} ${label} Key${count === 1 ? "" : "s"}`;
@@ -152,7 +153,7 @@ function renderEquippedIconChip(profile: PlayerProfile): string {
   return `<span class="profile-stat profile-equipped-icon" data-testid="profile-equipped-icon"><span class="cosmetic-swatch${shapeClass} motif-${equipped.appearance.motif}" style="background: ${color}"></span>${equipped.name}</span>`;
 }
 
-function renderProfileStats(profile: PlayerProfile): string {
+export function renderProfileStats(profile: PlayerProfile): string {
   const keysHtml = KEY_TYPE_ORDER.map((keyType) =>
     renderKeyChip(keyType, profile.keys[keyType] ?? 0),
   ).join("");
@@ -166,7 +167,7 @@ function renderProfileStats(profile: PlayerProfile): string {
   `;
 }
 
-function renderLevelList(profile: PlayerProfile): string {
+export function renderLevelList(profile: PlayerProfile): string {
   const cards = officialLevelCatalog
     .map((metadata) => renderLevelCard(metadata, profile))
     .join("");
@@ -181,7 +182,7 @@ function renderLevelList(profile: PlayerProfile): string {
 export function mountLobby(
   root: HTMLElement,
   profile: PlayerProfile,
-  onPlay: (levelId: string) => void,
+  _onPlay: (levelId: string) => void,
 ): () => void {
   root.innerHTML = `
     <main class="lobby">
@@ -198,7 +199,11 @@ export function mountLobby(
           ${DESTINATIONS.slice(0, 3).map(destinationButton).join("")}
         </div>
 
-        ${renderLevelList(profile)}
+        <button class="destination official-levels-door" type="button" data-action="navigate" data-route="#levels" data-testid="destination-official-levels">
+          <strong>Official Levels</strong>
+          <span>12 Block Courses</span>
+          <small>Open Level Select</small>
+        </button>
 
         <div class="future-right">
           ${DESTINATIONS.slice(3).map(destinationButton).join("")}
@@ -207,23 +212,9 @@ export function mountLobby(
     </main>
   `;
 
-  const playButtons = Array.from(
-    root.querySelectorAll<HTMLButtonElement>("[data-action='play']"),
-  );
   const navigateButtons = Array.from(
     root.querySelectorAll<HTMLButtonElement>("[data-action='navigate']"),
   );
-
-  if (playButtons.length === 0) {
-    throw new Error("Lobby controls did not mount correctly.");
-  }
-
-  const playHandlers = playButtons.map((button) => {
-    const levelId = button.dataset.levelId ?? "level_1";
-    const handler = (): void => onPlay(levelId);
-    button.addEventListener("click", handler);
-    return { button, handler };
-  });
 
   const navigateHandlers = navigateButtons.map((button) => {
     const route = button.dataset.route ?? "";
@@ -237,9 +228,6 @@ export function mountLobby(
   });
 
   return () => {
-    for (const { button, handler } of playHandlers) {
-      button.removeEventListener("click", handler);
-    }
     for (const { button, handler } of navigateHandlers) {
       button.removeEventListener("click", handler);
     }

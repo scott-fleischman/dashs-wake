@@ -9,7 +9,7 @@ test("lobby presents its destinations and lets the player choose Play", async ({
   await expect(
     page.getByRole("heading", { name: "Dash's Wake" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
+  await expect(page.getByTestId("destination-official-levels")).toBeVisible();
 
   for (const destinationTestId of [
     "destination-customizer",
@@ -18,10 +18,13 @@ test("lobby presents its destinations and lets the player choose Play", async ({
     "destination-gauntlets",
     "destination-generated-levels",
     "destination-settings",
+    "destination-official-levels",
   ]) {
     await expect(page.getByTestId(destinationTestId)).toBeEnabled();
   }
 
+  await page.getByTestId("destination-official-levels").click();
+  await expect(page.getByRole("heading", { name: "Official Levels" })).toBeVisible();
   await page.getByRole("button", { name: "Play" }).click();
 
   await expect(page).toHaveURL(/#play\/level_1$/);
@@ -33,7 +36,7 @@ test("lobby presents its destinations and lets the player choose Play", async ({
   await expect(page.getByTestId("official-level-audio")).toBeAttached();
 });
 
-test("First Wake pauses with Escape and returns to the lobby", async ({
+test("First Wake pauses with Escape and returns to official level select", async ({
   page,
 }) => {
   await page.goto("/#play");
@@ -49,9 +52,7 @@ test("First Wake pauses with Escape and returns to the lobby", async ({
   await page.getByRole("button", { name: "Return to Lobby" }).click();
 
   await expect(page).not.toHaveURL(/#play/);
-  await expect(
-    page.getByRole("heading", { name: "Dash's Wake" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Official Levels" })).toBeVisible();
 
   await page.getByRole("button", { name: "Play" }).click();
   await expect(page).toHaveURL(/#play\/level_1$/);
