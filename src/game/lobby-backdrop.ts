@@ -375,6 +375,10 @@ class LevelScene extends Phaser.Scene {
     this.paused = paused;
   }
 
+  setRunSpeedMultiplier(multiplier: number): void {
+    this.runSpeedMultiplier = multiplier;
+  }
+
   setJumpHeld(held: boolean): boolean {
     if (this.paused || this.status !== "running") {
       this.cubeJumpPending = false;
@@ -764,6 +768,7 @@ export interface BackdropController {
     listener: ((snapshot: LevelSnapshot) => void) | undefined,
   ): void;
   setLevelPaused(paused: boolean): void;
+  setLevelRunSpeed(multiplier: number): void;
   showLobby(): void;
   showLevel(
     content: LevelContent,
@@ -860,6 +865,13 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
     setLevelPaused: (paused: boolean) => {
       if (game.scene.isActive(LEVEL_SCENE_KEY)) {
         (game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene).setPaused(paused);
+      }
+    },
+    setLevelRunSpeed: (multiplier: number) => {
+      if (game.scene.isActive(LEVEL_SCENE_KEY)) {
+        (
+          game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene
+        ).setRunSpeedMultiplier(multiplier);
       }
     },
     showLobby: () => {

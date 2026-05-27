@@ -147,6 +147,18 @@ function restartAudioPlayback(): void {
   activeAudioPlayback.audio.play().catch(() => undefined);
 }
 
+function applyActiveRunSpeed(speedMultiplier: number): void {
+  profile = {
+    ...profile,
+    settings: { ...profile.settings, speedMultiplier },
+  };
+  saveProfile(profile);
+  backdrop.setLevelRunSpeed(speedMultiplier);
+  if (activeAudioPlayback) {
+    activeAudioPlayback.audio.playbackRate = speedMultiplier;
+  }
+}
+
 const MIN_PLAYABLE_AUDIO_BYTES = 1024;
 
 async function startAudioPlayback(
@@ -269,6 +281,8 @@ function launchLevelRun(
       callbacks.onRestart?.();
     },
     onReturnToLobby: callbacks.onReturnHome,
+    onSpeedChange: applyActiveRunSpeed,
+    speedMultiplier: profile.settings.speedMultiplier,
     onSnapshotChange: (uiListener) => {
       if (!uiListener) {
         backdrop.setLevelSnapshotListener(undefined);

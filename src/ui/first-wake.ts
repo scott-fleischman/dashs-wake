@@ -1,5 +1,6 @@
 import type { LevelSnapshot } from "../game/lobby-backdrop";
 import type { Reward } from "../core/profile";
+import { RUN_SPEED_OPTIONS } from "../core/run-speed";
 import { formatCoinAmount, formatRewardSummary } from "../core/reward-summary";
 
 export interface LevelRunMetadata {
@@ -19,6 +20,8 @@ interface LevelRunActions {
   onSnapshotChange: (
     listener: ((snapshot: LevelSnapshot) => void) | undefined,
   ) => void;
+  onSpeedChange: (speedMultiplier: number) => void;
+  speedMultiplier: number;
 }
 
 const JUMP_KEYS = new Set(["Space", "ArrowUp"]);
@@ -102,6 +105,11 @@ export function mountFirstWake(
         <p class="run-track" data-testid="run-track" hidden></p>
       </header>
 
+      <label class="run-speed-control">
+        <span>Speed</span>
+        <select data-testid="run-speed" aria-label="Run speed"></select>
+      </label>
+
       <section class="run-hud" aria-label="Attempt status">
         <p class="hud-label">Progress</p>
         <strong class="hud-value" data-testid="run-progress">0%</strong>
@@ -180,6 +188,7 @@ export function mountFirstWake(
   const cueReadout = root.querySelector<HTMLElement>("[data-testid='run-cue']");
   const runSurface = root.querySelector<HTMLElement>(".first-wake");
   const pulseButton = root.querySelector<HTMLButtonElement>("[data-action='pulse']");
+  const speedSelect = root.querySelector<HTMLSelectElement>("[data-testid='run-speed']");
   const pauseButton = root.querySelector<HTMLButtonElement>("[data-action='pause']");
   const resumeButton = root.querySelector<HTMLButtonElement>("[data-action='resume']");
   const lobbyButton = root.querySelector<HTMLButtonElement>("[data-action='lobby']");
@@ -213,6 +222,7 @@ export function mountFirstWake(
     !modeReadout ||
     !cueReadout ||
     !runSurface ||
+    !speedSelect ||
     !pulseButton ||
     !pauseButton ||
     !resumeButton ||
@@ -236,6 +246,18 @@ export function mountFirstWake(
   let runStatus: LevelSnapshot["status"] = "running";
   let runningBest = metadata.previousBestPercent ?? 0;
   let completionKeyRewardConsumed = false;
+
+  for (const choice of RUN_SPEED_OPTIONS) {
+    const option = document.createElement("option");
+    option.value = String(choice.value);
+    option.textContent = choice.shortLabel;
+    option.selected = choice.value === actions.speedMultiplier;
+    speedSelect.appendChild(option);
+  }
+
+  speedSelect.addEventListener("change", () => {
+    actions.onSpeedChange(Number(speedSelect.value));
+  });
 
   const setPaused = (nextPaused: boolean): void => {
     if (runStatus !== "running") {

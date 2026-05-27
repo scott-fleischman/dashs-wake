@@ -371,6 +371,38 @@ button {
   text-transform: uppercase;
 }
 
+.run-speed-control {
+  align-items: center;
+  background: rgba(8, 21, 37, 0.82);
+  border: 1px solid rgba(25, 217, 243, 0.34);
+  border-radius: 999px;
+  color: #84a8bb;
+  display: inline-flex;
+  font-size: 0.69rem;
+  font-weight: 700;
+  gap: 0.55rem;
+  letter-spacing: 0.14em;
+  padding: 0.42rem 0.55rem 0.42rem 0.8rem;
+  position: absolute;
+  right: clamp(1.25rem, 5vw, 4rem);
+  text-transform: uppercase;
+  top: clamp(1.4rem, 7vh, 3.8rem);
+}
+
+.run-speed-control select {
+  background: rgba(7, 17, 29, 0.95);
+  border: 1px solid rgba(25, 217, 243, 0.42);
+  border-radius: 999px;
+  color: #ecfcff;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  min-width: 4.2rem;
+  padding: 0.35rem 0.7rem;
+  text-transform: none;
+}
+
 .run-hud {
   align-items: center;
   background: rgba(8, 21, 37, 0.8);
@@ -658,6 +690,12 @@ kbd {
   .run-controls {
     left: 1.25rem;
     right: auto;
+  }
+
+  .run-speed-control {
+    left: 1.25rem;
+    right: auto;
+    top: 6.5rem;
   }
 
   .input-deck {

@@ -42,3 +42,19 @@ test("app boot starts First Wake and advances progress", async ({ page }) => {
 
   expect(consoleErrors).toEqual([]);
 });
+
+test("in-level speed control updates while the run is active", async ({ page }) => {
+  await page.goto("/#play/level_1");
+
+  const speed = page.getByTestId("run-speed");
+  await expect(speed).toBeVisible();
+  await speed.selectOption("3");
+
+  await expect
+    .poll(
+      async () =>
+        Number((await page.getByTestId("run-progress").textContent())?.replace("%", "")),
+      { intervals: [50], timeout: 8_000 },
+    )
+    .toBeGreaterThan(0);
+});

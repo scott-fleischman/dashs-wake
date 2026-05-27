@@ -3,19 +3,13 @@ import {
   type LevelColorTheme,
   type PlayerProfile,
 } from "../core/profile";
+import { RUN_SPEED_OPTIONS } from "../core/run-speed";
 import { buildRoomShell } from "./room-shell";
 
 interface SettingsActions {
   onProfileChange: (next: PlayerProfile) => void;
   onReturnToLobby: () => void;
 }
-
-const SPEED_CHOICES: readonly { label: string; value: number }[] = [
-  { label: "Slow (1.00x)", value: 1 },
-  { label: "Normal (1.50x)", value: 1.5 },
-  { label: "Fast (2.00x)", value: 2 },
-  { label: "Extreme (3.00x)", value: 3 },
-];
 
 const THEME_CHOICES: readonly {
   color: string;
@@ -58,7 +52,7 @@ export function mountSettings(
     speedLabel.innerHTML = "<span>Run Speed</span>";
     const speed = document.createElement("select");
     speed.setAttribute("data-testid", "settings-speed");
-    for (const choice of SPEED_CHOICES) {
+    for (const choice of RUN_SPEED_OPTIONS) {
       const option = document.createElement("option");
       option.value = String(choice.value);
       option.textContent = choice.label;
