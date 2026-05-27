@@ -106,7 +106,7 @@ export function mountSettings(
     const note = document.createElement("p");
     note.className = "settings-note";
     note.textContent =
-      "Slow matches the original pace. Normal matches the former Hyper speed; faster settings change movement and timing.";
+      "Slow matches the original pace. Faster settings advance the run and music in sync without changing jump distance or level geometry.";
     panel.appendChild(note);
   };
 

@@ -12,6 +12,10 @@ import {
   tickRun,
   type RunState,
 } from "../core/run-simulation";
+import {
+  consumeSimulationTicks,
+  SIMULATION_STEP_MS,
+} from "../core/simulation-pace";
 import { groundedCubeCenterY } from "./player-presentation";
 
 const LOBBY_SCENE_KEY = "lobby-backdrop";
@@ -106,8 +110,6 @@ export interface LevelSnapshot {
   percent: number;
   status: "complete" | "dead" | "running";
 }
-
-const SIMULATION_STEP_MS = 1000 / 60;
 
 const DEFAULT_PLAYER_APPEARANCE: CosmeticAppearance = {
   accent: 0xecfcff,
@@ -257,6 +259,7 @@ function createPlayerShip(
 interface LevelSceneInitData {
   appearance?: CosmeticAppearance;
   levelContent?: LevelContent;
+  runSpeedMultiplier?: number;
   theme?: LevelColorTheme;
 }
 
@@ -279,6 +282,7 @@ class LevelScene extends Phaser.Scene {
   private state: RunState = createRunState(firstWakeLevel.rules);
   private status: LevelSnapshot["status"] = "running";
   private theme: LevelColorTheme = "neon";
+  private runSpeedMultiplier = 1;
 
   constructor() {
     super(LEVEL_SCENE_KEY);
@@ -294,6 +298,7 @@ class LevelScene extends Phaser.Scene {
     if (data.theme) {
       this.theme = data.theme;
     }
+    this.runSpeedMultiplier = data.runSpeedMultiplier ?? 1;
   }
 
   create(): void {
@@ -318,9 +323,14 @@ class LevelScene extends Phaser.Scene {
       return;
     }
 
-    this.accumulator += Math.min(delta, 100);
+    const { accumulator, tickCount } = consumeSimulationTicks(
+      this.accumulator,
+      delta,
+      this.runSpeedMultiplier,
+    );
+    this.accumulator = accumulator;
 
-    while (this.accumulator >= SIMULATION_STEP_MS) {
+    for (let step = 0; step < tickCount; step += 1) {
       const jumpPressed =
         this.state.player.mode === "ship"
           ? this.jumpHeld
@@ -345,7 +355,6 @@ class LevelScene extends Phaser.Scene {
             ? 0
             : Math.max(0, this.cubeInputBufferMs - SIMULATION_STEP_MS);
       }
-      this.accumulator -= SIMULATION_STEP_MS;
 
       if (this.state.status === "dead") {
         this.status = "dead";
@@ -760,6 +769,7 @@ export interface BackdropController {
     content: LevelContent,
     appearance?: CosmeticAppearance,
     theme?: LevelColorTheme,
+    runSpeedMultiplier?: number,
   ): void;
 }
 
@@ -770,6 +780,7 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
   let pendingLevelContent: LevelContent | undefined;
   let pendingAppearance: CosmeticAppearance | undefined;
   let pendingTheme: LevelColorTheme | undefined;
+  let pendingRunSpeedMultiplier = 1;
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -807,6 +818,7 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
     game.scene.start(LEVEL_SCENE_KEY, {
       appearance: pendingAppearance,
       levelContent: pendingLevelContent ?? firstWakeLevel,
+      runSpeedMultiplier: pendingRunSpeedMultiplier,
       theme: pendingTheme,
     });
     (game.scene.getScene(LEVEL_SCENE_KEY) as LevelScene).setSnapshotListener(
@@ -858,10 +870,12 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
       content: LevelContent,
       appearance?: CosmeticAppearance,
       theme?: LevelColorTheme,
+      runSpeedMultiplier?: number,
     ) => {
       pendingLevelContent = content;
       pendingAppearance = appearance;
       pendingTheme = theme;
+      pendingRunSpeedMultiplier = runSpeedMultiplier ?? 1;
       requestedScene = LEVEL_SCENE_KEY;
       applyRequestedScene();
     },

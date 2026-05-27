@@ -149,7 +149,10 @@ function restartAudioPlayback(): void {
 
 const MIN_PLAYABLE_AUDIO_BYTES = 1024;
 
-async function startAudioPlayback(blobKey: string): Promise<void> {
+async function startAudioPlayback(
+  blobKey: string,
+  playbackRate: number,
+): Promise<void> {
   const token = ++audioPlaybackToken;
   const blob = await getAudioBlob(blobKey).catch(() => undefined);
   if (token !== audioPlaybackToken) {
@@ -169,6 +172,7 @@ async function startAudioPlayback(blobKey: string): Promise<void> {
   }
   const objectUrl = URL.createObjectURL(blob);
   const audio = new Audio(objectUrl);
+  audio.playbackRate = playbackRate;
   audio.setAttribute("data-testid", "level-audio");
   audio.hidden = true;
   document.body.appendChild(audio);
@@ -178,9 +182,11 @@ async function startAudioPlayback(blobKey: string): Promise<void> {
 
 function startOfficialAudioPlayback(
   sourcePath: string,
+  playbackRate: number,
 ): void {
   const audio = new Audio(sourcePath);
   audio.loop = true;
+  audio.playbackRate = playbackRate;
   audio.setAttribute("data-testid", "official-level-audio");
   audio.hidden = true;
   document.body.appendChild(audio);
@@ -188,11 +194,15 @@ function startOfficialAudioPlayback(
   audio.play().catch(() => undefined);
 }
 
-function startPreviewAudioPlayback(file: File | undefined): void {
+function startPreviewAudioPlayback(
+  file: File | undefined,
+  playbackRate: number,
+): void {
   if (!file) return;
   const objectUrl = URL.createObjectURL(file);
   const audio = new Audio(objectUrl);
   audio.loop = true;
+  audio.playbackRate = playbackRate;
   audio.setAttribute("data-testid", "level-audio");
   audio.hidden = true;
   document.body.appendChild(audio);
@@ -227,18 +237,11 @@ function launchLevelRun(
   metadata: LevelRunMetadata,
   callbacks: LaunchLevelRunCallbacks,
 ): () => void {
-  const adjustedContent: LevelContent = {
-    ...content,
-    rules: {
-      ...content.rules,
-      horizontalSpeed:
-        content.rules.horizontalSpeed * profile.settings.speedMultiplier,
-    },
-  };
   backdrop.showLevel(
-    adjustedContent,
+    content,
     selectedAppearance(profile),
     profile.settings.levelColor,
+    profile.settings.speedMultiplier,
   );
   let attemptResolved = false;
 
@@ -544,10 +547,11 @@ function renderRoute(): void {
     }
     const savedAudioBlobKey = savedRecord?.audioBlobKey;
     const startCreatorPreviewAudio = (): void => {
+      const rate = profile.settings.speedMultiplier;
       if (submission.audioFile) {
-        startPreviewAudioPlayback(submission.audioFile);
+        startPreviewAudioPlayback(submission.audioFile, rate);
       } else if (savedAudioBlobKey) {
-        void startAudioPlayback(savedAudioBlobKey);
+        void startAudioPlayback(savedAudioBlobKey, rate);
       }
     };
     startCreatorPreviewAudio();
@@ -593,7 +597,10 @@ function renderRoute(): void {
       });
 
     if (record.audioBlobKey) {
-      void startAudioPlayback(record.audioBlobKey);
+      void startAudioPlayback(
+        record.audioBlobKey,
+        profile.settings.speedMultiplier,
+      );
     }
 
     disposeView = launchLevelRun(
@@ -609,7 +616,10 @@ function renderRoute(): void {
         onRestart: () => {
           if (record.audioBlobKey) {
             stopAudioPlayback();
-            void startAudioPlayback(record.audioBlobKey);
+            void startAudioPlayback(
+              record.audioBlobKey,
+              profile.settings.speedMultiplier,
+            );
           }
         },
         onReturnHome: () => {
@@ -737,7 +747,10 @@ function renderRoute(): void {
     delete completionKeyReward.coinsAwarded;
     const previousBestPercent = profile.bestPercents[levelId] ?? 0;
 
-    startOfficialAudioPlayback(metadata.track.audioPath);
+    startOfficialAudioPlayback(
+      metadata.track.audioPath,
+      profile.settings.speedMultiplier,
+    );
 
     disposeView = launchLevelRun(
       content,
