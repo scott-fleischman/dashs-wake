@@ -1,7 +1,6 @@
 import type { LevelEntity, OrbEntity, PadEntity, PortalEntity, RunRules } from "../core/run-simulation";
-import { PLAYER_HORIZONTAL_SPEED } from "./level-pace";
-import { SPAWN_SURFACE_Y } from "./terrain";
 import { buildEpicLevel } from "./epic-course-builder";
+import { OFFICIAL_LEVEL_RULES } from "./level-rules";
 
 export interface BeatMap {
   beats: readonly number[];
@@ -27,16 +26,6 @@ export interface ValidationResult {
 
 const MIN_SHIP_CORRIDOR_WIDTH_RATIO = 5;
 
-const FIRST_WAKE_RULES: RunRules = {
-  fallBoundaryY: 500,
-  gravity: 1250,
-  horizontalSpeed: PLAYER_HORIZONTAL_SPEED,
-  jumpVelocity: -430,
-  playerHeight: 34,
-  playerWidth: 34,
-  spawnY: SPAWN_SURFACE_Y,
-};
-
 export const firstWakeLevel: LevelContent = {
   ...buildEpicLevel({
     id: "level_1",
@@ -48,7 +37,7 @@ export const firstWakeLevel: LevelContent = {
       { kind: "cube-tech", lengthBeats: 14 },
     ],
   }),
-  rules: FIRST_WAKE_RULES,
+  rules: OFFICIAL_LEVEL_RULES,
 };
 
 function maxJumpDistance(rules: RunRules): number {

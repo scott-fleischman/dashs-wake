@@ -1,5 +1,10 @@
+// Content builders must not import runtime values from first-wake.ts.
+// first-wake initializes from buildEpicLevel, so reading firstWakeLevel
+// during that init causes a circular-import crash and a blank app screen.
+// Shared physics/rules live in level-rules.ts instead.
 import type { LevelEntity } from "../core/run-simulation";
-import { firstWakeLevel, type LevelContent } from "./first-wake";
+import type { LevelContent } from "./first-wake";
+import { OFFICIAL_LEVEL_RULES } from "./level-rules";
 import { buildOfficialBeatMap } from "./official-soundtrack";
 import { withSupportingTerrain, type FlightChannel } from "./terrain";
 
@@ -19,7 +24,9 @@ export interface EpicLevelConfig {
 }
 
 function beatX(beat: number, bpm: number): number {
-  return Math.round(beat * (60 / bpm) * firstWakeLevel.rules.horizontalSpeed);
+  return Math.round(
+    beat * (60 / bpm) * OFFICIAL_LEVEL_RULES.horizontalSpeed,
+  );
 }
 
 export function buildEpicLevel(config: EpicLevelConfig): LevelContent {
@@ -135,6 +142,6 @@ export function buildEpicLevel(config: EpicLevelConfig): LevelContent {
     beatMap: buildOfficialBeatMap(config.id),
     entities: withSupportingTerrain(entities, finishX, channels),
     finishX,
-    rules: firstWakeLevel.rules,
+    rules: OFFICIAL_LEVEL_RULES,
   };
 }
