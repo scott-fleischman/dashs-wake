@@ -300,7 +300,7 @@ function renderRoute(): void {
     disposeView = mountCustomizer(root, profileRef, {
       onProfileChange: updateProfile,
       onReturnToLobby: () => {
-        window.location.hash = "";
+        window.location.hash = "#lobby";
       },
     });
     return;
@@ -311,7 +311,7 @@ function renderRoute(): void {
     disposeView = mountShop(root, profileRef, {
       onProfileChange: updateProfile,
       onReturnToLobby: () => {
-        window.location.hash = "";
+        window.location.hash = "#lobby";
       },
     });
     return;
@@ -322,20 +322,20 @@ function renderRoute(): void {
     disposeView = mountSettings(root, profileRef, {
       onProfileChange: updateProfile,
       onReturnToLobby: () => {
-        window.location.hash = "";
+        window.location.hash = "#lobby";
       },
     });
     return;
   }
 
-  if (hash === "#levels") {
+  if (hash === "#levels" || hash === "") {
     backdrop.showLobby();
     disposeView = mountOfficialLevelsRoom(root, profile, {
       onPlay: (levelId) => {
         window.location.hash = `#play/${levelId}`;
       },
-      onReturnToLobby: () => {
-        window.location.hash = "";
+      onOpenLobby: () => {
+        window.location.hash = "#lobby";
       },
     });
     return;
@@ -346,7 +346,7 @@ function renderRoute(): void {
     disposeView = mountChestRoom(root, profileRef, {
       onProfileChange: updateProfile,
       onReturnToLobby: () => {
-        window.location.hash = "";
+        window.location.hash = "#lobby";
       },
     });
     return;
@@ -431,7 +431,7 @@ function renderRoute(): void {
         window.location.hash = `#generated/${recordId}`;
       },
       onReturnToLobby: () => {
-        window.location.hash = "";
+        window.location.hash = "#lobby";
       },
     });
     return;
@@ -629,7 +629,7 @@ function renderRoute(): void {
       profileRef,
       {
         onReturnToLobby: () => {
-          window.location.hash = "";
+          window.location.hash = "#lobby";
         },
         onStartGauntlet: (id) => {
           activeGauntletRun = null;
@@ -721,7 +721,7 @@ function renderRoute(): void {
     const metadata = getOfficialLevelMetadata(levelId);
 
     if (!metadata) {
-      window.location.hash = "";
+      window.location.hash = "#levels";
       return;
     }
 
@@ -729,7 +729,7 @@ function renderRoute(): void {
     try {
       content = getOfficialLevelContent(levelId);
     } catch {
-      window.location.hash = "";
+      window.location.hash = "#levels";
       return;
     }
 
@@ -761,10 +761,27 @@ function renderRoute(): void {
     return;
   }
 
-  backdrop.showLobby();
-  disposeView = mountLobby(root, profile, (selectedLevelId) => {
-    window.location.hash = `#play/${selectedLevelId}`;
-  });
+  if (hash === "#lobby") {
+    backdrop.showLobby();
+    const removeLobbyView = mountLobby(root, profile, () => {
+      window.location.hash = "#levels";
+    });
+    const handleLobbyKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || event.repeat) return;
+      if (event.code === "Escape" || event.code === "Backspace") {
+        event.preventDefault();
+        window.location.hash = "#levels";
+      }
+    };
+    window.addEventListener("keydown", handleLobbyKeyDown);
+    disposeView = () => {
+      window.removeEventListener("keydown", handleLobbyKeyDown);
+      removeLobbyView();
+    };
+    return;
+  }
+
+  window.location.hash = "#levels";
 }
 
 window.addEventListener("hashchange", renderRoute);

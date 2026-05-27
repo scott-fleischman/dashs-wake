@@ -632,6 +632,26 @@ kbd {
     width: min(100%, 20rem);
   }
 
+  .level-select-screen {
+    padding: 0.9rem 0.8rem 1.2rem;
+  }
+
+  .level-carousel {
+    min-height: 70vh;
+  }
+
+  .level-focus-card {
+    grid-template-columns: 1fr;
+  }
+
+  .level-focus-preview {
+    min-height: 9rem;
+  }
+
+  .level-focus-card .play-button {
+    justify-self: start;
+  }
+
   .first-wake-header,
   .run-hud,
   .input-deck,
@@ -671,6 +691,139 @@ kbd {
 
 .levels-room .level-list {
   width: 100%;
+}
+
+.level-select-screen {
+  gap: clamp(0.8rem, 2vh, 1.4rem);
+  max-width: none;
+  min-height: 100%;
+  padding: clamp(0.8rem, 2.4vh, 1.6rem) clamp(1rem, 3.5vw, 2.8rem);
+}
+
+.level-select-header {
+  align-items: center;
+  display: grid;
+  gap: 0.65rem 1rem;
+  grid-template-columns: auto 1fr;
+  width: 100%;
+}
+
+.level-select-header h1 {
+  font-size: clamp(1.35rem, 3vw, 2.2rem);
+  margin: 0;
+}
+
+.level-select-help {
+  color: #84a8bb;
+  font-size: 0.74rem;
+  grid-column: 1 / -1;
+  letter-spacing: 0.09em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.level-carousel {
+  border: 1px solid rgba(25, 217, 243, 0.3);
+  border-radius: 1rem;
+  min-height: min(58vh, 33rem);
+  overflow: hidden;
+  width: min(100%, 78rem);
+}
+
+.level-carousel-track {
+  display: flex;
+  height: 100%;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  width: 100%;
+}
+
+.level-focus-card {
+  align-items: center;
+  background: radial-gradient(circle at 20% 20%, rgba(25, 217, 243, 0.14), rgba(7, 17, 29, 0.84));
+  border-right: 1px solid rgba(25, 217, 243, 0.2);
+  display: grid;
+  flex: 0 0 100%;
+  gap: clamp(1rem, 3vw, 2.2rem);
+  grid-template-columns: minmax(14rem, 20rem) 1fr auto;
+  padding: clamp(1rem, 4vh, 2.2rem) clamp(1rem, 3vw, 2rem);
+}
+
+.level-focus-locked {
+  opacity: 0.88;
+}
+
+.level-focus-preview {
+  align-items: end;
+  background: linear-gradient(180deg, rgba(12, 28, 46, 0.9), rgba(7, 17, 29, 0.94));
+  border: 1px solid rgba(142, 170, 189, 0.24);
+  border-radius: 0.85rem;
+  display: flex;
+  justify-content: center;
+  min-height: 16rem;
+  padding: 1.2rem;
+}
+
+.level-preview-grid {
+  align-items: end;
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+}
+
+.level-preview-grid span {
+  background: linear-gradient(180deg, #19d9f3, rgba(25, 217, 243, 0.14));
+  border-radius: 0.28rem 0.28rem 0 0;
+  min-height: 0.75rem;
+}
+
+.level-focus-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.level-focus-info .level-title {
+  font-size: clamp(1.6rem, 4vw, 2.7rem);
+  margin-top: 0.15rem;
+}
+
+.level-focus-info .level-track {
+  font-size: 0.79rem;
+  margin-top: 0.4rem;
+}
+
+.level-focus-info .level-best {
+  font-size: 0.8rem;
+}
+
+.level-focus-card .play-button {
+  height: clamp(5.5rem, 12vw, 7rem);
+  width: clamp(5.5rem, 12vw, 7rem);
+}
+
+.level-carousel-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: center;
+  width: min(100%, 78rem);
+}
+
+.level-dot {
+  background: rgba(142, 170, 189, 0.42);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  height: 0.4rem;
+  transition: background 180ms ease, transform 180ms ease, width 180ms ease;
+  width: 0.9rem;
+}
+
+.level-dot.active {
+  background: #19d9f3;
+  transform: translateY(-1px);
+  width: 1.7rem;
 }
 
 .room.gauntlets-room {

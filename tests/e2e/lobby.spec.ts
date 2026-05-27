@@ -4,12 +4,11 @@ import { completeFirstWake } from "./helpers/course-play";
 test("lobby presents its destinations and lets the player choose Play", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/#lobby");
 
   await expect(
     page.getByRole("heading", { name: "Dash's Wake" }),
   ).toBeVisible();
-  await expect(page.getByTestId("destination-official-levels")).toBeVisible();
 
   for (const destinationTestId of [
     "destination-customizer",
@@ -18,14 +17,13 @@ test("lobby presents its destinations and lets the player choose Play", async ({
     "destination-gauntlets",
     "destination-generated-levels",
     "destination-settings",
-    "destination-official-levels",
   ]) {
     await expect(page.getByTestId(destinationTestId)).toBeEnabled();
   }
 
-  await page.getByTestId("destination-official-levels").click();
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: "Official Levels" })).toBeVisible();
-  await page.getByRole("button", { name: "Play" }).click();
+  await page.keyboard.press("Space");
 
   await expect(page).toHaveURL(/#play\/level_1$/);
   await expect(
