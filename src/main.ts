@@ -378,19 +378,24 @@ function renderRoute(): void {
         creatorDraft = null;
         window.location.hash = `#creator/${recordId}`;
       },
-      onGenerate: (difficulty) => {
+      onGenerate: (difficulty, subRank, theme) => {
         const nextIndex =
           profile.generatedLevels.filter(
             (entry) => entry.audioFileName === undefined,
           ).length + 1;
-        const record = buildPlaceholderGeneratedLevel(nextIndex, difficulty);
+        const record = buildPlaceholderGeneratedLevel(
+          nextIndex,
+          difficulty,
+          subRank,
+          theme,
+        );
         updateProfile({
           ...profile,
           generatedLevels: [...profile.generatedLevels, record],
         });
         renderRoute();
       },
-      onImportAudio: (file, difficulty) => {
+      onImportAudio: (file, difficulty, subRank, theme) => {
         const finalize = (
           audioBlobKey: string | undefined,
           analyzed: AnalyzedAudio | null,
@@ -405,6 +410,8 @@ function renderRoute(): void {
             audioBlobKey,
             analyzed,
             difficulty,
+            subRank,
+            theme,
           );
           updateProfile({
             ...profile,
@@ -581,6 +588,8 @@ function renderRoute(): void {
         beatMap: record.beatMap,
         difficulty: record.difficulty,
         seed: record.seed,
+        subRank: record.subRank,
+        theme: record.theme,
       });
 
     if (record.audioBlobKey) {

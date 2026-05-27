@@ -30,8 +30,10 @@ const BLOCK_PULSE_ENTITIES: readonly LevelEntity[] = [
   block(beatX(17, 112)),
   spike(beatX(20, 112)),
   block(beatX(25, 112)),
+  spike(beatX(27, 112)),
   decor(beatX(29, 112), "pillar"),
   block(beatX(33, 112), 234, 66),
+  spike(beatX(36, 112)),
 ];
 
 export const blockPulseLevel: LevelContent = {
@@ -59,6 +61,15 @@ const SKYLINE_STEP_ENTITIES: readonly LevelEntity[] = [
   decor(beatX(19, 128), "beam"),
   block(beatX(23, 128)),
   spike(beatX(27, 128)),
+  {
+    type: "orb",
+    id: "level-7-orb-1",
+    effect: { kind: "impulse", magnitude: 740 },
+    height: 76,
+    width: 64,
+    x: beatX(29, 128),
+    y: 168,
+  },
   block(beatX(31, 128), 232, 68),
   block(beatX(38, 128)),
   decor(beatX(43, 128), "diamond"),
@@ -67,6 +78,7 @@ const SKYLINE_STEP_ENTITIES: readonly LevelEntity[] = [
 export const skylineStepLevel: LevelContent = {
   beatMap: buildOfficialBeatMap("level_7"),
   entities: withSupportingTerrain(SKYLINE_STEP_ENTITIES, 5380),
+  expectedRoute: { requiredTriggerIds: ["level-7-pad-1", "level-7-orb-1"] },
   finishX: 5380,
   rules: firstWakeLevel.rules,
 };

@@ -17,6 +17,16 @@ export function loadProfile(): PlayerProfile {
     return {
       ...defaults,
       ...record.profile,
+      ownedCosmetics: Array.from(
+        new Set([
+          ...defaults.ownedCosmetics,
+          ...(record.profile.ownedCosmetics ?? []),
+        ]),
+      ),
+      selectedCosmetics: {
+        ...defaults.selectedCosmetics,
+        ...(record.profile.selectedCosmetics ?? {}),
+      },
       settings: { ...defaults.settings, ...record.profile.settings },
     };
   } catch {

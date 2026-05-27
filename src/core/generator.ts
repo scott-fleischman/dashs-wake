@@ -12,7 +12,6 @@ import {
   type RunRules,
   type RunState,
 } from "./run-simulation";
-import type { OfficialLevelDifficulty } from "../content/official-levels";
 import { buildSupportingTerrain } from "../content/terrain";
 
 export type Intensity = "intense" | "quiet";
@@ -20,7 +19,16 @@ export type Intensity = "intense" | "quiet";
 export interface GeneratorInput {
   beatIntensities?: readonly Intensity[];
   beatMap: BeatMap;
-  difficulty: OfficialLevelDifficulty;
+  difficulty:
+    | "easy"
+    | "normal"
+    | "hard"
+    | "harder"
+    | "insane"
+    | "demon"
+    | "nightmare";
+  subRank?: "bronze" | "gold" | "diamond" | "void";
+  theme?: "electric" | "forest" | "sunset" | "void";
   seed: number;
 }
 
@@ -36,26 +44,36 @@ export function mulberry32(seed: number): RandomSource {
   };
 }
 
-const PLACE_THRESHOLD = 0.4;
-const FINISH_TAIL = 200;
+const BASE_PLACE_THRESHOLD = 0.4;
 const MIN_GAMEPLAY_PIECE_SPACING = 220;
 
 export interface BeatContext {
   beatMs: number;
-  difficulty: OfficialLevelDifficulty;
+  difficulty: GeneratorInput["difficulty"];
   horizontalSpeed: number;
   intensity: Intensity;
   random: number;
+  subRank: NonNullable<GeneratorInput["subRank"]>;
 }
 
-export type PatternId = "block" | "orb" | "pad" | "spike";
+export type PatternId =
+  | "block"
+  | "orb"
+  | "pad"
+  | "portal-cube"
+  | "portal-ship"
+  | "spike"
+  | "trap-orb";
 
 export type BeatSelection =
   | { type: "skip" }
   | { type: "block"; x: number }
   | { type: "orb"; x: number }
   | { type: "pad"; x: number }
-  | { type: "spike"; x: number };
+  | { type: "portal-cube"; x: number }
+  | { type: "portal-ship"; x: number }
+  | { type: "spike"; x: number }
+  | { type: "trap-orb"; x: number };
 
 interface PatternProduceArgs {
   beatIndex: number;
@@ -64,23 +82,25 @@ interface PatternProduceArgs {
 
 interface PatternCapability {
   id: PatternId;
-  minDifficulty: OfficialLevelDifficulty;
+  minDifficulty: GeneratorInput["difficulty"];
   produce: (args: PatternProduceArgs) => LevelEntity;
   requiresIntensity: Intensity;
 }
 
-const DIFFICULTY_RANK: Record<OfficialLevelDifficulty, number> = {
+const DIFFICULTY_RANK: Record<GeneratorInput["difficulty"], number> = {
   easy: 0,
   normal: 1,
   hard: 2,
   harder: 3,
   insane: 4,
+  demon: 5,
+  nightmare: 6,
 };
 
 const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
   {
     id: "spike",
-    minDifficulty: "easy",
+    minDifficulty: "normal",
     requiresIntensity: "intense",
     produce: ({ x }) => ({ type: "spike", height: 30, width: 30, x, y: 270 }),
   },
@@ -124,6 +144,46 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
       y: 174,
     }),
   },
+  {
+    id: "portal-ship",
+    minDifficulty: "harder",
+    requiresIntensity: "quiet",
+    produce: ({ x }) => ({
+      type: "portal",
+      mode: "ship",
+      height: 360,
+      width: 12,
+      x,
+      y: 36,
+    }),
+  },
+  {
+    id: "portal-cube",
+    minDifficulty: "harder",
+    requiresIntensity: "intense",
+    produce: ({ x }) => ({
+      type: "portal",
+      mode: "cube",
+      height: 360,
+      width: 12,
+      x,
+      y: 36,
+    }),
+  },
+  {
+    id: "trap-orb",
+    minDifficulty: "demon",
+    requiresIntensity: "intense",
+    produce: ({ beatIndex, x }) => ({
+      type: "orb",
+      id: `generated-trap-orb-${beatIndex}`,
+      effect: { kind: "kill" },
+      height: 76,
+      width: 62,
+      x,
+      y: 174,
+    }),
+  },
 ];
 
 function findCapability(id: PatternId): PatternCapability | undefined {
@@ -133,17 +193,34 @@ function findCapability(id: PatternId): PatternCapability | undefined {
 function hasGameplaySpacing(
   candidateX: number,
   entities: readonly LevelEntity[],
+  minSpacing: number,
 ): boolean {
   return entities.every(
     (entity) =>
       entity.type === "decoration" ||
-      Math.abs(entity.x - candidateX) >= MIN_GAMEPLAY_PIECE_SPACING,
+      Math.abs(entity.x - candidateX) >= minSpacing,
   );
+}
+
+const SUBRANK_MULTIPLIER = {
+  bronze: 0.85,
+  gold: 1,
+  diamond: 1.15,
+  void: 1.3,
+} as const;
+
+function effectivePlaceThreshold(subRank: NonNullable<GeneratorInput["subRank"]>): number {
+  return Math.min(0.75, BASE_PLACE_THRESHOLD * SUBRANK_MULTIPLIER[subRank]);
+}
+
+function effectiveMinSpacing(subRank: NonNullable<GeneratorInput["subRank"]>): number {
+  const ratio = 1.2 - (SUBRANK_MULTIPLIER[subRank] - 0.85);
+  return Math.max(140, Math.round(MIN_GAMEPLAY_PIECE_SPACING * ratio));
 }
 
 export function permittedPatterns(
   intensity: Intensity,
-  difficulty: OfficialLevelDifficulty,
+  difficulty: GeneratorInput["difficulty"],
 ): readonly PatternId[] {
   const rank = DIFFICULTY_RANK[difficulty];
 
@@ -161,7 +238,7 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
     return { type: "skip" };
   }
 
-  if (context.random >= PLACE_THRESHOLD) {
+  if (context.random >= effectivePlaceThreshold(context.subRank)) {
     return { type: "skip" };
   }
 
@@ -171,7 +248,7 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
     return { type: "skip" };
   }
 
-  const slotWidth = PLACE_THRESHOLD / permitted.length;
+  const slotWidth = effectivePlaceThreshold(context.subRank) / permitted.length;
   const idx = Math.min(
     permitted.length - 1,
     Math.floor(context.random / slotWidth),
@@ -183,11 +260,11 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
 
 export function generateLevel(input: GeneratorInput): LevelContent {
   const rng = mulberry32(input.seed);
+  const subRank = input.subRank ?? "bronze";
   const rules = firstWakeLevel.rules;
   const entities: LevelEntity[] = [];
-  const finishX =
-    Math.round((input.beatMap.durationMs / 1000) * rules.horizontalSpeed) +
-    FINISH_TAIL;
+  const finishX = Math.round((input.beatMap.durationMs / 1000) * rules.horizontalSpeed);
+  const minSpacing = effectiveMinSpacing(subRank);
 
   for (let index = 0; index < input.beatMap.beats.length; index += 1) {
     const beatMs = input.beatMap.beats[index]!;
@@ -198,6 +275,7 @@ export function generateLevel(input: GeneratorInput): LevelContent {
       horizontalSpeed: rules.horizontalSpeed,
       intensity,
       random: rng(),
+      subRank,
     });
 
     if (index > 0 && index % 4 === 0) {
@@ -219,7 +297,7 @@ export function generateLevel(input: GeneratorInput): LevelContent {
 
     if (capability) {
       const candidate = capability.produce({ beatIndex: index, x: selection.x });
-      if (hasGameplaySpacing(candidate.x, entities)) {
+      if (hasGameplaySpacing(candidate.x, entities, minSpacing)) {
         entities.push(candidate);
       }
     }
@@ -232,7 +310,7 @@ export function generateLevel(input: GeneratorInput): LevelContent {
     const availableBeat = input.beatMap.beats
       .slice(1)
       .map((beatMs) => Math.round((beatMs / 1000) * rules.horizontalSpeed))
-      .find((x) => hasGameplaySpacing(x, entities));
+      .find((x) => hasGameplaySpacing(x, entities, minSpacing));
     if (availableBeat !== undefined) {
       entities.push({
         type: "block",

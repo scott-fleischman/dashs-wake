@@ -12,6 +12,7 @@ function baseContext(overrides: Partial<BeatContext>): BeatContext {
     horizontalSpeed: 190,
     intensity: "intense",
     random: 0,
+    subRank: "bronze",
     ...overrides,
   };
 }
@@ -19,11 +20,11 @@ function baseContext(overrides: Partial<BeatContext>): BeatContext {
 describe("generator pattern rules", () => {
   it("permits no patterns on a quiet beat", () => {
     expect(permittedPatterns("quiet", "easy")).toEqual([]);
-    expect(permittedPatterns("quiet", "insane")).toEqual([]);
+    expect(permittedPatterns("quiet", "insane")).toContain("portal-ship");
   });
 
-  it("permits a spike on intense beats from easy difficulty up", () => {
-    expect(permittedPatterns("intense", "easy")).toContain("spike");
+  it("permits spikes on intense beats from normal difficulty up", () => {
+    expect(permittedPatterns("intense", "easy")).not.toContain("spike");
     expect(permittedPatterns("intense", "normal")).toContain("spike");
     expect(permittedPatterns("intense", "hard")).toContain("spike");
   });

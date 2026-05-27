@@ -23,9 +23,18 @@ export interface GeneratedLevelRecord {
   audioFileName?: string;
   beatIntensities: readonly ("intense" | "quiet")[];
   beatMap: { readonly beats: readonly number[]; readonly durationMs: number };
-  difficulty: "easy" | "normal" | "hard" | "harder" | "insane";
+  difficulty:
+    | "easy"
+    | "normal"
+    | "hard"
+    | "harder"
+    | "insane"
+    | "demon"
+    | "nightmare";
   id: string;
   name: string;
+  subRank?: "bronze" | "gold" | "diamond" | "void";
+  theme?: "electric" | "forest" | "sunset" | "void";
   seed: number;
   source?: "creator" | "generator";
   synced?: boolean;
@@ -196,8 +205,20 @@ export const OFFICIAL_LEVEL_COMPLETION_RULES: LevelCompletionRules = {
   },
 };
 
-const DEFAULT_OWNED_COSMETIC = "icon-default";
-const DEFAULT_COSMETIC_CATEGORY = "icon";
+const DEFAULT_OWNED_COSMETICS = [
+  "icon-default",
+  "ship-default",
+  "primary-neon",
+  "secondary-azure",
+  "trail-core",
+] as const;
+const DEFAULT_SELECTED_COSMETICS: Readonly<Record<string, string>> = {
+  icon: "icon-default",
+  ship: "ship-default",
+  "primary-color": "primary-neon",
+  "secondary-color": "secondary-azure",
+  trail: "trail-core",
+};
 
 export function createProfile(): PlayerProfile {
   return {
@@ -208,8 +229,8 @@ export function createProfile(): PlayerProfile {
     generatedLevels: [],
     keys: {},
     openedChestIds: [],
-    ownedCosmetics: [DEFAULT_OWNED_COSMETIC],
-    selectedCosmetics: { [DEFAULT_COSMETIC_CATEGORY]: DEFAULT_OWNED_COSMETIC },
+    ownedCosmetics: [...DEFAULT_OWNED_COSMETICS],
+    selectedCosmetics: { ...DEFAULT_SELECTED_COSMETICS },
     settings: DEFAULT_GAMEPLAY_SETTINGS,
     unlockedLevels: [],
   };

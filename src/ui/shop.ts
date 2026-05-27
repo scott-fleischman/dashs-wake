@@ -1,6 +1,7 @@
 import {
   applyCosmeticPurchase,
   cosmeticCatalog,
+  type CosmeticCategory,
   type CosmeticItem,
 } from "../core/inventory";
 import type { PlayerProfile } from "../core/profile";
@@ -11,6 +12,14 @@ interface ShopActions {
   onProfileChange: (next: PlayerProfile) => void;
   onReturnToLobby: () => void;
 }
+
+const CATEGORY_LABELS: Record<CosmeticCategory, string> = {
+  icon: "Icon",
+  ship: "Ship",
+  "primary-color": "Primary",
+  "secondary-color": "Secondary",
+  trail: "Trail",
+};
 
 function buildPurchaseConfirmation(
   item: CosmeticItem,
@@ -105,7 +114,7 @@ export function mountShop(
           actionDisabled: owned || profile.coins < item.price,
           actionLabel: "Buy",
           actionTestId: `cosmetic-${testId}-buy`,
-          detail: formatCoinAmount(item.price),
+          detail: `${CATEGORY_LABELS[item.category]} - ${formatCoinAmount(item.price)}`,
           name: item.name,
           rowExtraClass: owned ? "row-complete" : undefined,
           onAction: () => {

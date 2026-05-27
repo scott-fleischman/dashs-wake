@@ -1,6 +1,11 @@
 import type { PlayerProfile } from "./profile";
 
-export type CosmeticCategory = "icon";
+export type CosmeticCategory =
+  | "icon"
+  | "primary-color"
+  | "secondary-color"
+  | "ship"
+  | "trail";
 
 export type CubeShapeKind = "rectangle" | "diamond" | "circle";
 export type ShipShapeKind = "triangle" | "arrow" | "dart";
@@ -76,6 +81,64 @@ const FLARE_APPEARANCE: CosmeticAppearance = {
   shipShape: "triangle",
 };
 
+const NOVA_SHIP_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  shipShape: "arrow",
+};
+
+const COMET_SHIP_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  shipShape: "dart",
+};
+
+const PRIMARY_COLOR_SOLAR: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  fillRunning: 0xff9f1c,
+  fillDead: 0xff5c58,
+};
+
+const PRIMARY_COLOR_MINT: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  fillRunning: 0x34e8b3,
+  fillDead: 0xff5d8f,
+};
+
+const PRIMARY_COLOR_VIOLET: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  fillRunning: 0xa45bff,
+  fillDead: 0xff4f7a,
+};
+
+const SECONDARY_COLOR_AZURE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  accent: 0x19d9f3,
+};
+
+const SECONDARY_COLOR_GLOW: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  accent: 0xfff0a8,
+};
+
+const SECONDARY_COLOR_BLUSH: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  accent: 0xffb9e6,
+};
+
+const TRAIL_RING_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  motif: "ring",
+};
+
+const TRAIL_FLARE_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  motif: "flare",
+};
+
+const TRAIL_PRISM_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
+  motif: "prism",
+};
+
 export const cosmeticCatalog: readonly CosmeticItem[] = [
   {
     appearance: DEFAULT_APPEARANCE,
@@ -119,13 +182,129 @@ export const cosmeticCatalog: readonly CosmeticItem[] = [
     name: "Flare",
     price: 190,
   },
+  {
+    appearance: DEFAULT_APPEARANCE,
+    category: "ship",
+    id: "ship-default",
+    name: "Skiff",
+    price: 0,
+  },
+  {
+    appearance: NOVA_SHIP_APPEARANCE,
+    category: "ship",
+    id: "ship-nova",
+    name: "Nova",
+    price: 90,
+  },
+  {
+    appearance: COMET_SHIP_APPEARANCE,
+    category: "ship",
+    id: "ship-comet",
+    name: "Comet",
+    price: 140,
+  },
+  {
+    appearance: DEFAULT_APPEARANCE,
+    category: "primary-color",
+    id: "primary-neon",
+    name: "Neon Primary",
+    price: 0,
+  },
+  {
+    appearance: PRIMARY_COLOR_SOLAR,
+    category: "primary-color",
+    id: "primary-solar",
+    name: "Solar Primary",
+    price: 70,
+  },
+  {
+    appearance: PRIMARY_COLOR_MINT,
+    category: "primary-color",
+    id: "primary-mint",
+    name: "Mint Primary",
+    price: 100,
+  },
+  {
+    appearance: PRIMARY_COLOR_VIOLET,
+    category: "primary-color",
+    id: "primary-violet",
+    name: "Violet Primary",
+    price: 130,
+  },
+  {
+    appearance: SECONDARY_COLOR_AZURE,
+    category: "secondary-color",
+    id: "secondary-azure",
+    name: "Azure Secondary",
+    price: 0,
+  },
+  {
+    appearance: SECONDARY_COLOR_GLOW,
+    category: "secondary-color",
+    id: "secondary-glow",
+    name: "Glow Secondary",
+    price: 60,
+  },
+  {
+    appearance: SECONDARY_COLOR_BLUSH,
+    category: "secondary-color",
+    id: "secondary-blush",
+    name: "Blush Secondary",
+    price: 95,
+  },
+  {
+    appearance: DEFAULT_APPEARANCE,
+    category: "trail",
+    id: "trail-core",
+    name: "Core Trail",
+    price: 0,
+  },
+  {
+    appearance: TRAIL_RING_APPEARANCE,
+    category: "trail",
+    id: "trail-ring",
+    name: "Ring Trail",
+    price: 75,
+  },
+  {
+    appearance: TRAIL_FLARE_APPEARANCE,
+    category: "trail",
+    id: "trail-flare",
+    name: "Flare Trail",
+    price: 110,
+  },
+  {
+    appearance: TRAIL_PRISM_APPEARANCE,
+    category: "trail",
+    id: "trail-prism",
+    name: "Prism Trail",
+    price: 145,
+  },
 ];
 
 export function selectedAppearance(profile: PlayerProfile): CosmeticAppearance {
-  const id = profile.selectedCosmetics["icon"];
-  if (!id) return DEFAULT_APPEARANCE;
-  const item = cosmeticCatalog.find((entry) => entry.id === id);
-  return item?.appearance ?? DEFAULT_APPEARANCE;
+  const selectedIn = (category: CosmeticCategory): CosmeticItem | undefined => {
+    const id = profile.selectedCosmetics[category];
+    if (!id) return undefined;
+    return cosmeticCatalog.find((entry) => entry.id === id);
+  };
+
+  const icon = selectedIn("icon");
+  const ship = selectedIn("ship");
+  const primary = selectedIn("primary-color");
+  const secondary = selectedIn("secondary-color");
+  const trail = selectedIn("trail");
+
+  return {
+    ...DEFAULT_APPEARANCE,
+    cubeShape: icon?.appearance.cubeShape ?? DEFAULT_APPEARANCE.cubeShape,
+    shipShape: ship?.appearance.shipShape ?? DEFAULT_APPEARANCE.shipShape,
+    fillRunning:
+      primary?.appearance.fillRunning ?? DEFAULT_APPEARANCE.fillRunning,
+    fillDead: primary?.appearance.fillDead ?? DEFAULT_APPEARANCE.fillDead,
+    accent: secondary?.appearance.accent ?? DEFAULT_APPEARANCE.accent,
+    motif: trail?.appearance.motif ?? DEFAULT_APPEARANCE.motif,
+  };
 }
 
 export const cosmeticCategories: readonly CosmeticCategory[] = Array.from(

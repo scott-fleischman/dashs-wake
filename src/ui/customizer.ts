@@ -1,5 +1,6 @@
 import {
   applyCosmeticSelection,
+  cosmeticCategories,
   cosmeticCatalog,
   type CosmeticCategory,
 } from "../core/inventory";
@@ -11,7 +12,13 @@ interface CustomizerActions {
   onReturnToLobby: () => void;
 }
 
-const ICON_CATEGORY: CosmeticCategory = "icon";
+const CATEGORY_LABELS: Record<CosmeticCategory, string> = {
+  icon: "Icons",
+  ship: "Ships",
+  "primary-color": "Primary Colors",
+  "secondary-color": "Secondary Colors",
+  trail: "Trails",
+};
 
 export function mountCustomizer(
   root: HTMLElement,
@@ -20,42 +27,48 @@ export function mountCustomizer(
 ): () => void {
   function render(): void {
     const profile = profileRef.current;
-    const selectedId = profile.selectedCosmetics[ICON_CATEGORY];
-    const ownedIcons = cosmeticCatalog.filter(
-      (item) =>
-        item.category === ICON_CATEGORY &&
-        profile.ownedCosmetics.includes(item.id),
-    );
 
     root.replaceChildren();
 
     const { list, main } = buildRoomShell("Icon Customizer", actions.onReturnToLobby);
     root.appendChild(main);
 
-    for (const item of ownedIcons) {
-      const testId = safeTestId(item.id);
-      list.appendChild(
-        buildRoomRow({
-          actionDisabled: selectedId === item.id,
-          actionLabel: "Select",
-          actionTestId: `cosmetic-${testId}-select`,
-          name: item.name,
-          onAction: () => {
-            const result = applyCosmeticSelection(profileRef.current, item.id);
-            if (result.profile !== profileRef.current) {
-              actions.onProfileChange(result.profile);
-              render();
-            }
-          },
-          statusLabel: "Equipped",
-          statusTestId: `cosmetic-${testId}-equipped`,
-          statusVisible: selectedId === item.id,
-          swatchColor: item.appearance.fillRunning,
-          swatchMotif: item.appearance.motif,
-          swatchShape: item.appearance.cubeShape,
-          swatchTestId: `cosmetic-${testId}-swatch`,
-        }),
+    for (const category of cosmeticCategories) {
+      const heading = document.createElement("h2");
+      heading.className = "room-subheading";
+      heading.textContent = CATEGORY_LABELS[category];
+      list.appendChild(heading);
+      const selectedId = profile.selectedCosmetics[category];
+      const owned = cosmeticCatalog.filter(
+        (item) =>
+          item.category === category &&
+          profile.ownedCosmetics.includes(item.id),
       );
+      for (const item of owned) {
+        const testId = safeTestId(item.id);
+        list.appendChild(
+          buildRoomRow({
+            actionDisabled: selectedId === item.id,
+            actionLabel: "Select",
+            actionTestId: `cosmetic-${testId}-select`,
+            name: item.name,
+            onAction: () => {
+              const result = applyCosmeticSelection(profileRef.current, item.id);
+              if (result.profile !== profileRef.current) {
+                actions.onProfileChange(result.profile);
+                render();
+              }
+            },
+            statusLabel: "Equipped",
+            statusTestId: `cosmetic-${testId}-equipped`,
+            statusVisible: selectedId === item.id,
+            swatchColor: item.appearance.fillRunning,
+            swatchMotif: item.appearance.motif,
+            swatchShape: item.appearance.cubeShape,
+            swatchTestId: `cosmetic-${testId}-swatch`,
+          }),
+        );
+      }
     }
   }
 
