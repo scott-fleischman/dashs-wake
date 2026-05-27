@@ -1,21 +1,7 @@
-import type {
-  LevelEntity,
-  OrbEntity,
-  PadEntity,
-  PortalEntity,
-  RunRules,
-} from "../core/run-simulation";
-import {
-  paceAuthoredEntities,
-  paceAuthoredX,
-  PLAYER_HORIZONTAL_SPEED,
-} from "./level-pace";
-import { buildOfficialBeatMap } from "./official-soundtrack";
-import {
-  SPAWN_SURFACE_Y,
-  withSupportingTerrain,
-  type FlightChannel,
-} from "./terrain";
+import type { LevelEntity, OrbEntity, PadEntity, PortalEntity, RunRules } from "../core/run-simulation";
+import { PLAYER_HORIZONTAL_SPEED } from "./level-pace";
+import { SPAWN_SURFACE_Y } from "./terrain";
+import { buildEpicLevel } from "./epic-course-builder";
 
 export interface BeatMap {
   beats: readonly number[];
@@ -51,43 +37,17 @@ const FIRST_WAKE_RULES: RunRules = {
   spawnY: SPAWN_SURFACE_Y,
 };
 
-const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 190, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 455, y: 270 },
-  { type: "portal", mode: "ship", height: 374, width: 12, x: 650, y: 36 },
-  { type: "portal", mode: "cube", height: 374, width: 12, x: 1020, y: 36 },
-  { type: "spike", height: 30, width: 30, x: 1450, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 1690, y: 270 },
-  { type: "portal", mode: "ship", height: 374, width: 12, x: 1920, y: 36 },
-  { type: "portal", mode: "cube", height: 374, width: 12, x: 2320, y: 36 },
-  { type: "spike", height: 30, width: 30, x: 2790, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 3080, y: 270 },
-];
-
-const FIRST_WAKE_FINISH_X = paceAuthoredX(3918);
-const FIRST_WAKE_FLIGHT_CHANNELS: readonly FlightChannel[] = [
-  {
-    startX: paceAuthoredX(620),
-    endX: paceAuthoredX(1020) + 240,
-    ceilingEndX: paceAuthoredX(1020) + 18,
-    lowerSurfaceY: 330,
-  },
-  {
-    startX: paceAuthoredX(1890),
-    endX: paceAuthoredX(2320) + 240,
-    ceilingEndX: paceAuthoredX(2320) + 18,
-    lowerSurfaceY: 330,
-  },
-];
-
 export const firstWakeLevel: LevelContent = {
-  beatMap: buildOfficialBeatMap("level_1"),
-  entities: withSupportingTerrain(
-    paceAuthoredEntities(FIRST_WAKE_ENTITIES),
-    FIRST_WAKE_FINISH_X,
-    FIRST_WAKE_FLIGHT_CHANNELS,
-  ),
-  finishX: FIRST_WAKE_FINISH_X,
+  ...buildEpicLevel({
+    id: "level_1",
+    bpm: 100,
+    sections: [
+      { kind: "cube-tech", lengthBeats: 16 },
+      { kind: "ship-cave", lengthBeats: 20 },
+      { kind: "air-orb", lengthBeats: 14, pulse: true },
+      { kind: "cube-tech", lengthBeats: 14 },
+    ],
+  }),
   rules: FIRST_WAKE_RULES,
 };
 

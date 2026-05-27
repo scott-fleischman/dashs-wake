@@ -58,21 +58,33 @@ export interface BeatContext {
 
 export type PatternId =
   | "block"
+  | "block-high"
+  | "fog"
+  | "flash"
   | "orb"
   | "pad"
   | "portal-cube"
   | "portal-ship"
+  | "ramp-down"
+  | "ramp-up"
   | "spike"
+  | "spike-ceiling"
   | "trap-orb";
 
 export type BeatSelection =
   | { type: "skip" }
   | { type: "block"; x: number }
+  | { type: "block-high"; x: number }
+  | { type: "fog"; x: number }
+  | { type: "flash"; x: number }
   | { type: "orb"; x: number }
   | { type: "pad"; x: number }
   | { type: "portal-cube"; x: number }
   | { type: "portal-ship"; x: number }
+  | { type: "ramp-down"; x: number }
+  | { type: "ramp-up"; x: number }
   | { type: "spike"; x: number }
+  | { type: "spike-ceiling"; x: number }
   | { type: "trap-orb"; x: number };
 
 interface PatternProduceArgs {
@@ -105,6 +117,12 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
     produce: ({ x }) => ({ type: "spike", height: 30, width: 30, x, y: 270 }),
   },
   {
+    id: "spike-ceiling",
+    minDifficulty: "harder",
+    requiresIntensity: "intense",
+    produce: ({ x }) => ({ type: "spike", height: 30, width: 30, x, y: 96 }),
+  },
+  {
     id: "block",
     minDifficulty: "normal",
     requiresIntensity: "intense",
@@ -114,6 +132,44 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
       width: 54,
       x,
       y: 246,
+    }),
+  },
+  {
+    id: "block-high",
+    minDifficulty: "hard",
+    requiresIntensity: "intense",
+    produce: ({ x }) => ({
+      type: "block",
+      height: 54,
+      width: 60,
+      x,
+      y: 202,
+    }),
+  },
+  {
+    id: "ramp-up",
+    minDifficulty: "hard",
+    requiresIntensity: "quiet",
+    produce: ({ x }) => ({
+      type: "block",
+      shape: "ramp-up",
+      height: 72,
+      width: 110,
+      x,
+      y: 228,
+    }),
+  },
+  {
+    id: "ramp-down",
+    minDifficulty: "hard",
+    requiresIntensity: "quiet",
+    produce: ({ x }) => ({
+      type: "block",
+      shape: "ramp-down",
+      height: 72,
+      width: 110,
+      x,
+      y: 228,
     }),
   },
   {
@@ -182,6 +238,32 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
       width: 62,
       x,
       y: 174,
+    }),
+  },
+  {
+    id: "fog",
+    minDifficulty: "easy",
+    requiresIntensity: "quiet",
+    produce: ({ x }) => ({
+      type: "decoration",
+      kind: "fog",
+      height: 100,
+      width: 180,
+      x,
+      y: 76,
+    }),
+  },
+  {
+    id: "flash",
+    minDifficulty: "normal",
+    requiresIntensity: "intense",
+    produce: ({ x }) => ({
+      type: "decoration",
+      kind: "flash",
+      height: 82,
+      width: 150,
+      x,
+      y: 112,
     }),
   },
 ];
@@ -268,7 +350,19 @@ export function generateLevel(input: GeneratorInput): LevelContent {
 
   for (let index = 0; index < input.beatMap.beats.length; index += 1) {
     const beatMs = input.beatMap.beats[index]!;
-    const intensity = input.beatIntensities?.[index] ?? "intense";
+    const prev = input.beatMap.beats[index - 1];
+    const next = input.beatMap.beats[index + 1];
+    const localGapMs =
+      prev !== undefined && next !== undefined
+        ? (next - prev) / 2
+        : next !== undefined
+          ? next - beatMs
+          : prev !== undefined
+            ? beatMs - prev
+            : 500;
+    const baseIntensity = input.beatIntensities?.[index] ?? "intense";
+    const intensity: Intensity =
+      baseIntensity === "intense" || localGapMs < 430 ? "intense" : "quiet";
     const selection = selectBeatPattern({
       beatMs,
       difficulty: input.difficulty,
@@ -421,6 +515,70 @@ export interface PlayabilityIssue {
 export interface PlayabilityValidationResult {
   issues: readonly PlayabilityIssue[];
   ok: boolean;
+}
+
+export interface DifficultyAnalysis {
+  estimatedDifficulty: number;
+  estimatedLabel: GeneratorInput["difficulty"];
+  obstacleDensityPer1000: number;
+  peakPrecisionFrames: number;
+  shipSectionRatio: number;
+}
+
+function labelForScore(score: number): GeneratorInput["difficulty"] {
+  if (score < 20) return "easy";
+  if (score < 34) return "normal";
+  if (score < 48) return "hard";
+  if (score < 60) return "harder";
+  if (score < 73) return "insane";
+  if (score < 86) return "demon";
+  return "nightmare";
+}
+
+export function analyzeLevelDifficulty(level: LevelContent): DifficultyAnalysis {
+  const obstacleCount = level.entities.filter(
+    (entity) =>
+      entity.type === "spike" ||
+      entity.type === "block" ||
+      entity.type === "orb" ||
+      entity.type === "pad",
+  ).length;
+  const obstacleDensityPer1000 = obstacleCount / Math.max(1, level.finishX / 1000);
+  const sortedHazards = level.entities
+    .filter((entity) => entity.type === "spike" || entity.type === "block")
+    .slice()
+    .sort((a, b) => a.x - b.x);
+  let tightestGap = Number.POSITIVE_INFINITY;
+  for (let i = 1; i < sortedHazards.length; i += 1) {
+    tightestGap = Math.min(tightestGap, sortedHazards[i]!.x - sortedHazards[i - 1]!.x);
+  }
+  const peakPrecisionFrames =
+    Number.isFinite(tightestGap) && tightestGap > 0
+      ? Math.max(1, Math.round((tightestGap / level.rules.horizontalSpeed) * 60))
+      : 30;
+  const shipPortals = level.entities.filter(
+    (entity) => entity.type === "portal" && entity.mode === "ship",
+  ).length;
+  const cubePortals = level.entities.filter(
+    (entity) => entity.type === "portal" && entity.mode === "cube",
+  ).length;
+  const shipSectionRatio = shipPortals / Math.max(1, shipPortals + cubePortals);
+  const estimatedDifficulty = Math.max(
+    0,
+    Math.min(
+      100,
+      obstacleDensityPer1000 * 4.2 +
+        (30 / peakPrecisionFrames) * 18 +
+        shipSectionRatio * 24,
+    ),
+  );
+  return {
+    estimatedDifficulty,
+    estimatedLabel: labelForScore(estimatedDifficulty),
+    obstacleDensityPer1000,
+    peakPrecisionFrames,
+    shipSectionRatio,
+  };
 }
 
 export function validateGeneratedPlayability(

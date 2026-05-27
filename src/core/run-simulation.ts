@@ -27,7 +27,7 @@ export interface BlockEntity extends RectangularEntity {
 }
 
 export interface DecorationEntity extends RectangularEntity {
-  kind: "beam" | "diamond" | "pillar";
+  kind: "beam" | "diamond" | "pillar" | "flash" | "fog" | "dark";
   type: "decoration";
 }
 

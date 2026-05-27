@@ -14,10 +14,15 @@ import { buildSupportingTerrain, TERRAIN_DEPTH_Y } from "../content/terrain";
 
 type CreatorTool =
   | "block"
+  | "block-ramp-down"
+  | "block-ramp-up"
   | "cube-portal"
+  | "dark-zone"
   | "decoration"
   | "erase"
+  | "flash-zone"
   | "finish"
+  | "fog-zone"
   | "orb"
   | "pad"
   | "ship-portal"
@@ -51,12 +56,17 @@ interface ToolConfig {
 
 const TOOL_CONFIGS: readonly ToolConfig[] = [
   { id: "block", label: "Block", icon: "creator-icon-block" },
+  { id: "block-ramp-up", label: "Ramp Up", icon: "creator-icon-ramp-up" },
+  { id: "block-ramp-down", label: "Ramp Down", icon: "creator-icon-ramp-down" },
   { id: "spike", label: "Spike", icon: "creator-icon-spike" },
   { id: "pad", label: "Launch Pad", icon: "creator-icon-pad" },
   { id: "orb", label: "Jump Orb", icon: "creator-icon-orb" },
   { id: "ship-portal", label: "Ship Portal", icon: "creator-icon-portal" },
   { id: "cube-portal", label: "Cube Portal", icon: "creator-icon-portal cube" },
   { id: "decoration", label: "Decor", icon: "creator-icon-decoration" },
+  { id: "flash-zone", label: "Flash", icon: "creator-icon-flash" },
+  { id: "fog-zone", label: "Fog", icon: "creator-icon-fog" },
+  { id: "dark-zone", label: "Dark", icon: "creator-icon-dark" },
   { id: "finish", label: "Finish Point", icon: "creator-icon-finish" },
   { id: "erase", label: "Erase", icon: "creator-icon-erase" },
 ];
@@ -84,6 +94,24 @@ function entityForTool(
         width: GRID_SIZE * 2,
         x,
         y: placementTop(worldY, GRID_SIZE * 2),
+      };
+    case "block-ramp-up":
+      return {
+        type: "block",
+        shape: "ramp-up",
+        height: GRID_SIZE * 3,
+        width: GRID_SIZE * 4,
+        x,
+        y: placementTop(worldY, GRID_SIZE * 3),
+      };
+    case "block-ramp-down":
+      return {
+        type: "block",
+        shape: "ramp-down",
+        height: GRID_SIZE * 3,
+        width: GRID_SIZE * 4,
+        x,
+        y: placementTop(worldY, GRID_SIZE * 3),
       };
     case "spike":
       return {
@@ -140,6 +168,33 @@ function entityForTool(
         x,
         y: placementTop(worldY, GRID_SIZE * 3),
       };
+    case "flash-zone":
+      return {
+        type: "decoration",
+        kind: "flash",
+        height: GRID_SIZE * 4,
+        width: GRID_SIZE * 7,
+        x,
+        y: placementTop(worldY, GRID_SIZE * 4),
+      };
+    case "fog-zone":
+      return {
+        type: "decoration",
+        kind: "fog",
+        height: GRID_SIZE * 4,
+        width: GRID_SIZE * 9,
+        x,
+        y: placementTop(worldY, GRID_SIZE * 4),
+      };
+    case "dark-zone":
+      return {
+        type: "decoration",
+        kind: "dark",
+        height: GRID_SIZE * 6,
+        width: GRID_SIZE * 9,
+        x,
+        y: placementTop(worldY, GRID_SIZE * 6),
+      };
     default:
       return undefined;
   }
@@ -151,6 +206,9 @@ function classForEntity(entity: LevelEntity): string {
   }
   if (entity.type === "block" && entity.shape && entity.shape !== "rectangle") {
     return `creator-entity block shape-${entity.shape}`;
+  }
+  if (entity.type === "decoration") {
+    return `creator-entity decoration kind-${entity.kind}`;
   }
   return `creator-entity ${entity.type}`;
 }

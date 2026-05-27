@@ -1,123 +1,20 @@
-import type { LevelEntity, RunRules } from "../core/run-simulation";
-import { paceAuthoredEntities, paceAuthoredX } from "./level-pace";
-import { buildOfficialBeatMap } from "./official-soundtrack";
+import type { RunRules } from "../core/run-simulation";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
-import { withSupportingTerrain, type FlightChannel } from "./terrain";
+import { buildEpicLevel } from "./epic-course-builder";
 
 const TRAP_LANE_RULES: RunRules = firstWakeLevel.rules;
 
-const TRAP_LANE_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 180, y: 270 },
-  {
-    type: "pad",
-    id: "level-5-pad-1",
-    impulse: 720,
-    height: 18,
-    width: 40,
-    x: 405,
-    y: 290,
-  },
-  { type: "spike", height: 30, width: 30, x: 480, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 510, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 540, y: 270 },
-  { type: "portal", mode: "ship", height: 374, width: 12, x: 770, y: 36 },
-  { type: "portal", mode: "cube", height: 374, width: 12, x: 1180, y: 36 },
-  { type: "spike", height: 30, width: 30, x: 1510, y: 300 },
-  {
-    type: "orb",
-    id: "level-5-orb-safe",
-    effect: { kind: "impulse", magnitude: 720 },
-    height: 90,
-    width: 72,
-    x: 1515,
-    y: 205,
-  },
-  { type: "spike", height: 30, width: 30, x: 1560, y: 300 },
-  { type: "spike", height: 30, width: 30, x: 1590, y: 300 },
-  { type: "spike", height: 30, width: 30, x: 1620, y: 300 },
-  { type: "spike", height: 30, width: 30, x: 1980, y: 270 },
-  {
-    type: "orb",
-    id: "level-5-orb-trap",
-    effect: { kind: "impulse", magnitude: 720 },
-    height: 90,
-    width: 72,
-    x: 1980,
-    y: 175,
-  },
-  { type: "spike", height: 30, width: 30, x: 2025, y: 104 },
-  { type: "spike", height: 30, width: 30, x: 2055, y: 104 },
-  { type: "spike", height: 30, width: 30, x: 2460, y: 270 },
-  {
-    type: "pad",
-    id: "level-5-pad-2",
-    impulse: 720,
-    height: 18,
-    width: 40,
-    x: 2680,
-    y: 290,
-  },
-  { type: "spike", height: 30, width: 30, x: 2750, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 2780, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 2810, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 3160, y: 270 },
-  {
-    type: "orb",
-    id: "level-5-orb-trap-2",
-    effect: { kind: "impulse", magnitude: 720 },
-    height: 90,
-    width: 72,
-    x: 3160,
-    y: 175,
-  },
-  { type: "spike", height: 30, width: 30, x: 3205, y: 104 },
-  { type: "spike", height: 30, width: 30, x: 3235, y: 104 },
-  { type: "spike", height: 30, width: 30, x: 3640, y: 270 },
-  {
-    type: "orb",
-    id: "level-5-orb-safe-2",
-    effect: { kind: "impulse", magnitude: 720 },
-    height: 90,
-    width: 72,
-    x: 3645,
-    y: 175,
-  },
-  { type: "spike", height: 30, width: 30, x: 3670, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 3700, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 3730, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 4260, y: 270 },
-  {
-    type: "pad",
-    id: "level-5-pad-3",
-    impulse: 720,
-    height: 18,
-    width: 40,
-    x: 4480,
-    y: 290,
-  },
-  { type: "spike", height: 30, width: 30, x: 4550, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 4580, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 4610, y: 270 },
-];
-
-const TRAP_LANE_FINISH_X = paceAuthoredX(5218);
-const TRAP_LANE_FLIGHT_CHANNELS: readonly FlightChannel[] = [
-  {
-    startX: paceAuthoredX(740),
-    endX: paceAuthoredX(1650),
-    ceilingEndX: paceAuthoredX(1180) + 18,
-    ceilingBottomY: 70,
-    lowerSurfaceY: 330,
-  },
-];
-
 export const trapLaneLevel: LevelContent = {
-  beatMap: buildOfficialBeatMap("level_5"),
-  entities: withSupportingTerrain(
-    paceAuthoredEntities(TRAP_LANE_ENTITIES),
-    TRAP_LANE_FINISH_X,
-    TRAP_LANE_FLIGHT_CHANNELS,
-  ),
-  finishX: TRAP_LANE_FINISH_X,
+  ...buildEpicLevel({
+    id: "level_5",
+    bpm: 145,
+    sections: [
+      { kind: "cube-tech", lengthBeats: 14, pulse: true },
+      { kind: "ship-cave", lengthBeats: 22, loft: true },
+      { kind: "air-orb", lengthBeats: 16, pulse: true, loft: true },
+      { kind: "cube-tech", lengthBeats: 14, pulse: true },
+      { kind: "ship-cave", lengthBeats: 18, loft: true },
+    ],
+  }),
   rules: TRAP_LANE_RULES,
 };

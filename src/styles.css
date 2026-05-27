@@ -1301,6 +1301,23 @@ kbd {
   width: 23px;
 }
 
+.creator-icon-ramp-up,
+.creator-icon-ramp-down {
+  display: block;
+  height: 0;
+  width: 0;
+}
+
+.creator-icon-ramp-up {
+  border-bottom: 22px solid #19d9f3;
+  border-left: 24px solid transparent;
+}
+
+.creator-icon-ramp-down {
+  border-bottom: 22px solid #19d9f3;
+  border-right: 24px solid transparent;
+}
+
 .creator-icon-pad {
   background: #ffc857;
   border-radius: 0.15rem;
@@ -1335,6 +1352,28 @@ kbd {
   height: 22px;
   transform: rotate(45deg);
   width: 22px;
+}
+
+.creator-icon-flash,
+.creator-icon-fog,
+.creator-icon-dark {
+  display: block;
+  height: 18px;
+  width: 30px;
+}
+
+.creator-icon-flash {
+  background: linear-gradient(90deg, transparent, #ecfcff, transparent);
+}
+
+.creator-icon-fog {
+  background: rgba(236, 252, 255, 0.35);
+  border-radius: 999px;
+}
+
+.creator-icon-dark {
+  background: rgba(2, 3, 10, 0.85);
+  border: 1px solid #5a7e9a;
 }
 
 .creator-icon-finish {
@@ -1470,6 +1509,25 @@ kbd {
 .creator-entity.decoration {
   border: 2px solid rgba(25, 217, 243, 0.48);
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.creator-entity.decoration.kind-flash {
+  background: linear-gradient(90deg, transparent, rgba(236, 252, 255, 0.75), transparent);
+  border-color: rgba(236, 252, 255, 0.7);
+  clip-path: none;
+}
+
+.creator-entity.decoration.kind-fog {
+  background: rgba(216, 248, 255, 0.2);
+  border-color: rgba(216, 248, 255, 0.45);
+  border-radius: 999px;
+  clip-path: none;
+}
+
+.creator-entity.decoration.kind-dark {
+  background: rgba(2, 3, 10, 0.5);
+  border-color: rgba(90, 126, 154, 0.6);
+  clip-path: none;
 }
 
 .creator-finish {

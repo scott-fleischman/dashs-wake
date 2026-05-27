@@ -274,6 +274,7 @@ class LevelScene extends Phaser.Scene {
   private onSnapshot?: (snapshot: LevelSnapshot) => void;
   private paused = false;
   private playerCube?: Phaser.GameObjects.Shape;
+  private postFxLayer?: Phaser.GameObjects.Container;
   private playerShip?: Phaser.GameObjects.Shape;
   private state: RunState = createRunState(firstWakeLevel.rules);
   private status: LevelSnapshot["status"] = "running";
@@ -535,6 +536,7 @@ class LevelScene extends Phaser.Scene {
     this.courseLayer.add(blocks);
 
     const decorations = this.add.graphics();
+    const postFxLayer = this.add.container(0, 0);
     for (const entity of entities) {
       if (entity.type !== "decoration") {
         continue;
@@ -559,11 +561,37 @@ class LevelScene extends Phaser.Scene {
       } else if (entity.kind === "beam") {
         decorations.lineBetween(entity.x, y + entity.height, entity.x + entity.width, y);
         decorations.lineBetween(entity.x + 12, y + entity.height, entity.x + entity.width + 12, y);
+      } else if (entity.kind === "flash") {
+        decorations.lineStyle(2, palette.accent, 0.5);
+        decorations.strokeRect(entity.x, y, entity.width, entity.height);
+        decorations.lineBetween(entity.x, y + entity.height / 2, entity.x + entity.width, y + entity.height / 2);
+      } else if (entity.kind === "fog") {
+        const fog = this.add.rectangle(
+          entity.x + entity.width / 2,
+          y + entity.height / 2,
+          entity.width,
+          entity.height,
+          0xd8f8ff,
+          0.07,
+        );
+        postFxLayer.add(fog);
+      } else if (entity.kind === "dark") {
+        const dark = this.add.rectangle(
+          entity.x + entity.width / 2,
+          y + entity.height / 2,
+          entity.width,
+          entity.height,
+          0x02030a,
+          0.4,
+        );
+        postFxLayer.add(dark);
       } else {
         decorations.strokeRect(entity.x, y, entity.width, entity.height);
       }
     }
     this.courseLayer.add(decorations);
+    this.courseLayer.add(postFxLayer);
+    this.postFxLayer = postFxLayer;
 
     const portals = this.add.graphics();
     for (const entity of entities) {
@@ -572,7 +600,7 @@ class LevelScene extends Phaser.Scene {
       }
 
       const y = this.worldOffsetY + entity.y;
-      const portalColor = PORTAL_STYLE[entity.mode];
+      const portalColor = PORTAL_STYLE[entity.mode as "cube" | "ship"];
       portals.fillStyle(portalColor, 0.18);
       portals.fillRect(entity.x, y, entity.width, entity.height);
       portals.lineStyle(3, portalColor, 0.95);
