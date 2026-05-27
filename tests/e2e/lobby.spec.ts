@@ -61,6 +61,29 @@ test("First Wake pauses with Escape and returns to official level select", async
   ).toBeVisible();
 });
 
+test("First Wake pause and death menus support Tab plus Space", async ({
+  page,
+}) => {
+  await page.goto("/#play");
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Paused" })).toBeVisible();
+  await page.getByRole("button", { name: "Resume" }).focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Space");
+  await expect(page).not.toHaveURL(/#play/);
+  await expect(page.getByRole("heading", { name: "Official Levels" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Play" }).click();
+  await expect(page).toHaveURL(/#play\/level_1$/);
+
+  const failedDialog = page.getByRole("dialog", { name: "Run failed" });
+  await expect(failedDialog).toBeVisible({ timeout: 3_000 });
+  await page.keyboard.press("Space");
+  await expect(failedDialog).toBeHidden();
+  await expect(page.getByTestId("attempt-count")).toHaveText("Attempt 2");
+});
+
 test("First Wake ignores a second jump while the cube is airborne", async ({
   page,
 }) => {

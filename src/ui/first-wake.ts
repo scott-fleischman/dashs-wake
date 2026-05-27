@@ -23,6 +23,14 @@ interface LevelRunActions {
 
 const JUMP_KEYS = new Set(["Space", "ArrowUp"]);
 
+function targetsInteractiveControl(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return target.closest("button, input, select, textarea, a[href]") !== null;
+}
+
 interface ModeCue {
   hint: string;
   label: string;
@@ -320,16 +328,35 @@ export function mountFirstWake(
     }
 
     if (JUMP_KEYS.has(event.code) && !event.repeat) {
+      if (targetsInteractiveControl(event.target)) {
+        return;
+      }
+
       event.preventDefault();
-      registerHold();
+
+      if (runStatus === "dead" || runStatus === "complete") {
+        restart();
+        return;
+      }
+
+      if (paused) {
+        setPaused(false);
+        return;
+      }
+
+      if (runStatus === "running") {
+        registerHold();
+      }
     }
   };
 
   const onKeyUp = (event: KeyboardEvent): void => {
-    if (JUMP_KEYS.has(event.code)) {
-      event.preventDefault();
-      releaseHold();
+    if (!JUMP_KEYS.has(event.code) || targetsInteractiveControl(event.target)) {
+      return;
     }
+
+    event.preventDefault();
+    releaseHold();
   };
 
   const restart = (): void => {

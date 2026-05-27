@@ -9,7 +9,7 @@ test("dying clears the run and restart begins a fresh attempt", async ({
   await expect(failedDialog).toBeVisible({ timeout: 3_000 });
   await expect(page.getByTestId("attempt-count")).toHaveText("Attempt 1");
 
-  await page.getByRole("button", { name: "Restart" }).click();
+  await page.keyboard.press("Space");
 
   await expect(failedDialog).toBeHidden();
   await expect(page.getByTestId("attempt-count")).toHaveText("Attempt 2");
