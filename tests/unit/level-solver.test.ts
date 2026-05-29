@@ -16,7 +16,7 @@ describe("conservative level solver", () => {
   });
 
   it("matches validateGeneratedPlayability success for official courses", () => {
-    const content = getOfficialLevelContent("level_6");
+    const content = getOfficialLevelContent("level_2");
     const result = simulateConservativeRun(content);
 
     expect(result.reachedFinish).toBe(true);

@@ -24,8 +24,8 @@ describe("level profile analysis", () => {
 
   it("differentiates official levels on ship and spike emphasis", () => {
     const shipHeavy = analyzeLevelProfile(
-      getOfficialLevelContent("level_10"),
-      recordConservativeDemo(getOfficialLevelContent("level_10")),
+      getOfficialLevelContent("level_3"),
+      recordConservativeDemo(getOfficialLevelContent("level_3")),
     );
     const spikeIntro = analyzeLevelProfile(
       getOfficialLevelContent("level_1"),

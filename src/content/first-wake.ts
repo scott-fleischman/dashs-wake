@@ -1,13 +1,14 @@
 import type { LevelEntity, PortalEntity, RunRules } from "../core/run-simulation";
+import { firstWakeLevel as handcraftedFirstWake } from "./official-handcrafted";
 import {
-  assembleOfficialLevel,
   type BeatMap,
   type ExpectedRoute,
   type LevelContent,
 } from "./official-course";
-import type { FlightChannel } from "./terrain";
 
 export type { BeatMap, ExpectedRoute, LevelContent };
+
+export { handcraftedFirstWake as firstWakeLevel };
 
 export interface ValidationResult {
   issues: readonly string[];
@@ -15,47 +16,6 @@ export interface ValidationResult {
 }
 
 const MIN_SHIP_CORRIDOR_WIDTH_RATIO = 5;
-
-const FIRST_WAKE_FINISH_X = 4_900;
-
-const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 380, y: 270 },
-  { type: "block", shape: "ramp-up", height: 70, width: 90, x: 580, y: 230 },
-  { type: "block", height: 70, width: 160, x: 670, y: 230 },
-  { type: "block", shape: "ramp-down", height: 70, width: 90, x: 830, y: 230 },
-  { type: "spike", height: 30, width: 30, x: 1_120, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 1_150, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 1_180, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 1_520, y: 270 },
-  { type: "portal", mode: "ship", height: 320, width: 12, x: 1_920, y: 36 },
-  { type: "portal", mode: "cube", height: 320, width: 12, x: 2_420, y: 36 },
-  { type: "portal", mode: "ship", height: 320, width: 12, x: 2_520, y: 36 },
-  { type: "portal", mode: "cube", height: 320, width: 12, x: 3_520, y: 36 },
-  { type: "spike", height: 30, width: 30, x: 3_720, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 4_120, y: 270 },
-];
-
-const FIRST_WAKE_CHANNELS: readonly FlightChannel[] = [
-  {
-    startX: 1_860,
-    endX: 2_480,
-    ceilingBottomY: 96,
-    lowerSurfaceY: 388,
-  },
-  {
-    startX: 2_460,
-    endX: 3_580,
-    ceilingBottomY: 96,
-    lowerSurfaceY: 388,
-  },
-];
-
-export const firstWakeLevel: LevelContent = assembleOfficialLevel(
-  "level_1",
-  FIRST_WAKE_ENTITIES,
-  FIRST_WAKE_FINISH_X,
-  FIRST_WAKE_CHANNELS,
-);
 
 function maxJumpDistance(rules: RunRules): number {
   const airtimeSeconds = (2 * Math.abs(rules.jumpVelocity)) / rules.gravity;

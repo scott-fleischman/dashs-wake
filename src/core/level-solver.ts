@@ -73,6 +73,9 @@ export function decideConservativeJump(
   const overlappingOrb = aiOrbOverlap(state.player, entities, rules);
 
   if (overlappingOrb && overlappingOrb.effect.kind === "impulse") {
+    if (overlappingOrb.id.includes("trap")) {
+      return false;
+    }
     return !state.consumedTriggerIds.has(overlappingOrb.id);
   }
 
@@ -84,19 +87,64 @@ export function decideConservativeJump(
     return false;
   }
 
+  const probeX = state.player.x + rules.playerWidth * 0.55;
+  const hasSupportAhead = entities.some(
+    (entity) =>
+      entity.type === "block" &&
+      Math.abs(entity.y - state.player.y) < 10 &&
+      probeX >= entity.x &&
+      probeX <= entity.x + entity.width,
+  );
+  if (!hasSupportAhead) {
+    return true;
+  }
+
+  for (const entity of entities) {
+    if (entity.type === "orb" && entity.effect.kind === "impulse") {
+      if (entity.id.includes("trap")) {
+        continue;
+      }
+      const distance = entity.x - state.player.x;
+      if (
+        distance > 0 &&
+        distance < SOLVER_PRE_JUMP_DISTANCE * 2.6 &&
+        entity.y + entity.height < state.player.y - 8
+      ) {
+        return true;
+      }
+    }
+  }
+
   for (const entity of entities) {
     if (entity.type !== "spike" && entity.type !== "block") {
       continue;
     }
-    if (entity.type === "block" && entity.y >= state.player.y) {
+
+    const distance = entity.x - state.player.x;
+    if (distance <= 0) {
       continue;
     }
-    const distance = entity.x - state.player.x;
-    const approachDistance =
-      entity.type === "block"
-        ? SOLVER_PRE_JUMP_DISTANCE * 2.2
-        : SOLVER_PRE_JUMP_DISTANCE;
-    if (distance > 0 && distance < approachDistance) {
+
+    if (entity.type === "block") {
+      const elevatedPlatform = entity.y < state.player.y - 6;
+      const wallOrCeiling = entity.y >= state.player.y - 6;
+      if (wallOrCeiling) {
+        continue;
+      }
+      const approachDistance = elevatedPlatform
+        ? SOLVER_PRE_JUMP_DISTANCE * 3.8
+        : SOLVER_PRE_JUMP_DISTANCE * 2.2;
+      if (distance < approachDistance) {
+        return true;
+      }
+      continue;
+    }
+
+    if (entity.y > state.player.y - 12) {
+      continue;
+    }
+
+    if (distance < SOLVER_PRE_JUMP_DISTANCE) {
       return true;
     }
   }

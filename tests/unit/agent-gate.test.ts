@@ -23,7 +23,7 @@ describe("agent gate: module boot", () => {
   });
 
   it("loads every official level at import time", () => {
-    expect(officialLevelCatalog).toHaveLength(12);
+    expect(officialLevelCatalog).toHaveLength(5);
 
     for (const level of officialLevelCatalog) {
       const content = getOfficialLevelContent(level.id);
@@ -43,7 +43,9 @@ describe("agent gate: module boot", () => {
     expect(typeof generateLevel).toBe("function");
     expect(typeof analyzeLevelDifficulty).toBe("function");
     expect(typeof analyzeLevelProfile).toBe("function");
-    expect(getOfficialLevelDemo("level_1")).not.toBeNull();
+    for (const level of officialLevelCatalog) {
+      expect(getOfficialLevelDemo(level.id), level.id).not.toBeNull();
+    }
   });
 });
 

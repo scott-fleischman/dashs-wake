@@ -127,7 +127,7 @@ export const gauntletCatalog: readonly GauntletEntry[] = [
     name: "Void Circuit Gauntlet",
     stages: ["void-circuit-1", "void-circuit-2", "void-circuit-3"],
     unlockRequirement: {
-      requiredCompletedLevels: ["level_7"],
+      requiredCompletedLevels: ["level_5"],
     },
     reward: {
       coinsAwarded: 320,

@@ -30,7 +30,7 @@ and exits non-zero when verification fails.
 | Step | Command | Catches |
 |------|---------|---------|
 | Build | `npm run build` | Type errors; broken imports that tsc catches |
-| Agent gate | `npm run test:agent` | Circular module-init crashes; all 12 official levels failing to load; missing spawn support; generator boot failures |
+| Agent gate | `npm run test:agent` | Circular module-init crashes; all official levels failing to load; missing spawn support; generator boot failures |
 | Browser smoke | `npm run test:smoke` | Blank screen at boot; level select not rendering; First Wake failing to start or advance |
 
 Equivalent manual run:
@@ -66,9 +66,9 @@ Official level builders must avoid circular runtime imports.
 - Put shared physics in `src/content/level-rules.ts` (`OFFICIAL_LEVEL_RULES`).
 - `src/content/epic-course-builder.ts` may import types from `first-wake.ts`,
   but must **not** import runtime values such as `firstWakeLevel`.
-- `first-wake.ts` initializes `firstWakeLevel` by calling `buildEpicLevel`.
-  If `buildEpicLevel` reads `firstWakeLevel` during that initialization, the
-  app crashes before the first frame renders.
+- Official levels are hand-authored in `official-handcrafted.ts` (not
+  `buildEpicLevel`). `epic-course-builder.ts` is for procedural sections only;
+  it must not read `firstWakeLevel` during module init.
 
 When adding a new content module that loads at app startup, extend
 `tests/unit/agent-gate.test.ts`.
