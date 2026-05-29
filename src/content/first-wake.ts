@@ -1,23 +1,13 @@
-import type { LevelEntity, OrbEntity, PadEntity, PortalEntity, RunRules } from "../core/run-simulation";
-import { buildEpicLevel } from "./epic-course-builder";
-import { OFFICIAL_LEVEL_RULES } from "./level-rules";
+import type { LevelEntity, PortalEntity, RunRules } from "../core/run-simulation";
+import {
+  assembleOfficialLevel,
+  type BeatMap,
+  type ExpectedRoute,
+  type LevelContent,
+} from "./official-course";
+import type { FlightChannel } from "./terrain";
 
-export interface BeatMap {
-  beats: readonly number[];
-  durationMs: number;
-}
-
-export interface ExpectedRoute {
-  requiredTriggerIds: readonly string[];
-}
-
-export interface LevelContent {
-  beatMap: BeatMap;
-  entities: readonly LevelEntity[];
-  expectedRoute?: ExpectedRoute;
-  finishX: number;
-  rules: RunRules;
-}
+export type { BeatMap, ExpectedRoute, LevelContent };
 
 export interface ValidationResult {
   issues: readonly string[];
@@ -26,19 +16,46 @@ export interface ValidationResult {
 
 const MIN_SHIP_CORRIDOR_WIDTH_RATIO = 5;
 
-export const firstWakeLevel: LevelContent = {
-  ...buildEpicLevel({
-    id: "level_1",
-    bpm: 100,
-    sections: [
-      { kind: "cube-tech", lengthBeats: 16 },
-      { kind: "ship-cave", lengthBeats: 20 },
-      { kind: "air-orb", lengthBeats: 14, pulse: true },
-      { kind: "cube-tech", lengthBeats: 14 },
-    ],
-  }),
-  rules: OFFICIAL_LEVEL_RULES,
-};
+const FIRST_WAKE_FINISH_X = 4_900;
+
+const FIRST_WAKE_ENTITIES: readonly LevelEntity[] = [
+  { type: "spike", height: 30, width: 30, x: 380, y: 270 },
+  { type: "block", shape: "ramp-up", height: 70, width: 90, x: 580, y: 230 },
+  { type: "block", height: 70, width: 160, x: 670, y: 230 },
+  { type: "block", shape: "ramp-down", height: 70, width: 90, x: 830, y: 230 },
+  { type: "spike", height: 30, width: 30, x: 1_120, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 1_150, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 1_180, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 1_520, y: 270 },
+  { type: "portal", mode: "ship", height: 320, width: 12, x: 1_920, y: 36 },
+  { type: "portal", mode: "cube", height: 320, width: 12, x: 2_420, y: 36 },
+  { type: "portal", mode: "ship", height: 320, width: 12, x: 2_520, y: 36 },
+  { type: "portal", mode: "cube", height: 320, width: 12, x: 3_520, y: 36 },
+  { type: "spike", height: 30, width: 30, x: 3_720, y: 270 },
+  { type: "spike", height: 30, width: 30, x: 4_120, y: 270 },
+];
+
+const FIRST_WAKE_CHANNELS: readonly FlightChannel[] = [
+  {
+    startX: 1_860,
+    endX: 2_480,
+    ceilingBottomY: 96,
+    lowerSurfaceY: 388,
+  },
+  {
+    startX: 2_460,
+    endX: 3_580,
+    ceilingBottomY: 96,
+    lowerSurfaceY: 388,
+  },
+];
+
+export const firstWakeLevel: LevelContent = assembleOfficialLevel(
+  "level_1",
+  FIRST_WAKE_ENTITIES,
+  FIRST_WAKE_FINISH_X,
+  FIRST_WAKE_CHANNELS,
+);
 
 function maxJumpDistance(rules: RunRules): number {
   const airtimeSeconds = (2 * Math.abs(rules.jumpVelocity)) / rules.gravity;
@@ -154,6 +171,25 @@ const validateShipCorridors: LevelValidator = (level) => {
   return issues;
 };
 
+const validatePadSpikeTraps: LevelValidator = (level) => {
+  const issues: string[] = [];
+  const spikes = level.entities.filter((entity) => entity.type === "spike");
+  const pads = level.entities.filter((entity) => entity.type === "pad");
+
+  for (const pad of pads) {
+    for (const spike of spikes) {
+      const gap = pad.x - (spike.x + spike.width);
+      if (gap >= 0 && gap < 64) {
+        issues.push(
+          `Launch pad at x=${pad.x} sits ${gap}px after a spike — likely an unavoidable bounce trap.`,
+        );
+      }
+    }
+  }
+
+  return issues;
+};
+
 const validateRequiredTriggers: LevelValidator = (level) => {
   const route = level.expectedRoute;
 
@@ -165,7 +201,7 @@ const validateRequiredTriggers: LevelValidator = (level) => {
   const triggerIds = new Set(
     level.entities
       .filter(
-        (entity): entity is OrbEntity | PadEntity =>
+        (entity): entity is import("../core/run-simulation").OrbEntity | import("../core/run-simulation").PadEntity =>
           entity.type === "orb" || entity.type === "pad",
       )
       .map((trigger) => trigger.id),
@@ -187,6 +223,7 @@ const LEVEL_VALIDATORS: readonly LevelValidator[] = [
   validateEntityBounds,
   validateSpawnSupport,
   validateShipCorridors,
+  validatePadSpikeTraps,
   validateRequiredTriggers,
 ];
 

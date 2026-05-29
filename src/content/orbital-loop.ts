@@ -8,11 +8,12 @@ export const orbitalLoopLevel: LevelContent = {
   ...buildEpicLevel({
     id: "level_3",
     bpm: 108,
+    requireOrbRoute: true,
     sections: [
+      { kind: "cube-intro", lengthBeats: 8 },
       { kind: "air-orb", lengthBeats: 18, pulse: true },
-      { kind: "cube-tech", lengthBeats: 16 },
-      { kind: "ship-cave", lengthBeats: 22 },
-      { kind: "air-orb", lengthBeats: 16, loft: true },
+      { kind: "ship-open", lengthBeats: 14 },
+      { kind: "air-orb", lengthBeats: 12, loft: true },
     ],
   }),
   rules: ORBITAL_LOOP_RULES,

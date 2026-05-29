@@ -425,8 +425,9 @@ export function generateLevel(input: GeneratorInput): LevelContent {
 }
 
 const AI_TICK_MS = 1000 / 60;
-const AI_MAX_TICKS = 1500;
-const AI_PRE_JUMP_DISTANCE = 40;
+/** Enough horizon for the longest official track at paced horizontal speed. */
+const AI_MAX_TICKS = 1800;
+const AI_PRE_JUMP_DISTANCE = 52;
 
 function aiOrbOverlap(
   player: PlayerState,
