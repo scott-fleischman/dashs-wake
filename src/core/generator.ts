@@ -3,15 +3,9 @@ import {
   type BeatMap,
   type LevelContent,
 } from "../content/first-wake";
-import {
-  createRunState,
-  tickRun,
-  type LevelEntity,
-  type OrbEntity,
-  type PlayerState,
-  type RunRules,
-  type RunState,
-} from "./run-simulation";
+import type { LevelEntity } from "./run-simulation";
+import type { GeneratorTuning, GeneratorTheme } from "./generator-tuning";
+import { simulateConservativeRun, SOLVER_MAX_TICKS } from "./level-solver";
 import { buildSupportingTerrain } from "../content/terrain";
 
 export type Intensity = "intense" | "quiet";
@@ -28,8 +22,9 @@ export interface GeneratorInput {
     | "demon"
     | "nightmare";
   subRank?: "bronze" | "gold" | "diamond" | "void";
-  theme?: "electric" | "forest" | "sunset" | "void";
+  theme?: GeneratorTheme;
   seed: number;
+  tuning?: GeneratorTuning;
 }
 
 export type RandomSource = () => number;
@@ -54,6 +49,7 @@ export interface BeatContext {
   intensity: Intensity;
   random: number;
   subRank: NonNullable<GeneratorInput["subRank"]>;
+  tuning?: GeneratorTuning;
 }
 
 export type PatternId =
@@ -291,8 +287,58 @@ const SUBRANK_MULTIPLIER = {
   void: 1.3,
 } as const;
 
-function effectivePlaceThreshold(subRank: NonNullable<GeneratorInput["subRank"]>): number {
-  return Math.min(0.75, BASE_PLACE_THRESHOLD * SUBRANK_MULTIPLIER[subRank]);
+function effectivePlaceThreshold(
+  subRank: NonNullable<GeneratorInput["subRank"]>,
+  tuning?: GeneratorTuning,
+): number {
+  const base = Math.min(0.75, BASE_PLACE_THRESHOLD * SUBRANK_MULTIPLIER[subRank]);
+  if (!tuning) {
+    return base;
+  }
+
+  const densityLift = (100 - tuning.obstacleDensity) / 100;
+  return Math.min(0.82, base * (0.55 + densityLift * 0.7));
+}
+
+function patternWeight(patternId: PatternId, tuning: GeneratorTuning): number {
+  switch (patternId) {
+    case "portal-ship":
+    case "portal-cube":
+      return 0.4 + tuning.shipEmphasis / 90;
+    case "spike":
+    case "spike-ceiling":
+    case "trap-orb":
+      return 0.4 + tuning.spikeEmphasis / 90;
+    case "ramp-up":
+    case "ramp-down":
+    case "block-high":
+      return 0.3 + tuning.verticalEmphasis / 85;
+    case "pad":
+      return 0.35 + tuning.verticalEmphasis / 200;
+    case "orb":
+      return 0.35 + tuning.spikeEmphasis / 200;
+    default:
+      return 0.45;
+  }
+}
+
+function pickWeightedPattern(
+  permitted: readonly PatternId[],
+  tuning: GeneratorTuning,
+  random: number,
+): PatternId {
+  const weights = permitted.map((patternId) => patternWeight(patternId, tuning));
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let cursor = random * total;
+
+  for (let index = 0; index < permitted.length; index += 1) {
+    cursor -= weights[index]!;
+    if (cursor <= 0) {
+      return permitted[index]!;
+    }
+  }
+
+  return permitted[permitted.length - 1]!;
 }
 
 function effectiveMinSpacing(subRank: NonNullable<GeneratorInput["subRank"]>): number {
@@ -320,7 +366,10 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
     return { type: "skip" };
   }
 
-  if (context.random >= effectivePlaceThreshold(context.subRank)) {
+  if (
+    context.random >=
+    effectivePlaceThreshold(context.subRank, context.tuning)
+  ) {
     return { type: "skip" };
   }
 
@@ -330,14 +379,72 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
     return { type: "skip" };
   }
 
-  const slotWidth = effectivePlaceThreshold(context.subRank) / permitted.length;
-  const idx = Math.min(
-    permitted.length - 1,
-    Math.floor(context.random / slotWidth),
-  );
-  const patternId = permitted[idx]!;
+  const patternId = context.tuning
+    ? pickWeightedPattern(
+        permitted,
+        context.tuning,
+        (context.random * 3.7) % 1,
+      )
+    : permitted[
+        Math.min(
+          permitted.length - 1,
+          Math.floor(
+            context.random /
+              (effectivePlaceThreshold(context.subRank) / permitted.length),
+          ),
+        )
+      ]!;
 
   return { type: patternId, x };
+}
+
+function themeAmbienceEntities(
+  theme: GeneratorTheme,
+  finishX: number,
+  rng: () => number,
+): LevelEntity[] {
+  const decorations: LevelEntity[] = [];
+  const zoneWidth = Math.max(280, Math.floor(finishX / 4));
+
+  const pushZone = (
+    kind: "beam" | "dark" | "diamond" | "flash" | "fog",
+    index: number,
+  ): void => {
+    decorations.push({
+      type: "decoration",
+      kind,
+      height: kind === "dark" ? 140 : 88,
+      width: zoneWidth,
+      x: 120 + index * (zoneWidth + 80),
+      y: kind === "dark" ? 0 : 70 + Math.round(rng() * 40),
+    });
+  };
+
+  switch (theme) {
+    case "cave":
+      for (let index = 0; index < 3; index += 1) {
+        pushZone(index % 2 === 0 ? "fog" : "dark", index);
+      }
+      break;
+    case "space":
+      for (let index = 0; index < 3; index += 1) {
+        pushZone(index % 2 === 0 ? "dark" : "diamond", index);
+      }
+      break;
+    case "disco":
+    case "flash":
+      for (let index = 0; index < 4; index += 1) {
+        pushZone(index % 2 === 0 ? "flash" : "beam", index);
+      }
+      break;
+    case "void":
+      for (let index = 0; index < 2; index += 1) {
+        pushZone("dark", index);
+      }
+      break;
+  }
+
+  return decorations.filter((entity) => entity.x + entity.width < finishX);
 }
 
 export function generateLevel(input: GeneratorInput): LevelContent {
@@ -370,6 +477,7 @@ export function generateLevel(input: GeneratorInput): LevelContent {
       intensity,
       random: rng(),
       subRank,
+      tuning: input.tuning,
     });
 
     if (index > 0 && index % 4 === 0) {
@@ -416,90 +524,15 @@ export function generateLevel(input: GeneratorInput): LevelContent {
     }
   }
 
+  const theme = input.tuning?.theme ?? input.theme ?? "electric";
+  const ambience = themeAmbienceEntities(theme, finishX, rng);
+
   return {
     beatMap: input.beatMap,
-    entities: [...buildSupportingTerrain(finishX), ...entities],
+    entities: [...buildSupportingTerrain(finishX), ...entities, ...ambience],
     finishX,
     rules,
   };
-}
-
-const AI_TICK_MS = 1000 / 60;
-/** Enough horizon for the longest official track at paced horizontal speed. */
-const AI_MAX_TICKS = 1800;
-const AI_PRE_JUMP_DISTANCE = 52;
-
-function aiOrbOverlap(
-  player: PlayerState,
-  entities: readonly LevelEntity[],
-  rules: RunRules,
-): OrbEntity | undefined {
-  const playerLeft = player.x - rules.playerWidth / 2;
-  const playerRight = player.x + rules.playerWidth / 2;
-  const playerTop = player.y - rules.playerHeight;
-  const playerBottom = player.y;
-
-  for (const entity of entities) {
-    if (entity.type !== "orb") {
-      continue;
-    }
-    if (
-      playerRight > entity.x &&
-      playerLeft < entity.x + entity.width &&
-      playerBottom > entity.y &&
-      playerTop < entity.y + entity.height
-    ) {
-      return entity;
-    }
-  }
-
-  return undefined;
-}
-
-function decideAiInput(
-  state: RunState,
-  entities: readonly LevelEntity[],
-  rules: RunRules,
-): boolean {
-  if (state.player.mode === "ship") {
-    const channelCenterY = rules.spawnY - rules.playerHeight * 1.7;
-    return (
-      state.player.y > channelCenterY ||
-      (state.player.velocityY > 90 &&
-        state.player.y > channelCenterY - rules.playerHeight)
-    );
-  }
-
-  const overlappingOrb = aiOrbOverlap(state.player, entities, rules);
-
-  if (overlappingOrb && overlappingOrb.effect.kind === "impulse") {
-    return !state.consumedTriggerIds.has(overlappingOrb.id);
-  }
-
-  if (overlappingOrb && overlappingOrb.effect.kind === "kill") {
-    return false;
-  }
-
-  if (!state.player.grounded) {
-    return false;
-  }
-
-  for (const entity of entities) {
-    if (entity.type !== "spike" && entity.type !== "block") {
-      continue;
-    }
-    if (entity.type === "block" && entity.y >= state.player.y) {
-      continue;
-    }
-    const distance = entity.x - state.player.x;
-    const approachDistance =
-      entity.type === "block" ? AI_PRE_JUMP_DISTANCE * 2.2 : AI_PRE_JUMP_DISTANCE;
-    if (distance > 0 && distance < approachDistance) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 export type PlayabilityIssueCode =
@@ -585,46 +618,32 @@ export function analyzeLevelDifficulty(level: LevelContent): DifficultyAnalysis 
 export function validateGeneratedPlayability(
   level: LevelContent,
 ): PlayabilityValidationResult {
-  let state = createRunState(level.rules);
+  const result = simulateConservativeRun(level);
 
-  for (let tick = 0; tick < AI_MAX_TICKS; tick += 1) {
-    if (state.status === "dead") {
-      const x = Math.round(state.player.x);
-      const deathCause = state.deathCause ?? "unknown";
-      return {
-        issues: [
-          {
-            code: "ai-died",
-            deathCause,
-            message: `Conservative AI died at x=${x} (${deathCause}).`,
-            x,
-          },
-        ],
-        ok: false,
-      };
-    }
-
-    if (state.player.x >= level.finishX) {
-      return { issues: [], ok: true };
-    }
-
-    const jumpPressed = decideAiInput(state, level.entities, level.rules);
-    state = tickRun(
-      state,
-      { jumpPressed },
-      AI_TICK_MS,
-      level.rules,
-      level.entities,
-    );
+  if (!result.reachedFinish && result.deathCause) {
+    return {
+      issues: [
+        {
+          code: "ai-died",
+          deathCause: result.deathCause,
+          message: `Conservative AI died at x=${result.stoppedX} (${result.deathCause}).`,
+          x: result.stoppedX,
+        },
+      ],
+      ok: false,
+    };
   }
 
-  const x = Math.round(state.player.x);
+  if (result.reachedFinish) {
+    return { issues: [], ok: true };
+  }
+
   return {
     issues: [
       {
         code: "finish-not-reached",
-        message: `Conservative AI did not reach finish within ${AI_MAX_TICKS} ticks (stopped at x=${x}).`,
-        x,
+        message: `Conservative AI did not reach finish within ${SOLVER_MAX_TICKS} ticks (stopped at x=${result.stoppedX}).`,
+        x: result.stoppedX,
       },
     ],
     ok: false,

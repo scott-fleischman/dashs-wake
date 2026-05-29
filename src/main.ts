@@ -25,9 +25,27 @@ import {
 } from "./ui/level-creator";
 import { generateLevel } from "./core/generator";
 import {
+  buildGeneratedLevelRecord,
+  generatePlayableTunedLevel,
+} from "./core/generated-level-build";
+import {
+  generatorInputFromRecord,
+  generatorThemeToLevelColor,
+  generatorTuningFromRecord,
+} from "./core/generator-tuning";
+import type { GeneratorTuning } from "./core/generator-tuning";
+import { SOLVER_TICK_MS } from "./core/level-solver";
+import {
+  deleteRecordingsForLevel,
+  getLatestRecording,
+  hasRecording,
+  saveLevelRecording,
+} from "./persistence/level-recordings";
+import {
   applyCompletionAward,
   applyProgressAward,
   previewLevelCompletionReward,
+  type GeneratedLevelRecord,
   type PlayerProfile,
 } from "./core/profile";
 import { formatRewardSummary } from "./core/reward-summary";
@@ -49,9 +67,11 @@ import {
 import { loadProfile, saveProfile } from "./persistence/profile-repository";
 import {
   getOfficialLevelContent,
+  getOfficialLevelDemo,
   getOfficialLevelMetadata,
   levelKicker,
 } from "./content/official-levels";
+import type { LevelDemo } from "./core/level-solver";
 import { getGauntletStageContent } from "./content/electric-wake-stages";
 
 function requiredElement(id: string): HTMLElement {
@@ -72,6 +92,31 @@ function parseLevelIdFromHash(hash: string): string | null {
     return hash.slice("#play/".length) || null;
   }
   return null;
+}
+
+interface PlaybackRoute {
+  id: string;
+  kind: "generated" | "official";
+}
+
+function parsePlaybackRoute(
+  hash: string,
+  prefix: "#demo/" | "#replay/",
+): PlaybackRoute | null {
+  if (!hash.startsWith(prefix)) {
+    return null;
+  }
+
+  const path = hash.slice(prefix.length);
+  if (!path) {
+    return null;
+  }
+
+  if (path.startsWith("generated/")) {
+    return { kind: "generated", id: path.slice("generated/".length) };
+  }
+
+  return { kind: "official", id: path };
 }
 
 function equippedIconName(profile: PlayerProfile): string {
@@ -97,10 +142,23 @@ function applyAttemptResult(
   }).profile;
 
   if (snapshot.status === "complete") {
+    if (snapshot.runRecording && snapshot.runRecording.length > 0) {
+      saveLevelRecording(levelId, "personal", {
+        frames: snapshot.runRecording,
+        success: true,
+        tickMs: SOLVER_TICK_MS,
+      });
+    }
+
     next = applyCompletionAward(next, { levelId }).profile;
   }
 
   return next;
+}
+
+function contentForGeneratedRecord(record: GeneratedLevelRecord): LevelContent {
+  const tuning = generatorTuningFromRecord(record);
+  return generateLevel(generatorInputFromRecord(record, tuning));
 }
 
 const root = requiredElement("app");
@@ -248,12 +306,20 @@ function launchLevelRun(
   content: LevelContent,
   metadata: LevelRunMetadata,
   callbacks: LaunchLevelRunCallbacks,
+  options?: {
+    demoPlayback?: LevelDemo;
+    levelColor?: import("./core/profile").LevelColorTheme;
+    recordRun?: boolean;
+  },
 ): () => void {
+  const demoPlayback = options?.demoPlayback;
   backdrop.showLevel(
     content,
     selectedAppearance(profile),
-    profile.settings.levelColor,
+    options?.levelColor ?? profile.settings.levelColor,
     profile.settings.speedMultiplier,
+    demoPlayback,
+    options?.recordRun ?? !demoPlayback,
   );
   let attemptResolved = false;
 
@@ -269,7 +335,23 @@ function launchLevelRun(
     callbacks.onAttemptResolved(snapshot);
   };
 
-  return mountFirstWake(root, metadata, {
+  return mountFirstWake(root, {
+    ...metadata,
+    personalReplayAvailable:
+      metadata.levelId !== undefined &&
+      hasRecording(metadata.levelId, "personal"),
+    onWatchPersonalReplay:
+      metadata.levelId !== undefined
+        ? () => {
+            const isGenerated = profile.generatedLevels.some(
+              (entry) => entry.id === metadata.levelId,
+            );
+            window.location.hash = isGenerated
+              ? `#replay/generated/${metadata.levelId}`
+              : `#replay/${metadata.levelId}`;
+          }
+        : undefined,
+  }, {
     onJumpHold: (held) => backdrop.setLevelJumpHeld(held),
     onPauseChange: (paused) => {
       backdrop.setLevelPaused(paused);
@@ -292,6 +374,59 @@ function launchLevelRun(
         resolveSnapshot(snapshot);
         uiListener(snapshot);
       });
+    },
+  });
+}
+
+function launchDemoRun(
+  playRoute: PlaybackRoute,
+  content: LevelContent,
+  metadata: LevelRunMetadata,
+  demo: LevelDemo,
+  returnHash: string,
+  playbackKind: "personal" | "reference" = "reference",
+  levelColor = profile.settings.levelColor,
+): () => void {
+  const playHash =
+    playRoute.kind === "generated"
+      ? `#generated/${playRoute.id}`
+      : `#play/${playRoute.id}`;
+
+  backdrop.showLevel(
+    content,
+    selectedAppearance(profile),
+    levelColor,
+    profile.settings.speedMultiplier,
+    demo,
+    false,
+  );
+
+  return mountFirstWake(root, metadata, {
+    demoPlayback: true,
+    playbackKind,
+    onExitDemo: () => {
+      window.location.hash = returnHash;
+    },
+    onStartPlay: () => {
+      window.location.hash = playHash;
+    },
+    onJumpHold: () => false,
+    onPauseChange: (paused) => {
+      backdrop.setLevelPaused(paused);
+      setAudioPlaybackPaused(paused);
+    },
+    onRestart: () => backdrop.restartLevel(),
+    onReturnToLobby: () => {
+      window.location.hash = "#levels";
+    },
+    onSpeedChange: applyActiveRunSpeed,
+    speedMultiplier: profile.settings.speedMultiplier,
+    onSnapshotChange: (uiListener) => {
+      if (!uiListener) {
+        backdrop.setLevelSnapshotListener(undefined);
+        return;
+      }
+      backdrop.setLevelSnapshotListener(uiListener);
     },
   });
 }
@@ -351,6 +486,12 @@ function renderRoute(): void {
       onPlay: (levelId) => {
         window.location.hash = `#play/${levelId}`;
       },
+      onWatchDemo: (levelId) => {
+        window.location.hash = `#demo/${levelId}`;
+      },
+      onWatchReplay: (levelId) => {
+        window.location.hash = `#replay/${levelId}`;
+      },
       onOpenLobby: () => {
         window.location.hash = "#lobby";
       },
@@ -383,6 +524,7 @@ function renderRoute(): void {
         if (removed?.audioBlobKey) {
           void deleteAudioBlob(removed.audioBlobKey).catch(() => undefined);
         }
+        deleteRecordingsForLevel(recordId);
         updateProfile({
           ...profile,
           generatedLevels: profile.generatedLevels.filter(
@@ -395,24 +537,34 @@ function renderRoute(): void {
         creatorDraft = null;
         window.location.hash = `#creator/${recordId}`;
       },
-      onGenerate: (difficulty, subRank, theme) => {
+      onGenerate: (tuning) => {
         const nextIndex =
           profile.generatedLevels.filter(
             (entry) => entry.audioFileName === undefined,
           ).length + 1;
-        const record = buildPlaceholderGeneratedLevel(
-          nextIndex,
-          difficulty,
-          subRank,
-          theme,
-        );
+        let record = buildGeneratedLevelRecord(nextIndex, tuning);
+        const built = generatePlayableTunedLevel(record, tuning);
+        record = { ...record, seed: built.seed };
+
         updateProfile({
           ...profile,
           generatedLevels: [...profile.generatedLevels, record],
         });
-        renderRoute();
+
+        if (built.demo.success) {
+          saveLevelRecording(record.id, "reference", built.demo);
+          window.location.hash = `#demo/generated/${record.id}`;
+        } else {
+          renderRoute();
+        }
       },
-      onImportAudio: (file, difficulty, subRank, theme) => {
+      onWatchDemo: (recordId) => {
+        window.location.hash = `#demo/generated/${recordId}`;
+      },
+      onWatchReplay: (recordId) => {
+        window.location.hash = `#replay/generated/${recordId}`;
+      },
+      onImportAudio: (file, tuning) => {
         const finalize = (
           audioBlobKey: string | undefined,
           analyzed: AnalyzedAudio | null,
@@ -421,20 +573,23 @@ function renderRoute(): void {
             profile.generatedLevels.filter(
               (entry) => entry.audioFileName !== undefined,
             ).length + 1;
-          const record = buildAudioDerivedLevel(
+          let record = buildAudioDerivedLevel(
             nextIndex,
             file.name,
             audioBlobKey,
             analyzed,
-            difficulty,
-            subRank,
-            theme,
+            tuning,
           );
+          const built = generatePlayableTunedLevel(record, tuning);
+          record = { ...record, seed: built.seed };
           updateProfile({
             ...profile,
             generatedLevels: [...profile.generatedLevels, record],
           });
-          if (window.location.hash === "#generated") {
+          if (built.demo.success) {
+            saveLevelRecording(record.id, "reference", built.demo);
+            window.location.hash = `#demo/generated/${record.id}`;
+          } else if (window.location.hash === "#generated") {
             renderRoute();
           }
         };
@@ -600,15 +755,7 @@ function renderRoute(): void {
     }
 
     const content =
-      contentForCreatedLevel(record) ??
-      generateLevel({
-        beatIntensities: record.beatIntensities,
-        beatMap: record.beatMap,
-        difficulty: record.difficulty,
-        seed: record.seed,
-        subRank: record.subRank,
-        theme: record.theme,
-      });
+      contentForCreatedLevel(record) ?? contentForGeneratedRecord(record);
 
     if (record.audioBlobKey) {
       void startAudioPlayback(
@@ -619,13 +766,17 @@ function renderRoute(): void {
 
     disposeView = launchLevelRun(
       content,
-      buildLevelRunMetadata(
-        record.source === "creator" ? "Created Level" : `Generated Seed ${record.seed}`,
-        record.name,
-      ),
       {
-        onAttemptResolved: () => {
-          // Generated levels do not yet award progression.
+        ...buildLevelRunMetadata(
+          record.source === "creator" ? "Created Level" : `Generated Seed ${record.seed}`,
+          record.name,
+        ),
+        levelId: record.id,
+      },
+      {
+        onAttemptResolved: (snapshot) => {
+          profile = applyAttemptResult(profile, recordId, snapshot);
+          saveProfile(profile);
         },
         onRestart: () => {
           if (record.audioBlobKey) {
@@ -639,6 +790,9 @@ function renderRoute(): void {
         onReturnHome: () => {
           window.location.hash = "#generated";
         },
+      },
+      {
+        levelColor: generatorThemeToLevelColor(record.theme ?? "electric"),
       },
     );
     return;
@@ -739,6 +893,82 @@ function renderRoute(): void {
     return;
   }
 
+  const replayRoute = parsePlaybackRoute(hash, "#replay/");
+  const demoRoute = parsePlaybackRoute(hash, "#demo/");
+
+  if (replayRoute || demoRoute) {
+    const route = replayRoute ?? demoRoute!;
+    const isReplay = replayRoute !== null;
+    const returnHash =
+      route.kind === "generated" ? "#generated" : isReplay ? "#levels" : "#levels";
+
+    let content: LevelContent;
+    let runMetadata: LevelRunMetadata;
+    let levelColor = profile.settings.levelColor;
+    let audioPath: string | undefined;
+
+    if (route.kind === "official") {
+      const officialMeta = getOfficialLevelMetadata(route.id);
+      if (!officialMeta) {
+        window.location.hash = "#levels";
+        return;
+      }
+
+      try {
+        content = getOfficialLevelContent(route.id);
+      } catch {
+        window.location.hash = "#levels";
+        return;
+      }
+
+      runMetadata = {
+        ...buildLevelRunMetadata(levelKicker(route.id), officialMeta.name),
+        levelId: route.id,
+        trackLabel: `${officialMeta.track.title} - ${officialMeta.track.artist}`,
+      };
+      audioPath = officialMeta.track.audioPath;
+    } else {
+      const record = profile.generatedLevels.find((entry) => entry.id === route.id);
+      if (!record) {
+        window.location.hash = "#generated";
+        return;
+      }
+
+      content = contentForGeneratedRecord(record);
+      runMetadata = {
+        ...buildLevelRunMetadata("Generated Level", record.name),
+        levelId: record.id,
+      };
+      levelColor = generatorThemeToLevelColor(record.theme ?? "electric");
+    }
+
+    const demo = isReplay
+      ? getLatestRecording(route.id, "personal")
+      : route.kind === "official"
+        ? getOfficialLevelDemo(route.id)
+        : getLatestRecording(route.id, "reference");
+
+    if (!demo) {
+      window.location.hash = returnHash;
+      return;
+    }
+
+    if (audioPath) {
+      startOfficialAudioPlayback(audioPath, profile.settings.speedMultiplier);
+    }
+
+    disposeView = launchDemoRun(
+      route,
+      content,
+      runMetadata,
+      demo,
+      returnHash,
+      isReplay ? "personal" : "reference",
+      levelColor,
+    );
+    return;
+  }
+
   const levelId = parseLevelIdFromHash(hash);
 
   if (levelId) {
@@ -771,6 +1001,7 @@ function renderRoute(): void {
       {
         ...buildLevelRunMetadata(levelKicker(levelId), metadata.name),
         completionKeyReward,
+        levelId,
         previousBestPercent,
         trackLabel: `${metadata.track.title} - ${metadata.track.artist}`,
       },

@@ -848,9 +848,73 @@ kbd {
   font-size: 0.8rem;
 }
 
+.level-focus-info .level-profile {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  margin-top: 0.35rem;
+  opacity: 0.88;
+}
+
+.level-focus-actions {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
 .level-focus-card .play-button {
   height: clamp(5.5rem, 12vw, 7rem);
   width: clamp(5.5rem, 12vw, 7rem);
+}
+
+.level-demo-button {
+  font-size: 0.82rem;
+  min-width: 8.5rem;
+}
+
+.first-wake-demo .run-controls {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.generator-tuning-panel {
+  background: rgba(8, 22, 36, 0.72);
+  border: 1px solid rgba(120, 190, 220, 0.2);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 auto 1rem;
+  max-width: 52rem;
+  padding: 0.85rem 1rem;
+  width: min(100%, 52rem);
+}
+
+.generator-tuning-panel h2 {
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.generator-tuning-selects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.generator-tuning-row {
+  align-items: center;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: 9.5rem 1fr 2.5rem;
+}
+
+.generated-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 .level-carousel-nav {

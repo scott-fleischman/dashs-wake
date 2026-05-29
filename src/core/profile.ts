@@ -1,3 +1,4 @@
+import type { GeneratorTuning } from "./generator-tuning";
 import type { LevelEntity } from "./run-simulation";
 
 export type LevelColorTheme = "neon" | "sunset" | "forest" | "void";
@@ -31,10 +32,19 @@ export interface GeneratedLevelRecord {
     | "insane"
     | "demon"
     | "nightmare";
+  generatorTuning?: GeneratorTuning;
   id: string;
   name: string;
   subRank?: "bronze" | "gold" | "diamond" | "void";
-  theme?: "electric" | "forest" | "sunset" | "void";
+  theme?:
+    | "cave"
+    | "disco"
+    | "electric"
+    | "flash"
+    | "forest"
+    | "space"
+    | "sunset"
+    | "void";
   seed: number;
   source?: "creator" | "generator";
   synced?: boolean;

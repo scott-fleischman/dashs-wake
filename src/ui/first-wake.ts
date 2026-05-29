@@ -7,7 +7,10 @@ export interface LevelRunMetadata {
   completionKeyReward?: Reward;
   equippedIcon: string;
   kicker: string;
+  levelId?: string;
   name: string;
+  onWatchPersonalReplay?: () => void;
+  personalReplayAvailable?: boolean;
   previousBestPercent?: number;
   trackLabel?: string;
 }
@@ -22,6 +25,10 @@ interface LevelRunActions {
   ) => void;
   onSpeedChange: (speedMultiplier: number) => void;
   speedMultiplier: number;
+  demoPlayback?: boolean;
+  playbackKind?: "personal" | "reference";
+  onExitDemo?: () => void;
+  onStartPlay?: () => void;
 }
 
 const JUMP_KEYS = new Set(["Space", "ArrowUp"]);
@@ -160,7 +167,19 @@ export function mountFirstWake(
         <p class="result-reward" data-testid="level-complete-reward" hidden></p>
         <div class="overlay-actions">
           <button class="primary-button" type="button" data-action="replay">Replay</button>
+          <button class="utility-button" type="button" data-action="watch-personal-replay" hidden data-testid="watch-personal-replay">Watch Your Run</button>
           <button class="utility-button" type="button" data-action="complete-lobby">Return to Lobby</button>
+        </div>
+      </section>
+
+      <section class="pause-overlay result-overlay" role="dialog" aria-label="Demo complete" hidden data-testid="demo-complete-overlay">
+        <p class="kicker">Reference Run</p>
+        <h2>Demo Complete</h2>
+        <p class="result-message">This is how the conservative route clears the course.</p>
+        <div class="overlay-actions">
+          <button class="primary-button" type="button" data-action="demo-replay">Watch Again</button>
+          <button class="utility-button" type="button" data-action="demo-play">Play Level</button>
+          <button class="utility-button" type="button" data-action="demo-exit">Back to Levels</button>
         </div>
       </section>
     </main>
@@ -214,6 +233,28 @@ export function mountFirstWake(
   const completeLobbyButton = root.querySelector<HTMLButtonElement>(
     "[data-action='complete-lobby']",
   );
+  const watchPersonalReplayButton = root.querySelector<HTMLButtonElement>(
+    "[data-action='watch-personal-replay']",
+  );
+  const demoCompleteOverlay = root.querySelector<HTMLElement>(
+    "[data-testid='demo-complete-overlay']",
+  );
+  const demoCompleteKicker =
+    demoCompleteOverlay?.querySelector<HTMLElement>(".kicker") ?? null;
+  const demoCompleteHeading =
+    demoCompleteOverlay?.querySelector<HTMLElement>("h2") ?? null;
+  const demoCompleteMessage =
+    demoCompleteOverlay?.querySelector<HTMLElement>(".result-message") ?? null;
+  const demoReplayButton = root.querySelector<HTMLButtonElement>(
+    "[data-action='demo-replay']",
+  );
+  const demoPlayButton = root.querySelector<HTMLButtonElement>(
+    "[data-action='demo-play']",
+  );
+  const demoExitButton = root.querySelector<HTMLButtonElement>(
+    "[data-action='demo-exit']",
+  );
+  const inputDeck = root.querySelector<HTMLElement>(".input-deck");
 
   if (
     !status ||
@@ -238,9 +279,41 @@ export function mountFirstWake(
     !restartButton ||
     !replayButton ||
     !failedLobbyButton ||
-    !completeLobbyButton
+    !completeLobbyButton ||
+    !watchPersonalReplayButton ||
+    !demoCompleteOverlay ||
+    !demoReplayButton ||
+    !demoPlayButton ||
+    !demoExitButton ||
+    !inputDeck
   ) {
     throw new Error("First Wake controls did not mount correctly.");
+  }
+
+  if (metadata.personalReplayAvailable) {
+    watchPersonalReplayButton.hidden = false;
+  }
+
+  const demoPlayback = actions.demoPlayback === true;
+  const personalPlayback = actions.playbackKind === "personal";
+  if (demoPlayback) {
+    root.classList.add("first-wake-demo");
+    inputDeck.hidden = true;
+    if (kickerEl) {
+      kickerEl.textContent = personalPlayback ? "Your Run" : "Reference Run";
+    }
+    if (status) {
+      status.textContent = "Demo";
+    }
+    pulseButton.disabled = true;
+
+    if (personalPlayback && demoCompleteKicker && demoCompleteHeading && demoCompleteMessage) {
+      demoCompleteKicker.textContent = "Your Run";
+      demoCompleteHeading.textContent = "Playback Complete";
+      demoCompleteMessage.textContent =
+        "This is your saved successful run through the course.";
+      demoPlayButton.hidden = true;
+    }
   }
 
   let paused = false;
@@ -427,9 +500,10 @@ export function mountFirstWake(
     const cue = MODE_CUES[snapshot.mode];
     modeReadout.textContent = cue.label;
     cueReadout.textContent = cue.hint;
-    failedOverlay.hidden = snapshot.status !== "dead";
-    completeOverlay.hidden = snapshot.status !== "complete";
-    pulseButton.disabled = snapshot.status !== "running";
+    failedOverlay.hidden = demoPlayback || snapshot.status !== "dead";
+    completeOverlay.hidden = demoPlayback || snapshot.status !== "complete";
+    demoCompleteOverlay.hidden = !demoPlayback || snapshot.status !== "complete";
+    pulseButton.disabled = demoPlayback || snapshot.status !== "running";
     speedSelect.disabled = false;
 
     if (snapshot.status === "dead") {
@@ -441,10 +515,16 @@ export function mountFirstWake(
     }
 
     if (!paused) {
-      status.textContent = RUN_STATUS_LABELS[snapshot.status];
+      status.textContent =
+        demoPlayback && snapshot.status === "complete"
+          ? "Demo complete"
+          : demoPlayback
+            ? "Demo"
+            : RUN_STATUS_LABELS[snapshot.status];
     }
 
-    const participatesInRewards = metadata.previousBestPercent !== undefined;
+    const participatesInRewards =
+      !demoPlayback && metadata.previousBestPercent !== undefined;
 
     if (snapshot.status === "dead") {
       const copy = resultOverlayCopyForDeath(snapshot.deathCause);
@@ -466,7 +546,7 @@ export function mountFirstWake(
       restartButton.focus();
     }
 
-    if (snapshot.status === "complete") {
+    if (snapshot.status === "complete" && !demoPlayback) {
       completeMessage.textContent = completionResultMessage(metadata.name);
       const reward: Reward = {};
       if (participatesInRewards) {
@@ -501,16 +581,26 @@ export function mountFirstWake(
   completeLobbyButton.addEventListener("click", actions.onReturnToLobby);
   restartButton.addEventListener("click", restart);
   replayButton.addEventListener("click", restart);
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("keyup", onKeyUp);
+  watchPersonalReplayButton.addEventListener("click", () => {
+    metadata.onWatchPersonalReplay?.();
+  });
+  demoReplayButton.addEventListener("click", restart);
+  demoPlayButton.addEventListener("click", () => actions.onStartPlay?.());
+  demoExitButton.addEventListener("click", () => actions.onExitDemo?.());
+  if (!demoPlayback) {
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+  }
 
   return () => {
     window.clearTimeout(feedbackTimer);
     runSurface.removeEventListener("pointerdown", onSurfacePointerDown);
     window.removeEventListener("pointerup", releaseHold);
     window.removeEventListener("pointercancel", releaseHold);
-    window.removeEventListener("keydown", onKeyDown);
-    window.removeEventListener("keyup", onKeyUp);
+    if (!demoPlayback) {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    }
     releaseHold();
     actions.onSnapshotChange(undefined);
     root.classList.remove("first-wake-paused");

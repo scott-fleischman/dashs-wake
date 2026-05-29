@@ -1,3 +1,11 @@
+import {
+  analyzeLevelProfile,
+  type LevelProfileAnalysis,
+} from "../core/level-analysis";
+import {
+  recordConservativeDemo,
+  type LevelDemo,
+} from "../core/level-solver";
 import { combinedRunLevel } from "./combined-run";
 import { firstWakeLevel, type LevelContent } from "./first-wake";
 import { launchSequenceLevel } from "./launch-sequence";
@@ -171,6 +179,41 @@ export function levelKicker(id: string): string {
   }
 
   return `Official Level ${String(index + 1).padStart(2, "0")}`;
+}
+
+const officialDemoCache = new Map<string, LevelDemo>();
+const officialProfileCache = new Map<string, LevelProfileAnalysis>();
+
+export function getOfficialLevelDemo(levelId: string): LevelDemo | null {
+  if (!LEVEL_CONTENT_BY_ID[levelId]) {
+    return null;
+  }
+
+  if (!officialDemoCache.has(levelId)) {
+    officialDemoCache.set(
+      levelId,
+      recordConservativeDemo(getOfficialLevelContent(levelId)),
+    );
+  }
+
+  const demo = officialDemoCache.get(levelId)!;
+  return demo.success ? demo : null;
+}
+
+export function getOfficialLevelProfile(levelId: string): LevelProfileAnalysis {
+  if (!officialProfileCache.has(levelId)) {
+    const content = getOfficialLevelContent(levelId);
+    const demo = officialDemoCache.get(levelId) ?? recordConservativeDemo(content);
+    if (!officialDemoCache.has(levelId)) {
+      officialDemoCache.set(levelId, demo);
+    }
+    officialProfileCache.set(
+      levelId,
+      analyzeLevelProfile(content, demo.success ? demo : null),
+    );
+  }
+
+  return officialProfileCache.get(levelId)!;
 }
 
 export function formatLevelClearList(

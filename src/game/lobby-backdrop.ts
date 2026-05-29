@@ -12,6 +12,7 @@ import {
   tickRun,
   type RunState,
 } from "../core/run-simulation";
+import type { LevelDemo, LevelDemoFrame } from "../core/level-solver";
 import {
   consumeSimulationTicks,
   SIMULATION_STEP_MS,
@@ -108,6 +109,7 @@ export interface LevelSnapshot {
   deathCause?: "block" | "fall" | "spike" | "trap";
   mode: "cube" | "ship";
   percent: number;
+  runRecording?: readonly LevelDemoFrame[];
   status: "complete" | "dead" | "running";
 }
 
@@ -258,7 +260,9 @@ function createPlayerShip(
 
 interface LevelSceneInitData {
   appearance?: CosmeticAppearance;
+  demoPlayback?: LevelDemo;
   levelContent?: LevelContent;
+  recordRun?: boolean;
   runSpeedMultiplier?: number;
   theme?: LevelColorTheme;
 }
@@ -268,6 +272,10 @@ class LevelScene extends Phaser.Scene {
   private appearance: CosmeticAppearance = DEFAULT_PLAYER_APPEARANCE;
   private attempt = 1;
   private courseLayer?: Phaser.GameObjects.Container;
+  private demoFrameIndex = 0;
+  private demoPlayback?: LevelDemo;
+  private recordRun = false;
+  private runRecordingFrames: LevelDemoFrame[] = [];
   private cubeJumpPending = false;
   private cubeInputBufferMs = 0;
   private worldOffsetY = 0;
@@ -299,11 +307,17 @@ class LevelScene extends Phaser.Scene {
       this.theme = data.theme;
     }
     this.runSpeedMultiplier = data.runSpeedMultiplier ?? 1;
+    this.demoPlayback = data.demoPlayback;
+    this.recordRun = data.recordRun ?? false;
+    this.demoFrameIndex = 0;
+    this.runRecordingFrames = [];
   }
 
   create(): void {
     this.accumulator = 0;
     this.attempt = 1;
+    this.demoFrameIndex = 0;
+    this.runRecordingFrames = [];
     this.cubeJumpPending = false;
     this.cubeInputBufferMs = 0;
     this.jumpHeld = false;
@@ -331,6 +345,28 @@ class LevelScene extends Phaser.Scene {
     this.accumulator = accumulator;
 
     for (let step = 0; step < tickCount; step += 1) {
+      if (this.demoPlayback) {
+        if (this.demoFrameIndex >= this.demoPlayback.frames.length) {
+          this.status = "complete";
+          break;
+        }
+
+        const frame = this.demoPlayback.frames[this.demoFrameIndex]!;
+        this.demoFrameIndex += 1;
+        this.state = {
+          ...this.state,
+          player: {
+            grounded: Math.abs(frame.velocityY) < 12,
+            mode: frame.mode,
+            velocityY: frame.velocityY,
+            x: frame.x,
+            y: frame.y,
+          },
+          status: "running",
+        };
+        continue;
+      }
+
       const jumpPressed =
         this.state.player.mode === "ship"
           ? this.jumpHeld
@@ -346,6 +382,14 @@ class LevelScene extends Phaser.Scene {
         this.levelContent.rules,
         this.levelContent.entities,
       );
+      if (this.recordRun) {
+        this.runRecordingFrames.push({
+          mode: this.state.player.mode,
+          velocityY: this.state.player.velocityY,
+          x: this.state.player.x,
+          y: this.state.player.y,
+        });
+      }
       this.cubeJumpPending = false;
       if (this.state.player.mode === "cube" && this.cubeInputBufferMs > 0) {
         const impulseActivated =
@@ -380,6 +424,10 @@ class LevelScene extends Phaser.Scene {
   }
 
   setJumpHeld(held: boolean): boolean {
+    if (this.demoPlayback) {
+      return false;
+    }
+
     if (this.paused || this.status !== "running") {
       this.cubeJumpPending = false;
       this.jumpHeld = false;
@@ -435,6 +483,8 @@ class LevelScene extends Phaser.Scene {
     this.cubeInputBufferMs = 0;
     this.jumpHeld = false;
     this.paused = false;
+    this.demoFrameIndex = 0;
+    this.runRecordingFrames = [];
     this.state = resetRunState(this.state, this.levelContent.rules);
     this.status = "running";
     this.updatePresentation();
@@ -747,6 +797,9 @@ class LevelScene extends Phaser.Scene {
       ...(this.state.deathCause ? { deathCause: this.state.deathCause } : {}),
       mode: this.state.player.mode,
       percent,
+      ...(this.status === "complete" && this.runRecordingFrames.length > 0
+        ? { runRecording: this.runRecordingFrames.slice() }
+        : {}),
       status: this.status,
     };
     const key = JSON.stringify(snapshot);
@@ -775,6 +828,8 @@ export interface BackdropController {
     appearance?: CosmeticAppearance,
     theme?: LevelColorTheme,
     runSpeedMultiplier?: number,
+    demoPlayback?: LevelDemo,
+    recordRun?: boolean,
   ): void;
 }
 
@@ -786,6 +841,8 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
   let pendingAppearance: CosmeticAppearance | undefined;
   let pendingTheme: LevelColorTheme | undefined;
   let pendingRunSpeedMultiplier = 1;
+  let pendingDemoPlayback: LevelDemo | undefined;
+  let pendingRecordRun = false;
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -822,6 +879,8 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
     }
     game.scene.start(LEVEL_SCENE_KEY, {
       appearance: pendingAppearance,
+      demoPlayback: pendingDemoPlayback,
+      recordRun: pendingRecordRun,
       levelContent: pendingLevelContent ?? firstWakeLevel,
       runSpeedMultiplier: pendingRunSpeedMultiplier,
       theme: pendingTheme,
@@ -883,11 +942,15 @@ export function startLobbyBackdrop(parent: HTMLElement): BackdropController {
       appearance?: CosmeticAppearance,
       theme?: LevelColorTheme,
       runSpeedMultiplier?: number,
+      demoPlayback?: LevelDemo,
+      recordRun?: boolean,
     ) => {
       pendingLevelContent = content;
       pendingAppearance = appearance;
       pendingTheme = theme;
       pendingRunSpeedMultiplier = runSpeedMultiplier ?? 1;
+      pendingDemoPlayback = demoPlayback;
+      pendingRecordRun = recordRun ?? false;
       requestedScene = LEVEL_SCENE_KEY;
       applyRequestedScene();
     },

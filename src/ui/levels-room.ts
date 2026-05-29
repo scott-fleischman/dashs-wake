@@ -1,15 +1,21 @@
 import {
   formatLevelClearList,
+  getOfficialLevelDemo,
+  getOfficialLevelProfile,
   levelKicker,
   officialLevelCatalog,
   type OfficialLevelDifficulty,
   type OfficialLevelMetadata,
 } from "../content/official-levels";
+import { formatLevelProfileSummary } from "../core/level-analysis";
 import { isUnlockMet, type PlayerProfile } from "../core/profile";
+import { hasRecording } from "../persistence/level-recordings";
 import { renderProfileStats } from "./lobby";
 
 interface OfficialLevelsRoomActions {
   onPlay: (levelId: string) => void;
+  onWatchDemo: (levelId: string) => void;
+  onWatchReplay: (levelId: string) => void;
   onOpenLobby: () => void;
 }
 
@@ -100,7 +106,8 @@ export function mountOfficialLevelsRoom(
 
   const help = document.createElement("p");
   help.className = "level-select-help";
-  help.textContent = "Left / Right swap level, Space starts, L opens lobby";
+  help.textContent =
+    "Left / Right swap level, Space plays, D watches demo, L opens lobby";
 
   header.append(lobbyButton, heading, help);
   main.appendChild(header);
@@ -190,6 +197,15 @@ export function mountOfficialLevelsRoom(
       ),
     );
 
+    const levelProfile = getOfficialLevelProfile(metadata.id);
+    info.appendChild(
+      makeStat(
+        "level-stat level-profile",
+        formatLevelProfileSummary(levelProfile),
+        `${testId}-profile`,
+      ),
+    );
+
     const playButton = document.createElement("button");
     playButton.className = "play-button";
     playButton.type = "button";
@@ -209,7 +225,32 @@ export function mountOfficialLevelsRoom(
     playButton.append(symbol, label);
     playButtons.push(playButton);
 
-    article.append(preview, info, playButton);
+    const levelDemo = getOfficialLevelDemo(metadata.id);
+    const demoButton = document.createElement("button");
+    demoButton.className = "utility-button level-demo-button";
+    demoButton.type = "button";
+    demoButton.dataset.action = "demo";
+    demoButton.dataset.levelId = metadata.id;
+    demoButton.setAttribute("data-testid", `${testId}-demo`);
+    demoButton.textContent = levelDemo ? "Watch Demo" : "Demo Unavailable";
+    demoButton.disabled = !levelDemo;
+
+    const replayButton = document.createElement("button");
+    replayButton.className = "utility-button level-demo-button";
+    replayButton.type = "button";
+    replayButton.dataset.action = "replay";
+    replayButton.dataset.levelId = metadata.id;
+    replayButton.setAttribute("data-testid", `${testId}-replay`);
+    replayButton.textContent = hasRecording(metadata.id, "personal")
+      ? "Your Run"
+      : "No Saved Run";
+    replayButton.disabled = !hasRecording(metadata.id, "personal");
+
+    const actionsRow = document.createElement("div");
+    actionsRow.className = "level-focus-actions";
+    actionsRow.append(demoButton, replayButton, playButton);
+
+    article.append(preview, info, actionsRow);
     track.appendChild(article);
 
     const dotButton = document.createElement("button");
@@ -250,6 +291,14 @@ export function mountOfficialLevelsRoom(
     actions.onPlay(current.id);
   };
 
+  const watchDemoActive = (): void => {
+    const current = officialLevelCatalog[activeIndex];
+    if (!current || !getOfficialLevelDemo(current.id)) {
+      return;
+    }
+    actions.onWatchDemo(current.id);
+  };
+
   const handleKeyDown = (event: KeyboardEvent): void => {
     if (event.defaultPrevented || event.repeat) return;
     if (event.code === "ArrowRight" || event.code === "KeyD") {
@@ -267,6 +316,11 @@ export function mountOfficialLevelsRoom(
       playActive();
       return;
     }
+    if (event.code === "KeyD") {
+      event.preventDefault();
+      watchDemoActive();
+      return;
+    }
     if (event.code === "KeyL") {
       event.preventDefault();
       actions.onOpenLobby();
@@ -275,6 +329,30 @@ export function mountOfficialLevelsRoom(
 
   const playHandlers = playButtons.map((button) => {
     const handler = (): void => actions.onPlay(button.dataset.levelId ?? "level_1");
+    button.addEventListener("click", handler);
+    return { button, handler };
+  });
+  const demoHandlers = Array.from(
+    main.querySelectorAll<HTMLButtonElement>("[data-action='demo']"),
+  ).map((button) => {
+    const handler = (): void => {
+      const levelId = button.dataset.levelId;
+      if (levelId) {
+        actions.onWatchDemo(levelId);
+      }
+    };
+    button.addEventListener("click", handler);
+    return { button, handler };
+  });
+  const replayHandlers = Array.from(
+    main.querySelectorAll<HTMLButtonElement>("[data-action='replay']"),
+  ).map((button) => {
+    const handler = (): void => {
+      const levelId = button.dataset.levelId;
+      if (levelId) {
+        actions.onWatchReplay(levelId);
+      }
+    };
     button.addEventListener("click", handler);
     return { button, handler };
   });
@@ -294,6 +372,12 @@ export function mountOfficialLevelsRoom(
     lobbyButton.removeEventListener("click", actions.onOpenLobby);
     window.removeEventListener("keydown", handleKeyDown);
     for (const { button, handler } of playHandlers) {
+      button.removeEventListener("click", handler);
+    }
+    for (const { button, handler } of demoHandlers) {
+      button.removeEventListener("click", handler);
+    }
+    for (const { button, handler } of replayHandlers) {
       button.removeEventListener("click", handler);
     }
     for (const { button, handler } of dotHandlers) {

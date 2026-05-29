@@ -37,9 +37,13 @@ describe("agent gate: module boot", () => {
 
   it("loads the generator after content modules initialize", async () => {
     const { analyzeLevelDifficulty } = await import("../../src/core/generator");
+    const { analyzeLevelProfile } = await import("../../src/core/level-analysis");
+    const { getOfficialLevelDemo } = await import("../../src/content/official-levels");
 
     expect(typeof generateLevel).toBe("function");
     expect(typeof analyzeLevelDifficulty).toBe("function");
+    expect(typeof analyzeLevelProfile).toBe("function");
+    expect(getOfficialLevelDemo("level_1")).not.toBeNull();
   });
 });
 
