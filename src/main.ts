@@ -94,6 +94,13 @@ function parseLevelIdFromHash(hash: string): string | null {
   return null;
 }
 
+function parseLevelsFocusFromHash(hash: string): string | null {
+  if (!hash.startsWith("#levels/")) {
+    return null;
+  }
+  return hash.slice("#levels/".length) || null;
+}
+
 interface PlaybackRoute {
   id: string;
   kind: "generated" | "official";
@@ -480,22 +487,27 @@ function renderRoute(): void {
     return;
   }
 
-  if (hash === "#levels" || hash === "") {
+  if (hash === "#levels" || hash === "" || hash.startsWith("#levels/")) {
     backdrop.showLobby();
-    disposeView = mountOfficialLevelsRoom(root, profile, {
-      onPlay: (levelId) => {
-        window.location.hash = `#play/${levelId}`;
+    disposeView = mountOfficialLevelsRoom(
+      root,
+      profile,
+      {
+        onPlay: (levelId) => {
+          window.location.hash = `#play/${levelId}`;
+        },
+        onWatchDemo: (levelId) => {
+          window.location.hash = `#demo/${levelId}`;
+        },
+        onWatchReplay: (levelId) => {
+          window.location.hash = `#replay/${levelId}`;
+        },
+        onOpenLobby: () => {
+          window.location.hash = "#lobby";
+        },
       },
-      onWatchDemo: (levelId) => {
-        window.location.hash = `#demo/${levelId}`;
-      },
-      onWatchReplay: (levelId) => {
-        window.location.hash = `#replay/${levelId}`;
-      },
-      onOpenLobby: () => {
-        window.location.hash = "#lobby";
-      },
-    });
+      parseLevelsFocusFromHash(hash) ?? undefined,
+    );
     return;
   }
 
@@ -900,7 +912,7 @@ function renderRoute(): void {
     const route = replayRoute ?? demoRoute!;
     const isReplay = replayRoute !== null;
     const returnHash =
-      route.kind === "generated" ? "#generated" : isReplay ? "#levels" : "#levels";
+      route.kind === "generated" ? "#generated" : `#levels/${route.id}`;
 
     let content: LevelContent;
     let runMetadata: LevelRunMetadata;

@@ -85,6 +85,7 @@ export function mountOfficialLevelsRoom(
   root: HTMLElement,
   profile: PlayerProfile,
   actions: OfficialLevelsRoomActions,
+  initialLevelId?: string,
 ): () => void {
   const main = document.createElement("main");
   main.className = "room levels-room level-select-screen";
@@ -269,6 +270,14 @@ export function mountOfficialLevelsRoom(
     isLevelUnlocked(metadata, profile),
   );
   let activeIndex = firstPlayableIndex >= 0 ? firstPlayableIndex : 0;
+  if (initialLevelId) {
+    const focusedIndex = officialLevelCatalog.findIndex(
+      (metadata) => metadata.id === initialLevelId,
+    );
+    if (focusedIndex >= 0) {
+      activeIndex = focusedIndex;
+    }
+  }
 
   const updateCarousel = (): void => {
     track.style.transform = `translate3d(-${activeIndex * 100}%, 0, 0)`;
