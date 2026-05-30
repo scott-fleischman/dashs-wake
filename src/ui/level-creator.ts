@@ -9,7 +9,15 @@ import type {
   LevelEntity,
 } from "../core/run-simulation";
 import { firstWakeLevel, type LevelContent } from "../content/first-wake";
+import {
+  ATOMIC_PATTERN_IDS,
+  ATOMIC_PATTERN_LABELS,
+  stampAtomicPattern,
+  type AtomicPatternId,
+} from "../content/atomic-patterns";
 import { buildPlaceholderBeatMap } from "../content/beat-maps";
+import { CUBE, cubes, snapCube } from "../content/jump-grid";
+import { PLATFORM_THICKNESS } from "../content/official-handcrafted-helpers";
 import { buildSupportingTerrain, TERRAIN_DEPTH_Y } from "../content/terrain";
 
 type CreatorTool =
@@ -25,6 +33,16 @@ type CreatorTool =
   | "fog-zone"
   | "orb"
   | "pad"
+  | "pattern-fake-pad"
+  | "pattern-floor-run"
+  | "pattern-jump-orb"
+  | "pattern-orb-stack"
+  | "pattern-pad-boost"
+  | "pattern-pad-chain"
+  | "pattern-spike-strip"
+  | "pattern-stair-gap"
+  | "pattern-stair-spike-edge"
+  | "pattern-stair-step"
   | "ship-portal"
   | "spike";
 type CreatorMode = "build" | "edit";
@@ -43,7 +61,7 @@ interface LevelCreatorActions {
   onSave: (submission: CreatorSubmission) => void;
 }
 
-const GRID_SIZE = 20;
+const GRID_SIZE = CUBE;
 const MIN_FINISH_X = 760;
 const DEFAULT_FINISH_X = 2900;
 const ZOOM_CHOICES = [0.35, 0.5, 0.7, 1] as const;
@@ -71,8 +89,18 @@ const TOOL_CONFIGS: readonly ToolConfig[] = [
   { id: "erase", label: "Erase", icon: "creator-icon-erase" },
 ];
 
+const PATTERN_TOOL_IDS = ATOMIC_PATTERN_IDS.filter(
+  (id) => id !== "fog" && id !== "flash",
+);
+
+const PATTERN_TOOL_CONFIGS: readonly ToolConfig[] = PATTERN_TOOL_IDS.map((id) => ({
+  id: `pattern-${id}` as CreatorTool,
+  label: ATOMIC_PATTERN_LABELS[id],
+  icon: "creator-icon-block",
+}));
+
 function snapWorld(value: number): number {
-  return Math.round(value / GRID_SIZE) * GRID_SIZE;
+  return snapCube(value);
 }
 
 function placementTop(worldY: number, height: number): number {
@@ -85,18 +113,18 @@ function placementTop(worldY: number, height: number): number {
  * wide pieces predictable instead of anchoring to a hard-to-see corner.
  */
 const TOOL_DIMENSIONS: Partial<Record<CreatorTool, { width: number; height: number }>> = {
-  block: { width: GRID_SIZE * 2, height: GRID_SIZE * 2 },
-  "block-ramp-up": { width: GRID_SIZE * 4, height: GRID_SIZE * 3 },
-  "block-ramp-down": { width: GRID_SIZE * 4, height: GRID_SIZE * 3 },
-  spike: { width: GRID_SIZE * 2, height: GRID_SIZE * 2 },
-  pad: { width: GRID_SIZE * 3, height: GRID_SIZE },
-  orb: { width: GRID_SIZE * 3, height: GRID_SIZE * 3 },
-  "ship-portal": { width: GRID_SIZE, height: GRID_SIZE * 5 },
-  "cube-portal": { width: GRID_SIZE, height: GRID_SIZE * 5 },
-  decoration: { width: GRID_SIZE * 3, height: GRID_SIZE * 3 },
-  "flash-zone": { width: GRID_SIZE * 7, height: GRID_SIZE * 4 },
-  "fog-zone": { width: GRID_SIZE * 9, height: GRID_SIZE * 4 },
-  "dark-zone": { width: GRID_SIZE * 9, height: GRID_SIZE * 6 },
+  block: { width: cubes(2), height: PLATFORM_THICKNESS },
+  "block-ramp-up": { width: cubes(4), height: cubes(3) },
+  "block-ramp-down": { width: cubes(4), height: cubes(3) },
+  spike: { width: cubes(2), height: cubes(2) },
+  pad: { width: cubes(3), height: CUBE },
+  orb: { width: cubes(3), height: cubes(3) },
+  "ship-portal": { width: CUBE, height: cubes(5) },
+  "cube-portal": { width: CUBE, height: cubes(5) },
+  decoration: { width: cubes(3), height: cubes(3) },
+  "flash-zone": { width: cubes(7), height: cubes(4) },
+  "fog-zone": { width: cubes(9), height: cubes(4) },
+  "dark-zone": { width: cubes(9), height: cubes(6) },
 };
 
 function entityForTool(
@@ -278,6 +306,7 @@ export function mountLevelCreator(
         </div>
       </section>
       <section class="creator-palette" aria-label="Build pieces"></section>
+      <section class="creator-pattern-palette" aria-label="Pattern stamps"></section>
       <section class="creator-edit-panel" aria-label="Selected shape" hidden>
         <p data-testid="creator-selection-status">Select a shape on the grid.</p>
         <label>X <input type="number" step="${GRID_SIZE}" data-testid="creator-edit-x"></label>
@@ -310,6 +339,7 @@ export function mountLevelCreator(
   };
 
   const palette = requireElement<HTMLElement>(".creator-palette");
+  const patternPalette = requireElement<HTMLElement>(".creator-pattern-palette");
   const editPanel = requireElement<HTMLElement>(".creator-edit-panel");
   const course = requireElement<HTMLElement>(".creator-course");
   const saveButton = requireElement<HTMLButtonElement>("[data-action='save']");
@@ -367,11 +397,27 @@ export function mountLevelCreator(
     button.innerHTML = `<span class="${config.icon}" aria-hidden="true"></span><small>${config.label}</small>`;
     button.addEventListener("click", () => {
       selectedTool = config.id;
-      for (const toolButton of palette.querySelectorAll<HTMLElement>(".creator-tool")) {
+      for (const toolButton of root.querySelectorAll<HTMLElement>(".creator-tool")) {
         toolButton.classList.toggle("selected", toolButton.dataset.tool === selectedTool);
       }
     });
     palette.appendChild(button);
+  }
+
+  for (const config of PATTERN_TOOL_CONFIGS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `creator-tool creator-pattern-tool${config.id === selectedTool ? " selected" : ""}`;
+    button.dataset.tool = config.id;
+    button.setAttribute("data-testid", `creator-tool-${config.id}`);
+    button.innerHTML = `<span class="${config.icon}" aria-hidden="true"></span><small>${config.label}</small>`;
+    button.addEventListener("click", () => {
+      selectedTool = config.id;
+      for (const toolButton of root.querySelectorAll<HTMLElement>(".creator-tool")) {
+        toolButton.classList.toggle("selected", toolButton.dataset.tool === selectedTool);
+      }
+    });
+    patternPalette.appendChild(button);
   }
 
   const renderSelection = (): void => {
@@ -430,6 +476,7 @@ export function mountLevelCreator(
     buildButton.classList.toggle("selected", mode === "build");
     editButton.classList.toggle("selected", mode === "edit");
     palette.hidden = mode !== "build";
+    patternPalette.hidden = mode !== "build";
     editPanel.hidden = mode !== "edit";
     if (mode === "build") selectedIndex = undefined;
     renderCourse();
@@ -475,6 +522,26 @@ export function mountLevelCreator(
       return;
     }
     if (x >= finishX - GRID_SIZE) return;
+    if (selectedTool.startsWith("pattern-")) {
+      const patternId = selectedTool.slice("pattern-".length) as AtomicPatternId;
+      const stamp = stampAtomicPattern(
+        patternId,
+        {
+          idPrefix: `creator-stamp-${nextEntityId}`,
+          surfaceY: firstWakeLevel.rules.spawnY,
+          x,
+        },
+        patternId === "floor-run" ? { cubesWide: 6 } : {},
+      );
+      const withinFinish = stamp.entities.every(
+        (entity) => entity.x + entity.width <= finishX,
+      );
+      if (!withinFinish) return;
+      nextEntityId += 1;
+      entities.push(...stamp.entities);
+      renderCourse();
+      return;
+    }
     const entity = entityForTool(selectedTool, `created-trigger-${nextEntityId}`, x, y);
     if (!entity) return;
     if (entity.x + entity.width > finishX) return;

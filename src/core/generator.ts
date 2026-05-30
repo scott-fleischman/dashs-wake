@@ -3,10 +3,17 @@ import {
   type BeatMap,
   type LevelContent,
 } from "../content/first-wake";
+import {
+  applyAtomicPattern,
+  type AtomicPatternId,
+  type AtomicPatternOptions,
+} from "../content/atomic-patterns";
+import { CourseBuilder } from "../content/course-builder";
+import { CUBE, PATTERN_BEAT_SPACING } from "../content/jump-grid";
+import { withSupportingTerrain } from "../content/terrain";
 import type { LevelEntity } from "./run-simulation";
 import type { GeneratorTuning, GeneratorTheme } from "./generator-tuning";
 import { simulateConservativeRun, SOLVER_MAX_TICKS } from "./level-solver";
-import { buildSupportingTerrain } from "../content/terrain";
 
 export type Intensity = "intense" | "quiet";
 
@@ -40,7 +47,7 @@ export function mulberry32(seed: number): RandomSource {
 }
 
 const BASE_PLACE_THRESHOLD = 0.4;
-const MIN_GAMEPLAY_PIECE_SPACING = 220;
+const MIN_GAMEPLAY_PIECE_SPACING = PATTERN_BEAT_SPACING;
 
 export interface BeatContext {
   beatMs: number;
@@ -52,46 +59,16 @@ export interface BeatContext {
   tuning?: GeneratorTuning;
 }
 
-export type PatternId =
-  | "block"
-  | "block-high"
-  | "fog"
-  | "flash"
-  | "orb"
-  | "pad"
-  | "portal-cube"
-  | "portal-ship"
-  | "ramp-down"
-  | "ramp-up"
-  | "spike"
-  | "spike-ceiling"
-  | "trap-orb";
+export type PatternId = AtomicPatternId;
 
 export type BeatSelection =
   | { type: "skip" }
-  | { type: "block"; x: number }
-  | { type: "block-high"; x: number }
-  | { type: "fog"; x: number }
-  | { type: "flash"; x: number }
-  | { type: "orb"; x: number }
-  | { type: "pad"; x: number }
-  | { type: "portal-cube"; x: number }
-  | { type: "portal-ship"; x: number }
-  | { type: "ramp-down"; x: number }
-  | { type: "ramp-up"; x: number }
-  | { type: "spike"; x: number }
-  | { type: "spike-ceiling"; x: number }
-  | { type: "trap-orb"; x: number };
+  | { options?: AtomicPatternOptions; type: AtomicPatternId; x: number };
 
-interface PatternProduceArgs {
-  beatIndex: number;
-  x: number;
-}
-
-interface PatternCapability {
-  id: PatternId;
+interface AtomicPatternCapability {
+  id: AtomicPatternId;
   minDifficulty: GeneratorInput["difficulty"];
-  produce: (args: PatternProduceArgs) => LevelEntity;
+  options?: AtomicPatternOptions;
   requiresIntensity: Intensity;
 }
 
@@ -105,178 +82,91 @@ const DIFFICULTY_RANK: Record<GeneratorInput["difficulty"], number> = {
   nightmare: 6,
 };
 
-const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
+const ATOMIC_PATTERN_CAPABILITIES: readonly AtomicPatternCapability[] = [
   {
-    id: "spike",
-    minDifficulty: "normal",
-    requiresIntensity: "intense",
-    produce: ({ x }) => ({ type: "spike", height: 30, width: 30, x, y: 270 }),
-  },
-  {
-    id: "spike-ceiling",
-    minDifficulty: "hard",
-    requiresIntensity: "intense",
-    produce: ({ x }) => ({ type: "spike", height: 30, width: 30, x, y: 96 }),
-  },
-  {
-    id: "block",
-    minDifficulty: "normal",
-    requiresIntensity: "intense",
-    produce: ({ x }) => ({
-      type: "block",
-      height: 54,
-      width: 54,
-      x,
-      y: 246,
-    }),
-  },
-  {
-    id: "block-high",
-    minDifficulty: "hard",
-    requiresIntensity: "intense",
-    produce: ({ x }) => ({
-      type: "block",
-      height: 54,
-      width: 60,
-      x,
-      y: 202,
-    }),
-  },
-  {
-    id: "ramp-up",
-    minDifficulty: "hard",
+    id: "floor-run",
+    minDifficulty: "easy",
+    options: { cubesWide: 5 },
     requiresIntensity: "quiet",
-    produce: ({ x }) => ({
-      type: "block",
-      shape: "ramp-up",
-      height: 72,
-      width: 110,
-      x,
-      y: 228,
-    }),
   },
   {
-    id: "ramp-down",
-    minDifficulty: "hard",
-    requiresIntensity: "quiet",
-    produce: ({ x }) => ({
-      type: "block",
-      shape: "ramp-down",
-      height: 72,
-      width: 110,
-      x,
-      y: 228,
-    }),
-  },
-  {
-    id: "pad",
-    minDifficulty: "hard",
+    id: "floor-run",
+    minDifficulty: "easy",
+    options: { cubesWide: 4 },
     requiresIntensity: "intense",
-    produce: ({ beatIndex, x }) => ({
-      type: "pad",
-      id: `generated-pad-${beatIndex}`,
-      impulse: 720,
-      height: 18,
-      width: 40,
-      x,
-      y: 290,
-    }),
-  },
-  {
-    id: "orb",
-    minDifficulty: "harder",
-    requiresIntensity: "intense",
-    produce: ({ beatIndex, x }) => ({
-      type: "orb",
-      id: `generated-orb-${beatIndex}`,
-      effect: { kind: "impulse", magnitude: 720 },
-      height: 76,
-      width: 62,
-      x,
-      y: 174,
-    }),
-  },
-  {
-    id: "portal-ship",
-    minDifficulty: "hard",
-    requiresIntensity: "quiet",
-    produce: ({ x }) => ({
-      type: "portal",
-      mode: "ship",
-      height: 360,
-      width: 12,
-      x,
-      y: 36,
-    }),
-  },
-  {
-    id: "portal-cube",
-    minDifficulty: "hard",
-    requiresIntensity: "intense",
-    produce: ({ x }) => ({
-      type: "portal",
-      mode: "cube",
-      height: 360,
-      width: 12,
-      x,
-      y: 36,
-    }),
-  },
-  {
-    id: "trap-orb",
-    minDifficulty: "demon",
-    requiresIntensity: "intense",
-    produce: ({ beatIndex, x }) => ({
-      type: "orb",
-      id: `generated-trap-orb-${beatIndex}`,
-      effect: { kind: "kill" },
-      height: 76,
-      width: 62,
-      x,
-      y: 174,
-    }),
   },
   {
     id: "fog",
     minDifficulty: "easy",
     requiresIntensity: "quiet",
-    produce: ({ x }) => ({
-      type: "decoration",
-      kind: "fog",
-      height: 100,
-      width: 180,
-      x,
-      y: 76,
-    }),
   },
   {
     id: "flash",
     minDifficulty: "normal",
     requiresIntensity: "intense",
-    produce: ({ x }) => ({
-      type: "decoration",
-      kind: "flash",
-      height: 82,
-      width: 150,
-      x,
-      y: 112,
-    }),
+  },
+  {
+    id: "spike-strip",
+    minDifficulty: "normal",
+    options: { count: 2 },
+    requiresIntensity: "intense",
+  },
+  {
+    id: "stair-step",
+    minDifficulty: "normal",
+    options: { steps: 2 },
+    requiresIntensity: "intense",
+  },
+  {
+    id: "stair-gap",
+    minDifficulty: "hard",
+    options: { steps: 2 },
+    requiresIntensity: "intense",
+  },
+  {
+    id: "stair-spike-edge",
+    minDifficulty: "harder",
+    options: { steps: 2 },
+    requiresIntensity: "intense",
+  },
+  {
+    id: "pad-boost",
+    minDifficulty: "hard",
+    requiresIntensity: "intense",
+  },
+  {
+    id: "pad-chain",
+    minDifficulty: "hard",
+    options: { count: 3 },
+    requiresIntensity: "intense",
+  },
+  {
+    id: "jump-orb",
+    minDifficulty: "harder",
+    requiresIntensity: "intense",
+  },
+  {
+    id: "orb-stack",
+    minDifficulty: "insane",
+    options: { count: 3, required: true },
+    requiresIntensity: "intense",
+  },
+  {
+    id: "fake-pad",
+    minDifficulty: "demon",
+    requiresIntensity: "intense",
   },
 ];
 
-function findCapability(id: PatternId): PatternCapability | undefined {
-  return PATTERN_CAPABILITIES.find((capability) => capability.id === id);
-}
-
-function hasGameplaySpacing(
-  candidateX: number,
-  entities: readonly LevelEntity[],
-  minSpacing: number,
-): boolean {
-  return entities.every(
-    (entity) =>
-      entity.type === "decoration" ||
-      Math.abs(entity.x - candidateX) >= minSpacing,
+function capabilityPool(
+  intensity: Intensity,
+  difficulty: GeneratorInput["difficulty"],
+): readonly AtomicPatternCapability[] {
+  const rank = DIFFICULTY_RANK[difficulty];
+  return ATOMIC_PATTERN_CAPABILITIES.filter(
+    (capability) =>
+      capability.requiresIntensity === intensity &&
+      DIFFICULTY_RANK[capability.minDifficulty] <= rank,
   );
 }
 
@@ -300,34 +190,34 @@ function effectivePlaceThreshold(
   return Math.min(0.82, base * (0.55 + densityLift * 0.7));
 }
 
-function patternWeight(patternId: PatternId, tuning: GeneratorTuning): number {
+function patternWeight(patternId: AtomicPatternId, tuning: GeneratorTuning): number {
   switch (patternId) {
-    case "portal-ship":
-    case "portal-cube":
-      return 0.4 + tuning.shipEmphasis / 90;
-    case "spike":
-    case "spike-ceiling":
-    case "trap-orb":
-      return 0.4 + tuning.spikeEmphasis / 90;
-    case "ramp-up":
-    case "ramp-down":
-    case "block-high":
+    case "stair-gap":
+    case "stair-step":
+    case "stair-spike-edge":
       return 0.3 + tuning.verticalEmphasis / 85;
-    case "pad":
+    case "pad-chain":
+    case "pad-boost":
       return 0.35 + tuning.verticalEmphasis / 200;
-    case "orb":
+    case "jump-orb":
+    case "orb-stack":
       return 0.35 + tuning.spikeEmphasis / 200;
+    case "spike-strip":
+    case "fake-pad":
+      return 0.4 + tuning.spikeEmphasis / 90;
     default:
       return 0.45;
   }
 }
 
 function pickWeightedPattern(
-  permitted: readonly PatternId[],
+  permitted: readonly AtomicPatternCapability[],
   tuning: GeneratorTuning,
   random: number,
-): PatternId {
-  const weights = permitted.map((patternId) => patternWeight(patternId, tuning));
+): AtomicPatternCapability {
+  const weights = permitted.map((capability) =>
+    patternWeight(capability.id, tuning),
+  );
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   let cursor = random * total;
 
@@ -350,17 +240,11 @@ export function permittedPatterns(
   intensity: Intensity,
   difficulty: GeneratorInput["difficulty"],
 ): readonly PatternId[] {
-  const rank = DIFFICULTY_RANK[difficulty];
-
-  return PATTERN_CAPABILITIES.filter(
-    (capability) =>
-      capability.requiresIntensity === intensity &&
-      DIFFICULTY_RANK[capability.minDifficulty] <= rank,
-  ).map((capability) => capability.id);
+  return capabilityPool(intensity, difficulty).map((capability) => capability.id);
 }
 
 export function selectBeatPattern(context: BeatContext): BeatSelection {
-  const permitted = permittedPatterns(context.intensity, context.difficulty);
+  const permitted = capabilityPool(context.intensity, context.difficulty);
 
   if (permitted.length === 0) {
     return { type: "skip" };
@@ -379,7 +263,7 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
     return { type: "skip" };
   }
 
-  const patternId = context.tuning
+  const capability = context.tuning
     ? pickWeightedPattern(
         permitted,
         context.tuning,
@@ -395,7 +279,7 @@ export function selectBeatPattern(context: BeatContext): BeatSelection {
         )
       ]!;
 
-  return { type: patternId, x };
+  return { type: capability.id, options: capability.options, x };
 }
 
 function themeAmbienceEntities(
@@ -451,9 +335,15 @@ export function generateLevel(input: GeneratorInput): LevelContent {
   const rng = mulberry32(input.seed);
   const subRank = input.subRank ?? "bronze";
   const rules = firstWakeLevel.rules;
-  const entities: LevelEntity[] = [];
   const finishX = Math.round((input.beatMap.durationMs / 1000) * rules.horizontalSpeed);
   const minSpacing = effectiveMinSpacing(subRank);
+  const builder = new CourseBuilder({
+    idPrefix: `generated-${input.seed}`,
+    startX: 0,
+  });
+  let lastPatternX = 0;
+
+  applyAtomicPattern(builder, "floor-run", { cubesWide: 6 });
 
   for (let index = 0; index < input.beatMap.beats.length; index += 1) {
     const beatMs = input.beatMap.beats[index]!;
@@ -480,48 +370,39 @@ export function generateLevel(input: GeneratorInput): LevelContent {
       tuning: input.tuning,
     });
 
-    if (index > 0 && index % 4 === 0) {
-      entities.push({
-        type: "decoration",
-        kind: index % 8 === 0 ? "diamond" : "beam",
-        height: 72,
-        width: 44,
-        x: Math.round((beatMs / 1000) * rules.horizontalSpeed),
-        y: 116,
-      });
-    }
-
     if (selection.type === "skip") {
       continue;
     }
 
-    const capability = findCapability(selection.type);
-
-    if (capability) {
-      const candidate = capability.produce({ beatIndex: index, x: selection.x });
-      if (hasGameplaySpacing(candidate.x, entities, minSpacing)) {
-        entities.push(candidate);
-      }
+    if (Math.abs(selection.x - lastPatternX) < minSpacing) {
+      continue;
     }
-  }
 
-  if (
-    DIFFICULTY_RANK[input.difficulty] >= DIFFICULTY_RANK.normal &&
-    !entities.some((entity) => entity.type === "block")
-  ) {
-    const availableBeat = input.beatMap.beats
-      .slice(1)
-      .map((beatMs) => Math.round((beatMs / 1000) * rules.horizontalSpeed))
-      .find((x) => hasGameplaySpacing(x, entities, minSpacing));
-    if (availableBeat !== undefined) {
-      entities.push({
-        type: "block",
-        height: 54,
-        width: 54,
-        x: availableBeat,
-        y: 246,
+    if (selection.x > builder.x) {
+      applyAtomicPattern(builder, "floor-run", {
+        cubesWide: Math.max(6, Math.round((selection.x - builder.x) / CUBE)),
       });
     }
+    if (builder.x < selection.x) {
+      builder.x = selection.x;
+    }
+
+    applyAtomicPattern(builder, selection.type, selection.options ?? {});
+    lastPatternX = builder.x;
+  }
+
+  while (builder.x < finishX - 340) {
+    applyAtomicPattern(builder, "floor-run", { cubesWide: 5 });
+  }
+
+  const hasVerticalGameplay = builder.entities.some(
+    (entity) => entity.type === "block" && entity.y < rules.spawnY - 24,
+  );
+  if (
+    DIFFICULTY_RANK[input.difficulty] >= DIFFICULTY_RANK.normal &&
+    !hasVerticalGameplay
+  ) {
+    applyAtomicPattern(builder, "stair-step", { steps: 2 });
   }
 
   const theme = input.tuning?.theme ?? input.theme ?? "electric";
@@ -532,9 +413,8 @@ export function generateLevel(input: GeneratorInput): LevelContent {
   return {
     beatMap: input.beatMap,
     entities: [
-      ...buildSupportingTerrain(finishX),
-      ...entities.filter(withinBounds),
-      ...ambience,
+      ...withSupportingTerrain(builder.entities, finishX, builder.channels),
+      ...ambience.filter(withinBounds),
     ],
     finishX,
     rules,

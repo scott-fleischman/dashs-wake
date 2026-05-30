@@ -17,39 +17,28 @@ function baseContext(overrides: Partial<BeatContext>): BeatContext {
   };
 }
 
-describe("generator pattern rules", () => {
-  it("permits only ambience on the easy tier and ship portals on quiet harder beats", () => {
-    // Easy quiet beats only allow atmosphere (fog); easy intense beats have no
-    // gameplay capability yet.
-    expect(permittedPatterns("quiet", "easy")).toEqual(["fog"]);
-    expect(permittedPatterns("intense", "easy")).toEqual([]);
-    expect(permittedPatterns("quiet", "insane")).toContain("portal-ship");
+describe("generator atomic pattern rules", () => {
+  it("permits floor runs on easy quiet beats and fog ambience", () => {
+    expect(permittedPatterns("quiet", "easy")).toEqual(["floor-run", "fog"]);
+    expect(permittedPatterns("intense", "easy")).toEqual(["floor-run"]);
   });
 
-  it("permits spikes on intense beats from normal difficulty up", () => {
-    expect(permittedPatterns("intense", "easy")).not.toContain("spike");
-    expect(permittedPatterns("intense", "normal")).toContain("spike");
-    expect(permittedPatterns("intense", "hard")).toContain("spike");
+  it("permits stair and spike patterns from normal difficulty up", () => {
+    expect(permittedPatterns("intense", "normal")).toContain("stair-step");
+    expect(permittedPatterns("intense", "normal")).toContain("spike-strip");
+    expect(permittedPatterns("intense", "hard")).toContain("stair-gap");
+    expect(permittedPatterns("intense", "hard")).toContain("pad-boost");
   });
 
-  it("introduces solid blocks at normal difficulty and jump orbs at insane difficulty", () => {
-    expect(permittedPatterns("intense", "easy")).not.toContain("block");
-    expect(permittedPatterns("intense", "normal")).toContain("block");
-    expect(permittedPatterns("intense", "hard")).toContain("block");
-    expect(permittedPatterns("intense", "hard")).not.toContain("orb");
-    expect(permittedPatterns("intense", "insane")).toContain("orb");
-  });
-
-  it("permits launch pads only on intense beats at hard difficulty or above", () => {
-    expect(permittedPatterns("intense", "easy")).not.toContain("pad");
-    expect(permittedPatterns("intense", "normal")).not.toContain("pad");
-    expect(permittedPatterns("intense", "hard")).toContain("pad");
-    expect(permittedPatterns("intense", "harder")).toContain("pad");
+  it("permits orb patterns at higher difficulties", () => {
+    expect(permittedPatterns("intense", "harder")).toContain("jump-orb");
+    expect(permittedPatterns("intense", "insane")).toContain("orb-stack");
+    expect(permittedPatterns("intense", "demon")).toContain("fake-pad");
   });
 
   it("selectBeatPattern returns skip when the beat permits no pattern", () => {
     const selection = selectBeatPattern(
-      baseContext({ intensity: "intense", difficulty: "easy", random: 0 }),
+      baseContext({ intensity: "quiet", difficulty: "normal", random: 0 }),
     );
 
     expect(selection.type).toBe("skip");
@@ -68,6 +57,6 @@ describe("generator pattern rules", () => {
       baseContext({ intensity: "intense", difficulty: "normal", random: 0.05 }),
     );
 
-    expect(selection.type).toBe("spike");
+    expect(selection.type).toBe("spike-strip");
   });
 });

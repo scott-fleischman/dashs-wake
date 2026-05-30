@@ -5,8 +5,11 @@ import {
   CourseBuilder,
   darkZone,
   decorateDensely,
+  fakePadRoute,
+  floorRun,
   hill,
   orbLift,
+  padChain,
   padVault,
   pitBridge,
   reefGates,
@@ -14,6 +17,7 @@ import {
   shipGallery,
   shipReef,
   spikeRhythm,
+  spikeStrip,
   spotlights,
   strobeZone,
   templeSteps,
@@ -74,19 +78,18 @@ export const firstWakeLevel: LevelContent = buildFirstWake();
 // Level 2 — Hollow Steps (hard): a vertical temple climb threaded with pads and
 // a spike pit. Verticality is the headline (the camera rides up and over).
 // ---------------------------------------------------------------------------
+// Level 2 — Hollow Steps (hard): atomic pattern showcase with generous floor buffers.
+// ---------------------------------------------------------------------------
 function buildHollowSteps(): LevelContent {
   const b = new CourseBuilder({ idPrefix: "hollow", startX: 0 });
-  rest(b, 200);
+  floorRun(b, 10);
   darkZone(b, 360);
-  spikeRhythm(b, [2, 1]);
-  // Temple staircase — ramps and plateaus the solver walks, camera scrolls up.
-  templeSteps(b, { tiers: 5, tierRise: 42, tierWidth: 112, light: "dark" });
-  padVault(b, { impulse: 760, landAhead: 340, light: true });
-  spikeRhythm(b, [1, 2]);
-  pitBridge(b, { steps: 4 });
-  padVault(b, { impulse: 740, landAhead: 320 });
-  spikeRhythm(b, [2, 1]);
-  rest(b, 160);
+  spikeStrip(b, { spikes: 2 });
+  floorRun(b, 10);
+  padChain(b, { count: 5 });
+  floorRun(b, 10);
+  fakePadRoute(b);
+  floorRun(b, 10);
   decorateDensely(b, { seed: 202, mood: "dark" });
   return assembleOfficialLevel("level_2", b.entities, b.finishX(), b.channels);
 }

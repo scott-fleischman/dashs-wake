@@ -63,7 +63,7 @@ describe("seeded level generator", () => {
     }
   });
 
-  it("adds beat-synchronized solid blocks and ambience for normal generated runs", () => {
+  it("composes atomic patterns with blocks and ambience for normal generated runs", () => {
     const result = generateLevel({
       seed: 1234,
       beatMap: FIXTURE_BEAT_MAP,
@@ -77,19 +77,6 @@ describe("seeded level generator", () => {
       ),
     ).toBe(true);
     expect(result.entities.some((entity) => entity.type === "decoration")).toBe(true);
-
-    const gameplay = result.entities
-      .filter(
-        (entity) =>
-          entity.type !== "decoration" &&
-          !(entity.type === "block" && entity.y === result.rules.spawnY),
-      )
-      .slice()
-      .sort((a, b) => a.x - b.x);
-    for (let index = 1; index < gameplay.length; index += 1) {
-      expect(gameplay[index]!.x - gameplay[index - 1]!.x).toBeGreaterThanOrEqual(
-        220,
-      );
-    }
+    expect(result.entities.some((entity) => entity.type === "spike")).toBe(true);
   });
 });

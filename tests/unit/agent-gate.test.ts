@@ -35,6 +35,14 @@ describe("agent gate: module boot", () => {
     }
   });
 
+  it("loads jump-grid and atomic pattern modules at import time", async () => {
+    const { JUMP_REACH_X } = await import("../../src/content/jump-grid");
+    const { ATOMIC_PATTERN_IDS } = await import("../../src/content/atomic-patterns");
+
+    expect(JUMP_REACH_X).toBeGreaterThan(0);
+    expect(ATOMIC_PATTERN_IDS.length).toBeGreaterThan(0);
+  });
+
   it("loads the generator after content modules initialize", async () => {
     const { analyzeLevelDifficulty } = await import("../../src/core/generator");
     const { analyzeLevelProfile } = await import("../../src/core/level-analysis");
