@@ -1,176 +1,123 @@
-import type { LevelEntity } from "../core/run-simulation";
 import { buildPlaceholderBeatMap } from "./beat-maps";
-import { firstWakeLevel, type LevelContent } from "./first-wake";
-import { paceAuthoredEntities, paceAuthoredX } from "./level-pace";
-import { withSupportingTerrain, type FlightChannel } from "./terrain";
+import type { LevelContent } from "./first-wake";
+import { OFFICIAL_LEVEL_RULES } from "./level-rules";
+import {
+  bigClimb,
+  brightZone,
+  CourseBuilder,
+  darkZone,
+  groundSpikeBeat,
+  hill,
+  orbLift,
+  padVault,
+  pitBridge,
+  reefGates,
+  rest,
+  shipGallery,
+  shipReef,
+  spikeRhythm,
+  spotlights,
+  strobeZone,
+  trapOrb,
+} from "./level-patterns";
+import { withSupportingTerrain } from "./terrain";
+
+// Gauntlet stages are short, punchy courses assembled from the same pattern
+// language as the official campaign, so the whole game shares one vocabulary of
+// fun. The introductory Electric Wake stages stay flat and sparse so they clear
+// even while the jump key is held the entire run (see the gauntlet stage tests).
 
 function buildStage(
-  entities: readonly LevelEntity[],
-  finishX: number,
-  channels: readonly FlightChannel[] = [],
+  idPrefix: string,
+  build: (b: CourseBuilder) => void,
 ): LevelContent {
-  const pacedFinishX = paceAuthoredX(finishX);
-
+  const b = new CourseBuilder({ idPrefix });
+  build(b);
+  const finishX = b.finishX(96);
   return {
-    beatMap: buildPlaceholderBeatMap(
-      pacedFinishX,
-      firstWakeLevel.rules.horizontalSpeed,
-    ),
-    entities: withSupportingTerrain(
-      paceAuthoredEntities(entities),
-      pacedFinishX,
-      channels,
-    ),
-    finishX: pacedFinishX,
-    rules: firstWakeLevel.rules,
+    beatMap: buildPlaceholderBeatMap(finishX, OFFICIAL_LEVEL_RULES.horizontalSpeed),
+    entities: withSupportingTerrain(b.entities, finishX, b.channels),
+    finishX,
+    rules: OFFICIAL_LEVEL_RULES,
   };
 }
 
-const SPARK_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 160, y: 270 },
-];
-
-const SURGE_ENTITIES: readonly LevelEntity[] = [
-  {
-    type: "pad",
-    id: "electric-wake-2-pad",
-    impulse: 720,
-    height: 18,
-    width: 40,
-    x: 340,
-    y: 290,
-  },
-];
-
-const CLIMAX_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 160, y: 270 },
-  {
-    type: "pad",
-    id: "electric-wake-3-pad",
-    impulse: 720,
-    height: 18,
-    width: 40,
-    x: 320,
-    y: 290,
-  },
-  { type: "portal", mode: "ship", height: 374, width: 12, x: 560, y: 36 },
-  { type: "portal", mode: "cube", height: 374, width: 12, x: 780, y: 36 },
-  {
-    type: "pad",
-    id: "electric-wake-3-exit-pad",
-    impulse: 720,
-    height: 18,
-    width: 100,
-    x: 900,
-    y: 320,
-  },
-  { type: "spike", height: 30, width: 30, x: 1040, y: 300 },
-];
-
-const SKYLINE_RISE_ENTITIES: readonly LevelEntity[] = [
-  { type: "block", shape: "ramp-up", height: 70, width: 110, x: 220, y: 230 },
-  { type: "block", height: 70, width: 220, x: 330, y: 230 },
-  { type: "spike", height: 30, width: 30, x: 420, y: 200 },
-  { type: "block", shape: "ramp-down", height: 70, width: 110, x: 550, y: 230 },
-];
-
-const SKYLINE_DROP_ENTITIES: readonly LevelEntity[] = [
-  { type: "spike", height: 30, width: 30, x: 190, y: 270 },
-  { type: "block", height: 92, width: 100, x: 410, y: 208 },
-  {
-    type: "pad",
-    id: "skyline-trial-pad",
-    impulse: 760,
-    height: 18,
-    width: 45,
-    x: 360,
-    y: 282,
-  },
-  { type: "spike", height: 30, width: 30, x: 700, y: 270 },
-];
-
-const SKYLINE_FLIGHT_ENTITIES: readonly LevelEntity[] = [
-  { type: "portal", mode: "ship", height: 300, width: 12, x: 240, y: 72 },
-  { type: "portal", mode: "cube", height: 300, width: 12, x: 900, y: 72 },
-  { type: "spike", height: 30, width: 30, x: 1100, y: 270 },
-];
-
-const VOID_RAMP_ENTITIES: readonly LevelEntity[] = [
-  { type: "block", shape: "ramp-down", height: 80, width: 120, x: 180, y: 300 },
-  { type: "block", height: 80, width: 220, x: 300, y: 300 },
-  { type: "spike", height: 30, width: 30, x: 390, y: 270 },
-  { type: "block", shape: "ramp-up", height: 80, width: 120, x: 520, y: 300 },
-];
-
-const VOID_ORB_ENTITIES: readonly LevelEntity[] = [
-  {
-    type: "orb",
-    id: "void-circuit-orb",
-    effect: { kind: "impulse", magnitude: 740 },
-    height: 64,
-    width: 56,
-    x: 330,
-    y: 160,
-  },
-  { type: "spike", height: 30, width: 30, x: 560, y: 270 },
-  { type: "spike", height: 30, width: 30, x: 850, y: 270 },
-];
-
-const VOID_FLIGHT_ENTITIES: readonly LevelEntity[] = [
-  { type: "portal", mode: "ship", height: 282, width: 12, x: 180, y: 82 },
-  { type: "portal", mode: "cube", height: 282, width: 12, x: 1060, y: 82 },
-  {
-    type: "pad",
-    id: "void-circuit-exit-pad",
-    impulse: 760,
-    height: 18,
-    width: 48,
-    x: 1160,
-    y: 282,
-  },
-];
-
 const STAGE_CONTENT: Readonly<Record<string, LevelContent>> = {
-  "electric-wake-1": buildStage(SPARK_ENTITIES, 600),
-  "electric-wake-2": buildStage(SURGE_ENTITIES, 600),
-  "electric-wake-3": buildStage(CLIMAX_ENTITIES, 1180, [
-    {
-      startX: paceAuthoredX(530),
-      endX: paceAuthoredX(1180),
-      ceilingEndX: paceAuthoredX(780) + 18,
-      lowerSurfaceY: 330,
-    },
-  ]),
-  "skyline-trial-1": buildStage(SKYLINE_RISE_ENTITIES, 860),
-  "skyline-trial-2": buildStage(SKYLINE_DROP_ENTITIES, 960),
-  "skyline-trial-3": buildStage(SKYLINE_FLIGHT_ENTITIES, 1240, [
-    {
-      startX: paceAuthoredX(210),
-      endX: paceAuthoredX(940),
-      ceilingEndX: paceAuthoredX(900) + 18,
-      ceilingBottomY: 72,
-      lowerSurfaceY: 372,
-      gates: [
-        { edge: "ceiling", limitY: 170, width: 60, x: paceAuthoredX(500) },
-        { edge: "lower", limitY: 260, width: 60, x: paceAuthoredX(700) },
-      ],
-    },
-  ]),
-  "void-circuit-1": buildStage(VOID_RAMP_ENTITIES, 920),
-  "void-circuit-2": buildStage(VOID_ORB_ENTITIES, 1120),
-  "void-circuit-3": buildStage(VOID_FLIGHT_ENTITIES, 1400, [
-    {
-      startX: paceAuthoredX(150),
-      endX: paceAuthoredX(1100),
-      ceilingEndX: paceAuthoredX(1060) + 18,
-      ceilingBottomY: 82,
-      lowerSurfaceY: 364,
-      gates: [
-        { edge: "lower", limitY: 246, width: 70, x: paceAuthoredX(470) },
-        { edge: "ceiling", limitY: 200, width: 70, x: paceAuthoredX(760) },
-      ],
-    },
-  ]),
+  // --- Electric Wake: gentle intro, clearable with jump held the whole run ---
+  "electric-wake-1": buildStage("electric-wake-1", (b) => {
+    rest(b, 230);
+    brightZone(b, 300);
+    groundSpikeBeat(b, 240);
+    rest(b, 360);
+  }),
+  "electric-wake-2": buildStage("electric-wake-2", (b) => {
+    rest(b, 230);
+    strobeZone(b, 360);
+    groundSpikeBeat(b, 240);
+    rest(b, 200);
+    padVault(b, { impulse: 700, landAhead: 360, light: true });
+    rest(b, 200);
+  }),
+  "electric-wake-3": buildStage("electric-wake-3", (b) => {
+    rest(b, 260);
+    spikeRhythm(b, [1, 1]);
+    shipReef(b, { length: 560, light: "bright" });
+    padVault(b, { impulse: 720, landAhead: 320 });
+    spotlights(b, 280);
+    rest(b, 200);
+  }),
+
+  // --- Skyline Trial: verticality focus ---
+  "skyline-trial-1": buildStage("skyline-trial-1", (b) => {
+    rest(b, 260);
+    spikeRhythm(b, [1, 2]);
+    brightZone(b, 320);
+    bigClimb(b, { rise: 170, plateauWidth: 200, light: "bright" });
+    rest(b, 200);
+  }),
+  "skyline-trial-2": buildStage("skyline-trial-2", (b) => {
+    rest(b, 260);
+    darkZone(b, 360);
+    pitBridge(b, { steps: 5 });
+    padVault(b, { impulse: 760, landAhead: 340, light: true });
+    spikeRhythm(b, [1]);
+    rest(b, 180);
+  }),
+  "skyline-trial-3": buildStage("skyline-trial-3", (b) => {
+    rest(b, 220);
+    spikeRhythm(b, [1]);
+    shipReef(b, { length: 620, gates: reefGates(b.x, 620), light: "bright" });
+    shipGallery(b, { length: 620, light: "dark" });
+    spotlights(b, 280);
+    rest(b, 200);
+  }),
+
+  // --- Void Circuit: the full vocabulary, hardest tier ---
+  "void-circuit-1": buildStage("void-circuit-1", (b) => {
+    rest(b, 240);
+    darkZone(b, 360);
+    bigClimb(b, { rise: 210, plateauWidth: 220, light: "dark" });
+    orbLift(b, { count: 2 });
+    spikeRhythm(b, [2]);
+    rest(b, 180);
+  }),
+  "void-circuit-2": buildStage("void-circuit-2", (b) => {
+    rest(b, 240);
+    spikeRhythm(b, [2, 1]);
+    pitBridge(b, { steps: 6 });
+    trapOrb(b, { magnitude: 680 });
+    hill(b, 60, 150);
+    rest(b, 180);
+  }),
+  "void-circuit-3": buildStage("void-circuit-3", (b) => {
+    rest(b, 220);
+    darkZone(b, 360);
+    shipReef(b, { length: 620, gates: reefGates(b.x, 620), light: "dark" });
+    shipGallery(b, { length: 700, light: "dark" });
+    padVault(b, { impulse: 760, landAhead: 340, light: true });
+    spotlights(b, 280);
+    rest(b, 200);
+  }),
 };
 
 export function getGauntletStageContent(

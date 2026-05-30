@@ -526,10 +526,16 @@ export function generateLevel(input: GeneratorInput): LevelContent {
 
   const theme = input.tuning?.theme ?? input.theme ?? "electric";
   const ambience = themeAmbienceEntities(theme, finishX, rng);
+  const withinBounds = (entity: LevelEntity): boolean =>
+    entity.x >= 0 && entity.x + entity.width <= finishX;
 
   return {
     beatMap: input.beatMap,
-    entities: [...buildSupportingTerrain(finishX), ...entities, ...ambience],
+    entities: [
+      ...buildSupportingTerrain(finishX),
+      ...entities.filter(withinBounds),
+      ...ambience,
+    ],
     finishX,
     rules,
   };

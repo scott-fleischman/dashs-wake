@@ -1,0 +1,502 @@
+// A composable "pattern language" for hand-authored courses.
+//
+// Patterns are small, reusable, *solver-safe* fragments of a level. Each pattern
+// reads the builder's cursor (x + current ground surface), appends entities and
+// flight channels, advances the cursor, and records semantic tags that the level
+// analyzer uses to score variety. Patterns are authored ground-to-ground so they
+// compose freely: a pattern always leaves the runner back on the spawn surface,
+// even if it climbs high in the middle (the follow-camera scrolls up with it).
+//
+// Higher-level "meta-patterns" (patterns of patterns) layer the base patterns
+// into recognizable motifs that whole levels are built from.
+//
+// This module must avoid importing runtime values from first-wake.ts (see the
+// circular-import note in epic-course-builder.ts). It only depends on shared
+// primitives, types, and terrain helpers.
+import type { DecorationKind, LevelEntity } from "../core/run-simulation";
+import {
+  buildStairPitSection,
+  cubePlatform,
+  decor,
+  groundSpike,
+  jumpOrb,
+  launchPad,
+  shipChannel,
+  shipPortalPair,
+} from "./official-handcrafted-helpers";
+import type { FlightChannel, FlightGate } from "./terrain";
+import { SPAWN_SURFACE_Y } from "./terrain";
+
+export type PatternTag =
+  | "rest"
+  | "spike"
+  | "jump"
+  | "gap"
+  | "vertical"
+  | "pad"
+  | "orb"
+  | "ship"
+  | "portal-challenge"
+  | "lighting-dark"
+  | "lighting-bright";
+
+/** Highest a single conservative cube jump can safely climb (px above surface). */
+export const SAFE_STEP_RISE = 64;
+/** Tightest reliable spacing between independent gameplay beats (px). */
+export const BEAT_SPACING = 220;
+
+export interface CourseBuilderOptions {
+  idPrefix: string;
+  startX?: number;
+}
+
+/**
+ * Stateful left-to-right course assembler. Patterns mutate it in place.
+ */
+export class CourseBuilder {
+  x: number;
+  surfaceY = SPAWN_SURFACE_Y;
+  readonly idPrefix: string;
+  readonly entities: LevelEntity[] = [];
+  readonly channels: FlightChannel[] = [];
+  readonly requiredTriggerIds: string[] = [];
+  readonly tags: PatternTag[] = [];
+  private idSeq = 0;
+
+  constructor(options: CourseBuilderOptions) {
+    this.idPrefix = options.idPrefix;
+    this.x = options.startX ?? 0;
+  }
+
+  nextId(kind: string): string {
+    this.idSeq += 1;
+    return `${this.idPrefix}-${kind}-${this.idSeq}`;
+  }
+
+  add(...entities: LevelEntity[]): void {
+    this.entities.push(...entities);
+  }
+
+  channel(channel: FlightChannel): void {
+    this.channels.push(channel);
+  }
+
+  require(id: string): void {
+    this.requiredTriggerIds.push(id);
+  }
+
+  tag(...tags: PatternTag[]): void {
+    for (const tag of tags) {
+      if (!this.tags.includes(tag)) {
+        this.tags.push(tag);
+      }
+    }
+  }
+
+  advance(px: number): void {
+    this.x += px;
+  }
+
+  /** Rightmost edge of any authored entity (for bounds-safe finish lines). */
+  maxEntityRight(): number {
+    let right = this.x;
+    for (const entity of this.entities) {
+      right = Math.max(right, entity.x + entity.width);
+    }
+    return right;
+  }
+
+  /** A finish X past the cursor and every authored entity (incl. lighting). */
+  finishX(tail = 64): number {
+    return Math.ceil(Math.max(this.x, this.maxEntityRight()) + tail);
+  }
+}
+
+/** Comfortable climbing slope for tall hero ramps. */
+const HERO_ASCENT_SLOPE = 0.34;
+
+// ---------------------------------------------------------------------------
+// Geometry primitives (solver-safe by construction)
+// ---------------------------------------------------------------------------
+
+/** A wide standable plateau block whose top sits at `surfaceY`. */
+export function plateau(
+  x: number,
+  surfaceY: number,
+  width: number,
+): LevelEntity {
+  return cubePlatform(x, surfaceY, width);
+}
+
+/**
+ * A ramp block bridging two ground surfaces. The conservative solver simply
+ * walks the interpolated surface, so ramps are the reliable way to gain or shed
+ * a lot of altitude.
+ */
+export function ramp(
+  x: number,
+  width: number,
+  fromSurfaceY: number,
+  toSurfaceY: number,
+): LevelEntity {
+  if (toSurfaceY < fromSurfaceY) {
+    // Ascending: surface drops from (y + height) on the left to y on the right.
+    return {
+      type: "block",
+      shape: "ramp-up",
+      height: fromSurfaceY - toSurfaceY,
+      width,
+      x,
+      y: toSurfaceY,
+    };
+  }
+  // Descending: surface rises from y on the left to (y + height) on the right.
+  return {
+    type: "block",
+    shape: "ramp-down",
+    height: toSurfaceY - fromSurfaceY,
+    width,
+    x,
+    y: fromSurfaceY,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Lighting patterns (purely cosmetic; shape the mood, not the route)
+// ---------------------------------------------------------------------------
+
+export function darkZone(b: CourseBuilder, width: number): void {
+  b.add(decor("shadow", b.x, -10, width, 200));
+  b.add(decor("dark", b.x + width * 0.2, 60, width * 0.6, 150));
+  b.tag("lighting-dark");
+}
+
+export function brightZone(b: CourseBuilder, width: number): void {
+  b.add(decor("glow", b.x + width * 0.1, 70, width * 0.8, 150));
+  b.tag("lighting-bright");
+}
+
+export function spotlights(b: CourseBuilder, width: number, count = 3): void {
+  const step = width / Math.max(1, count);
+  for (let index = 0; index < count; index += 1) {
+    b.add(decor("spotlight", b.x + index * step + 20, -40, 120, 260));
+  }
+  b.tag("lighting-bright");
+}
+
+export function strobeZone(b: CourseBuilder, width: number): void {
+  b.add(decor("flash", b.x + 30, 96, Math.min(180, width * 0.4), 90));
+  b.add(decor("beam", b.x + width * 0.5, 40, Math.min(220, width * 0.5), 130));
+  b.tag("lighting-bright");
+}
+
+// ---------------------------------------------------------------------------
+// Base gameplay patterns
+// ---------------------------------------------------------------------------
+
+/** Flat breathing room. */
+export function rest(b: CourseBuilder, width = BEAT_SPACING): void {
+  b.advance(width);
+  b.tag("rest");
+}
+
+/**
+ * Rhythmic ground-spike clusters (1-3 spikes each) separated by safe gaps.
+ * The conservative cube jump clears up to three contiguous spikes.
+ */
+/** A single ground spike pinned at an absolute x (precise hop-safe placement). */
+export function groundSpikeBeat(b: CourseBuilder, x: number): void {
+  b.add(groundSpike(x));
+  b.x = Math.max(b.x, x + 30);
+  b.tag("spike", "jump");
+}
+
+export function spikeRhythm(
+  b: CourseBuilder,
+  clusterSizes: readonly number[],
+  spacing = BEAT_SPACING,
+): void {
+  for (const rawSize of clusterSizes) {
+    const size = Math.max(1, Math.min(3, Math.round(rawSize)));
+    for (let index = 0; index < size; index += 1) {
+      b.add(groundSpike(b.x + index * 30));
+    }
+    b.advance(Math.max(spacing, size * 30 + 140));
+  }
+  b.tag("spike", "jump");
+}
+
+/** A small hill: ramp up to a short plateau and back down. */
+export function hill(
+  b: CourseBuilder,
+  rise = 60,
+  plateauWidth = 150,
+): void {
+  const top = b.surfaceY - rise;
+  b.add(ramp(b.x, 90, b.surfaceY, top));
+  b.advance(90);
+  b.add(plateau(b.x, top, plateauWidth));
+  b.advance(plateauWidth);
+  b.add(ramp(b.x, 90, top, b.surfaceY));
+  b.advance(90 + 60);
+  b.tag("jump", "vertical");
+}
+
+/**
+ * A tall climb: a long ramp up to an elevated plateau, traversal, then a ramp
+ * back down. This is the headline "up, up, up" pattern — the follow-camera
+ * scrolls upward as the runner ascends and back down as it descends.
+ */
+export function bigClimb(
+  b: CourseBuilder,
+  options: {
+    rise?: number;
+    runUp?: number;
+    plateauWidth?: number;
+    runDown?: number;
+    light?: "bright" | "dark";
+  } = {},
+): void {
+  const rise = options.rise ?? 210;
+  const runUp = Math.max(options.runUp ?? 0, Math.ceil(rise / HERO_ASCENT_SLOPE));
+  const plateauWidth = options.plateauWidth ?? 240;
+  const runDown = options.runDown ?? 260;
+  const top = b.surfaceY - rise;
+
+  b.add(ramp(b.x, runUp, b.surfaceY, top));
+  b.advance(runUp);
+  b.add(plateau(b.x, top, plateauWidth));
+  if (options.light === "dark") {
+    b.add(decor("shadow", b.x - 30, top - 150, plateauWidth + 60, 140));
+  } else if (options.light === "bright") {
+    b.add(decor("glow", b.x, top - 130, plateauWidth, 120));
+  }
+  b.advance(plateauWidth);
+  b.add(ramp(b.x, runDown, top, b.surfaceY));
+  b.advance(runDown + 80);
+  b.tag("vertical", "jump");
+}
+
+/**
+ * A spike-pit crossing bridged by an ascending ramp with floating step markers,
+ * matching the proven stair-pit geometry. Removes the floor so a miss is fatal.
+ */
+export function pitBridge(
+  b: CourseBuilder,
+  options: { steps?: number; firstSurfaceY?: number } = {},
+): void {
+  // Delegates to the proven stair-pit geometry: an ascending ramp bridges a
+  // spike pit (floor removed) with floating step markers. The conservative
+  // solver reliably walks this; hand-rolled ramps tend to make it overshoot.
+  const steps = options.steps ?? 6;
+  const section = buildStairPitSection(
+    b.x,
+    steps,
+    options.firstSurfaceY !== undefined
+      ? { firstSurfaceY: options.firstSurfaceY }
+      : {},
+  );
+  b.add(...section.entities);
+  b.channel(section.channel);
+  // section.endX precedes the landing ramp-down + plateau it appends, so leave
+  // generous clearance for bounds-safety.
+  b.x = section.endX + 220;
+  b.tag("vertical", "gap", "jump");
+}
+
+/**
+ * A launch pad that throws the runner up and forward into an open arc, landing
+ * back on the ground further along. Pads fire on contact, so this is a pure
+ * "air time" beat the solver clears passively.
+ */
+export function padVault(
+  b: CourseBuilder,
+  options: { impulse?: number; landAhead?: number; light?: boolean } = {},
+): void {
+  const impulse = options.impulse ?? 720;
+  const landAhead = options.landAhead ?? 320;
+  b.add(launchPad(b.nextId("pad"), b.x, b.surfaceY, impulse));
+  if (options.light) {
+    b.add(decor("spotlight", b.x - 40, -40, 120, 320));
+  }
+  b.advance(landAhead);
+  b.tag("pad", "vertical", "jump");
+}
+
+/**
+ * A chain of impulse orbs that lift the runner upward, each followed by a
+ * landing platform. Returns the orb ids (useful when a level requires the orb
+ * route for reachability). Orbs are catchable by the conservative pre-jump.
+ */
+export function orbLift(
+  b: CourseBuilder,
+  options: { count?: number; required?: boolean; centerY?: number } = {},
+): readonly string[] {
+  const count = options.count ?? 3;
+  const centerY = options.centerY ?? 198;
+  const ids: string[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const id = b.nextId("orb");
+    b.add(jumpOrb(id, b.x, centerY));
+    if (options.required) {
+      b.require(id);
+    }
+    ids.push(id);
+    b.advance(BEAT_SPACING + 20);
+  }
+
+  b.add(plateau(b.x, b.surfaceY, 120));
+  b.advance(160);
+  b.tag("orb", "vertical", "jump");
+  return ids;
+}
+
+/**
+ * A lure orb that flings the runner into a visible spike cap — an optional trap
+ * the solver knows to skip but a greedy player will hit.
+ */
+export function trapOrb(
+  b: CourseBuilder,
+  options: { magnitude?: number } = {},
+): string {
+  const id = b.nextId("trap");
+  const magnitude = options.magnitude ?? 680;
+  b.add({
+    type: "orb",
+    id,
+    effect: { kind: "impulse", magnitude },
+    height: 28,
+    width: 28,
+    x: b.x,
+    y: 210 - 14,
+  });
+  // The bait spike sits in the launch arc, not on the running surface.
+  b.add({ type: "spike", height: 30, width: 30, x: b.x + 8, y: 150 });
+  b.advance(BEAT_SPACING);
+  b.tag("orb");
+  return id;
+}
+
+/**
+ * A bounded ship corridor: ship portal in, cube portal out, with a ceiling and
+ * floor and optional pinch gates that demand precise altitude control.
+ */
+export function shipReef(
+  b: CourseBuilder,
+  options: {
+    length?: number;
+    gates?: readonly FlightGate[];
+    ceilingBottomY?: number;
+    lowerSurfaceY?: number;
+    light?: "dark" | "bright";
+  } = {},
+): void {
+  const length = options.length ?? 760;
+  const shipX = b.x;
+  const cubeX = shipX + length;
+  b.add(...shipPortalPair(shipX, cubeX));
+  b.channel(
+    shipChannel(shipX - 40, cubeX + 60, options.gates as FlightGate[] | undefined),
+  );
+  if (options.ceilingBottomY !== undefined || options.lowerSurfaceY !== undefined) {
+    // Override defaults by replacing the just-pushed channel.
+    const channel = b.channels[b.channels.length - 1]!;
+    if (options.ceilingBottomY !== undefined) {
+      channel.ceilingBottomY = options.ceilingBottomY;
+    }
+    if (options.lowerSurfaceY !== undefined) {
+      channel.lowerSurfaceY = options.lowerSurfaceY;
+    }
+  }
+  if (options.light === "dark") {
+    b.add(decor("shadow", shipX, -10, length, 130));
+    b.add(decor("dark", shipX + length * 0.3, 40, length * 0.5, 150));
+  } else if (options.light === "bright") {
+    b.add(decor("glow", shipX + 40, 40, length - 80, 120));
+  }
+  b.x = cubeX + 80;
+  b.tag("ship", "portal-challenge");
+}
+
+/**
+ * An open ship gallery — wider corridor, fewer pinch gates, room to surf big
+ * vertical waves. Pairs well with a dark or starlit mood.
+ */
+export function shipGallery(
+  b: CourseBuilder,
+  options: { length?: number; light?: "dark" | "bright" } = {},
+): void {
+  shipReef(b, {
+    length: options.length ?? 900,
+    ceilingBottomY: 80,
+    lowerSurfaceY: 400,
+    ...(options.light ? { light: options.light } : {}),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Ceiling-spike pinch helper for ship corridors
+// ---------------------------------------------------------------------------
+
+/** Standard alternating pinch gates for a ship reef of the given length. */
+export function reefGates(
+  startX: number,
+  length: number,
+): readonly FlightGate[] {
+  const gates: FlightGate[] = [];
+  const stops = Math.max(2, Math.floor(length / 240));
+  for (let index = 1; index <= stops; index += 1) {
+    const gx = startX + (length * index) / (stops + 1);
+    if (index % 2 === 1) {
+      gates.push({ edge: "ceiling", limitY: 165, width: 70, x: Math.round(gx) });
+    } else {
+      gates.push({ edge: "lower", limitY: 270, width: 80, x: Math.round(gx) });
+    }
+  }
+  return gates;
+}
+
+// ---------------------------------------------------------------------------
+// Meta-patterns (patterns of patterns)
+// ---------------------------------------------------------------------------
+
+/** Gentle teaching motif: a couple of spikes then a friendly hill. */
+export function awakeningMotif(b: CourseBuilder): void {
+  spikeRhythm(b, [1, 1]);
+  hill(b, 56, 150);
+  rest(b, 160);
+}
+
+/** Vertical showcase: dramatic climb crowned by a launch over the summit. */
+export function summitMotif(
+  b: CourseBuilder,
+  options: { light?: "bright" | "dark" } = {},
+): void {
+  bigClimb(b, { rise: 220, ...(options.light ? { light: options.light } : {}) });
+  padVault(b, { impulse: 760, landAhead: 340, light: true });
+  rest(b, 150);
+}
+
+/** Flight motif: lead-in spikes, a pinch-gated reef, then a soft landing. */
+export function flightMotif(
+  b: CourseBuilder,
+  options: { length?: number; light?: "dark" | "bright" } = {},
+): void {
+  const length = options.length ?? 820;
+  spikeRhythm(b, [1]);
+  const gates = reefGates(b.x, length);
+  shipReef(b, {
+    length,
+    gates,
+    ...(options.light ? { light: options.light } : {}),
+  });
+  rest(b, 180);
+}
+
+/** Rift motif: a spike-pit ascent chased by a tight spike rhythm. */
+export function riftMotif(b: CourseBuilder): void {
+  pitBridge(b, { steps: 6 });
+  spikeRhythm(b, [2, 1, 2]);
+  rest(b, 150);
+}

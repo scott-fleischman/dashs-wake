@@ -13,6 +13,7 @@ import { buildSupportingTerrain } from "../../src/content/terrain";
 
 const STARTER_MECHANIC_TYPES = new Set([
   "block",
+  "decoration",
   "portal",
   "spike",
 ]);

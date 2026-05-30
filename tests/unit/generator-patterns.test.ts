@@ -18,8 +18,11 @@ function baseContext(overrides: Partial<BeatContext>): BeatContext {
 }
 
 describe("generator pattern rules", () => {
-  it("permits no patterns on a quiet beat", () => {
-    expect(permittedPatterns("quiet", "easy")).toEqual([]);
+  it("permits only ambience on the easy tier and ship portals on quiet harder beats", () => {
+    // Easy quiet beats only allow atmosphere (fog); easy intense beats have no
+    // gameplay capability yet.
+    expect(permittedPatterns("quiet", "easy")).toEqual(["fog"]);
+    expect(permittedPatterns("intense", "easy")).toEqual([]);
     expect(permittedPatterns("quiet", "insane")).toContain("portal-ship");
   });
 
@@ -46,7 +49,7 @@ describe("generator pattern rules", () => {
 
   it("selectBeatPattern returns skip when the beat permits no pattern", () => {
     const selection = selectBeatPattern(
-      baseContext({ intensity: "quiet", difficulty: "hard", random: 0 }),
+      baseContext({ intensity: "intense", difficulty: "easy", random: 0 }),
     );
 
     expect(selection.type).toBe("skip");

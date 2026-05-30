@@ -22,6 +22,11 @@ import { groundedCubeCenterY } from "./player-presentation";
 const LOBBY_SCENE_KEY = "lobby-backdrop";
 const LEVEL_SCENE_KEY = "level-run";
 
+/** Smoothing factor for the vertical follow-camera (0 = frozen, 1 = instant). */
+const CAMERA_FOLLOW_LERP = 0.22;
+/** Screen-height fraction the player rides at while the course scrolls beneath. */
+const CAMERA_TOP_BAND_RATIO = 0.36;
+
 class LobbyBackdropScene extends Phaser.Scene {
   private pulse?: Phaser.GameObjects.Arc;
   private pulseHalo?: Phaser.GameObjects.Arc;
@@ -279,6 +284,7 @@ class LevelScene extends Phaser.Scene {
   private cubeJumpPending = false;
   private cubeInputBufferMs = 0;
   private worldOffsetY = 0;
+  private cameraY = 0;
   private jumpHeld = false;
   private lastSnapshotKey = "";
   private levelContent: LevelContent = firstWakeLevel;
@@ -322,6 +328,7 @@ class LevelScene extends Phaser.Scene {
     this.cubeInputBufferMs = 0;
     this.jumpHeld = false;
     this.paused = false;
+    this.cameraY = 0;
     this.state = createRunState(this.levelContent.rules);
     this.status = "running";
     this.drawScene();
@@ -483,6 +490,7 @@ class LevelScene extends Phaser.Scene {
     this.cubeInputBufferMs = 0;
     this.jumpHeld = false;
     this.paused = false;
+    this.cameraY = 0;
     this.demoFrameIndex = 0;
     this.runRecordingFrames = [];
     this.state = resetRunState(this.state, this.levelContent.rules);
@@ -648,6 +656,49 @@ class LevelScene extends Phaser.Scene {
           0.4,
         );
         postFxLayer.add(dark);
+      } else if (entity.kind === "shadow") {
+        const shadow = this.add.rectangle(
+          entity.x + entity.width / 2,
+          y + entity.height / 2,
+          entity.width,
+          entity.height,
+          0x01020a,
+          0.66,
+        );
+        postFxLayer.add(shadow);
+      } else if (entity.kind === "glow") {
+        const glow = this.add.rectangle(
+          entity.x + entity.width / 2,
+          y + entity.height / 2,
+          entity.width,
+          entity.height,
+          0x8ff6ff,
+          0.12,
+        );
+        postFxLayer.add(glow);
+        const core = this.add.rectangle(
+          entity.x + entity.width / 2,
+          y + entity.height / 2,
+          entity.width * 0.5,
+          entity.height * 0.5,
+          0xeafdff,
+          0.16,
+        );
+        postFxLayer.add(core);
+      } else if (entity.kind === "spotlight") {
+        const beam = this.add.graphics();
+        beam.fillStyle(0xfff4c4, 0.12);
+        beam.fillTriangle(
+          entity.x + entity.width / 2,
+          y,
+          entity.x,
+          y + entity.height,
+          entity.x + entity.width,
+          y + entity.height,
+        );
+        beam.fillStyle(0xffffff, 0.18);
+        beam.fillCircle(entity.x + entity.width / 2, y + 6, 7);
+        postFxLayer.add(beam);
       } else {
         decorations.strokeRect(entity.x, y, entity.width, entity.height);
       }
@@ -773,15 +824,21 @@ class LevelScene extends Phaser.Scene {
         )
       : simulationCenterY;
 
-    this.courseLayer?.setX(playerScreenX - this.state.player.x);
+    const naturalScreenY = this.worldOffsetY + this.state.player.y;
+    const topBand = this.scale.height * CAMERA_TOP_BAND_RATIO;
+    const targetCameraY = Math.max(0, topBand - naturalScreenY);
+    this.cameraY += (targetCameraY - this.cameraY) * CAMERA_FOLLOW_LERP;
+    const camY = this.cameraY;
+
+    this.courseLayer?.setPosition(playerScreenX - this.state.player.x, camY);
     this.playerCube
       ?.setVisible(!isShip)
-      .setY(cubeScreenY)
+      .setY(cubeScreenY + camY)
       .setRotation(isShip ? 0 : cubeRotation)
       .setFillStyle(fillColor);
     this.playerShip
       ?.setVisible(isShip)
-      .setY(simulationCenterY)
+      .setY(simulationCenterY + camY)
       .setRotation(this.state.player.velocityY * 0.0006)
       .setFillStyle(fillColor);
   }

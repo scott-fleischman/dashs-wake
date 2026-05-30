@@ -20,8 +20,12 @@ export interface LevelProfileVectors {
   shipFlightRatio: number;
   /** Peak-to-trough player height observed or estimated from layout. */
   verticalExcursion: number;
+  /** 0–100 — taller climbs and deeper falls score higher. */
+  verticalityScore: number;
   /** 0–100 — more mechanic types and balanced use scores higher. */
   obstacleVarietyScore: number;
+  /** 0–100 — more distinct lighting/atmosphere kinds in play score higher. */
+  lightingVarietyScore: number;
   /** 0–100 — spikes aligned to the beat map score higher. */
   beatRegularityScore: number;
   /** Tightest hazard spacing expressed as reaction frames at run speed. */
@@ -35,6 +39,46 @@ export interface LevelProfileAnalysis {
   hasWorkingDemo: boolean;
   mechanics: LevelMechanicCounts;
   vectors: LevelProfileVectors;
+  /** 0–100 composite of variety, verticality, lighting, and motion. */
+  interestingnessScore: number;
+}
+
+const ALL_DECORATION_KINDS = 9;
+
+function distinctLightingKinds(level: LevelContent): number {
+  const kinds = new Set<string>();
+  for (const entity of level.entities) {
+    if (entity.type === "decoration") {
+      kinds.add(entity.kind);
+    }
+  }
+  return kinds.size;
+}
+
+function verticalityScore(verticalExcursion: number): number {
+  return Math.round(Math.max(0, Math.min(100, verticalExcursion / 4)));
+}
+
+function lightingVarietyScore(level: LevelContent): number {
+  return Math.round(
+    Math.min(100, (distinctLightingKinds(level) / ALL_DECORATION_KINDS) * 100),
+  );
+}
+
+/**
+ * A single 0–100 "is this level fun and varied?" number. It rewards balanced
+ * mechanic variety, real verticality, lighting contrast, airborne motion, and
+ * some ship flight, while not over-rewarding raw spike spam.
+ */
+export function scoreLevelInterest(vectors: LevelProfileVectors): number {
+  const score =
+    vectors.obstacleVarietyScore * 0.26 +
+    vectors.verticalityScore * 0.24 +
+    vectors.jumpIntensityScore * 0.18 +
+    vectors.lightingVarietyScore * 0.14 +
+    Math.min(100, vectors.shipFlightRatio * 100) * 0.1 +
+    vectors.beatRegularityScore * 0.08;
+  return Math.round(Math.max(0, Math.min(100, score)));
 }
 
 function mechanicCounts(level: LevelContent): LevelMechanicCounts {
@@ -250,29 +294,34 @@ export function analyzeLevelProfile(
     (spacingVariance / Math.max(1, meanSpikeGap)) * 40,
   );
 
+  const excursion =
+    frames.length > 0
+      ? Math.max(demoVerticalExcursion(frames), layoutVerticalExcursion(level) * 0.35)
+      : layoutVerticalExcursion(level);
+  const vectors: LevelProfileVectors = {
+    spikeDensityPer1000,
+    shipFlightRatio:
+      frames.length > 0
+        ? demoShipFlightRatio(frames)
+        : estimateShipFlightRatio(level),
+    verticalExcursion: excursion,
+    verticalityScore: verticalityScore(excursion),
+    obstacleVarietyScore: obstacleVarietyScore(mechanics),
+    lightingVarietyScore: lightingVarietyScore(level),
+    beatRegularityScore: Math.max(
+      0,
+      beatRegularityScore(level) - irregularityPenalty,
+    ),
+    timingTightnessFrames: difficulty.peakPrecisionFrames,
+    jumpIntensityScore: frames.length > 0 ? jumpIntensityScore(frames) : 0,
+  };
+
   return {
     difficulty,
     hasWorkingDemo: demo?.success ?? false,
     mechanics,
-    vectors: {
-      spikeDensityPer1000,
-      shipFlightRatio:
-        frames.length > 0
-          ? demoShipFlightRatio(frames)
-          : estimateShipFlightRatio(level),
-      verticalExcursion:
-        frames.length > 0
-          ? Math.max(demoVerticalExcursion(frames), layoutVerticalExcursion(level) * 0.35)
-          : layoutVerticalExcursion(level),
-      obstacleVarietyScore: obstacleVarietyScore(mechanics),
-      beatRegularityScore: Math.max(
-        0,
-        beatRegularityScore(level) - irregularityPenalty,
-      ),
-      timingTightnessFrames: difficulty.peakPrecisionFrames,
-      jumpIntensityScore:
-        frames.length > 0 ? jumpIntensityScore(frames) : 0,
-    },
+    vectors,
+    interestingnessScore: scoreLevelInterest(vectors),
   };
 }
 
@@ -282,6 +331,8 @@ export function formatLevelProfileSummary(analysis: LevelProfileAnalysis): strin
     `Spike ${v.spikeDensityPer1000.toFixed(1)}/1k`,
     `Ship ${Math.round(v.shipFlightRatio * 100)}%`,
     `Vert ${Math.round(v.verticalExcursion)}`,
+    `Light ${v.lightingVarietyScore}`,
+    `Fun ${analysis.interestingnessScore}`,
     `Timing ${v.timingTightnessFrames}f`,
   ];
   if (analysis.hasWorkingDemo) {

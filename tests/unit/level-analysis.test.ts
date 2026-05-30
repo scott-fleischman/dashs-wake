@@ -48,4 +48,22 @@ describe("level profile analysis", () => {
       expect(profile.difficulty.estimatedDifficulty).toBeLessThanOrEqual(100);
     }
   });
+
+  it("scores verticality, lighting variety, and overall interestingness", () => {
+    for (const level of officialLevelCatalog) {
+      const content = getOfficialLevelContent(level.id);
+      const profile = analyzeLevelProfile(content, recordConservativeDemo(content));
+
+      // Every redesigned course climbs, varies its lighting, and reads as fun.
+      expect(profile.vectors.verticalityScore).toBeGreaterThan(0);
+      expect(
+        profile.vectors.lightingVarietyScore,
+        `${level.id} lighting`,
+      ).toBeGreaterThanOrEqual(40);
+      expect(
+        profile.interestingnessScore,
+        `${level.id} interest`,
+      ).toBeGreaterThanOrEqual(40);
+    }
+  });
 });

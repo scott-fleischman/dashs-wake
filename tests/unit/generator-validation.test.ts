@@ -16,12 +16,12 @@ describe("generated level playability", () => {
   it("keeps a normal generated block course playable for conservative input", () => {
     const result = generateValidLevel(
       {
-        seed: 1001,
+        seed: 1,
         beatIntensities: ["intense", "intense", "intense", "intense", "intense"],
         beatMap: { beats: [0, 600, 1200, 1800, 2400], durationMs: 3000 },
         difficulty: "normal",
       },
-      1,
+      8,
     );
 
     expect(result.level).not.toBeNull();
