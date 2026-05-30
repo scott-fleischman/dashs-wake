@@ -1,5 +1,11 @@
 export interface RunRules {
   fallBoundaryY: number;
+  /**
+   * Kill plane for ship mode. Ships ride a low "line of blocks at the bottom",
+   * so they should only register a fall once they are below the actual terrain
+   * floor — never in the open air above it. Defaults to `fallBoundaryY`.
+   */
+  shipFallBoundaryY?: number;
   gravity: number;
   horizontalSpeed: number;
   jumpVelocity: number;
@@ -400,6 +406,74 @@ function findActivatableOrbs(
   );
 }
 
+interface SortedEntities {
+  maxWidth: number;
+  sorted: readonly LevelEntity[];
+}
+
+// Long, dense courses can hold thousands of entities. Sorting once (cached by
+// the stable entities array reference) lets every tick scan only the slice of
+// entities within reach of the player instead of the whole level, keeping the
+// simulation cost bounded as levels grow.
+const sortedEntityCache = new WeakMap<readonly LevelEntity[], SortedEntities>();
+
+function sortedEntitiesFor(entities: readonly LevelEntity[]): SortedEntities {
+  const cached = sortedEntityCache.get(entities);
+  if (cached) {
+    return cached;
+  }
+
+  const sorted = [...entities].sort((a, b) => a.x - b.x);
+  let maxWidth = 0;
+  for (const entity of sorted) {
+    if (entity.width > maxWidth) {
+      maxWidth = entity.width;
+    }
+  }
+
+  const result: SortedEntities = { maxWidth, sorted };
+  sortedEntityCache.set(entities, result);
+  return result;
+}
+
+/**
+ * Returns the entities whose horizontal extent can overlap the player anywhere
+ * between `loX` and `hiX`. Uses the cached x-sorted order plus the widest entity
+ * width so a binary search can skip everything safely behind the window.
+ */
+function entitiesWithinWindow(
+  entities: readonly LevelEntity[],
+  loX: number,
+  hiX: number,
+): readonly LevelEntity[] {
+  const { maxWidth, sorted } = sortedEntitiesFor(entities);
+  if (sorted.length === 0) {
+    return sorted;
+  }
+
+  const lowerBound = loX - maxWidth;
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid]!.x < lowerBound) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+
+  const window: LevelEntity[] = [];
+  for (let index = lo; index < sorted.length; index += 1) {
+    const entity = sorted[index]!;
+    if (entity.x > hiX) {
+      break;
+    }
+    window.push(entity);
+  }
+  return window;
+}
+
 export function tickRun(
   state: RunState,
   input: RunInput,
@@ -416,17 +490,24 @@ export function tickRun(
   }
 
   const elapsedSeconds = elapsedMs / 1000;
+  // The player can move at most one tick of horizontal travel, so a window that
+  // spans the current and projected position (padded by the player half-width)
+  // captures every entity collision/trigger this tick can produce.
+  const travel = Math.abs(rules.horizontalSpeed) * elapsedSeconds;
+  const windowLoX = state.player.x - rules.playerWidth;
+  const windowHiX = state.player.x + travel + rules.playerWidth;
+  const nearbyEntities = entitiesWithinWindow(entities, windowLoX, windowHiX);
   const activatablePads = findActivatablePads(
     state.player,
     state.consumedTriggerIds,
-    entities,
+    nearbyEntities,
     rules,
   );
   const activatedOrbs = input.jumpPressed
     ? findActivatableOrbs(
         state.player,
         state.consumedTriggerIds,
-        entities,
+        nearbyEntities,
         rules,
       )
     : [];
@@ -451,7 +532,7 @@ export function tickRun(
     proposedX,
     proposedY,
     velocityY,
-    entities,
+    nearbyEntities,
     rules,
   );
   const landed = landingY !== undefined;
@@ -460,7 +541,7 @@ export function tickRun(
     state.player.mode,
     proposedX,
     placedY,
-    entities,
+    nearbyEntities,
     rules,
   );
   const enteredShip = state.player.mode !== "ship" && nextMode === "ship";
@@ -483,7 +564,7 @@ export function tickRun(
     (orb) => orb.effect.kind === "kill",
   );
   const SURFACE_EPSILON = 1.25;
-  const blockFatalCollision = entities.some((entity) => {
+  const blockFatalCollision = nearbyEntities.some((entity) => {
     if (entity.type !== "block") {
       return false;
     }
@@ -517,7 +598,7 @@ export function tickRun(
   });
   const deathCause: DeathCause | undefined = trapActivated
     ? "trap"
-    : entities.some(
+    : nearbyEntities.some(
           (entity) =>
             entity.type === "spike" &&
             playerOverlapsSpike(player.x, player.y, entity, rules),
@@ -525,7 +606,10 @@ export function tickRun(
       ? "spike"
       : blockFatalCollision
         ? "block"
-      : player.y >= rules.fallBoundaryY
+      : player.y >=
+          (player.mode === "ship"
+            ? rules.shipFallBoundaryY ?? rules.fallBoundaryY
+            : rules.fallBoundaryY)
         ? "fall"
         : undefined;
 

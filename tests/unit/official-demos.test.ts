@@ -8,14 +8,17 @@ import { validateLevelReachability } from "../../src/content/first-wake";
 import { recordConservativeDemo } from "../../src/core/level-solver";
 
 describe("official handcrafted demos", () => {
-  it("publishes five official levels", () => {
-    expect(officialLevelCatalog).toHaveLength(5);
+  it("publishes eight official levels", () => {
+    expect(officialLevelCatalog).toHaveLength(8);
     expect(officialLevelCatalog.map((level) => level.id)).toEqual([
       "level_1",
       "level_2",
       "level_3",
       "level_4",
       "level_5",
+      "level_6",
+      "level_7",
+      "level_8",
     ]);
   });
 

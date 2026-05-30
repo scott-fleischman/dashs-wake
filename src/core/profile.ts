@@ -185,6 +185,18 @@ export const OFFICIAL_LEVEL_COMPLETION_RULES: LevelCompletionRules = {
     unlocks: ["level_5"],
   },
   level_5: {
+    keyAwarded: { type: "hard", amount: 1 },
+    unlocks: ["level_6"],
+  },
+  level_6: {
+    keyAwarded: { type: "hard", amount: 1 },
+    unlocks: ["level_7"],
+  },
+  level_7: {
+    keyAwarded: { type: "insane", amount: 1 },
+    unlocks: ["level_8"],
+  },
+  level_8: {
     keyAwarded: { type: "insane", amount: 1 },
   },
 };

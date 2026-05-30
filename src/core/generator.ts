@@ -114,7 +114,7 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
   },
   {
     id: "spike-ceiling",
-    minDifficulty: "harder",
+    minDifficulty: "hard",
     requiresIntensity: "intense",
     produce: ({ x }) => ({ type: "spike", height: 30, width: 30, x, y: 96 }),
   },
@@ -184,7 +184,7 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
   },
   {
     id: "orb",
-    minDifficulty: "insane",
+    minDifficulty: "harder",
     requiresIntensity: "intense",
     produce: ({ beatIndex, x }) => ({
       type: "orb",
@@ -198,7 +198,7 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
   },
   {
     id: "portal-ship",
-    minDifficulty: "harder",
+    minDifficulty: "hard",
     requiresIntensity: "quiet",
     produce: ({ x }) => ({
       type: "portal",
@@ -211,7 +211,7 @@ const PATTERN_CAPABILITIES: readonly PatternCapability[] = [
   },
   {
     id: "portal-cube",
-    minDifficulty: "harder",
+    minDifficulty: "hard",
     requiresIntensity: "intense",
     produce: ({ x }) => ({
       type: "portal",
@@ -576,40 +576,55 @@ function labelForScore(score: number): GeneratorInput["difficulty"] {
 }
 
 export function analyzeLevelDifficulty(level: LevelContent): DifficultyAnalysis {
-  const obstacleCount = level.entities.filter(
+  // Difficulty is driven by what actually threatens the runner — spikes, orbs,
+  // and pads — not by structural/terrain blocks (ground steps, ship-corridor
+  // floors and ceilings, walkable ramps). Counting terrain saturates the score,
+  // which is why a calm staircase used to read as "nightmare".
+  const hazardCount = level.entities.filter(
     (entity) =>
       entity.type === "spike" ||
-      entity.type === "block" ||
       entity.type === "orb" ||
       entity.type === "pad",
   ).length;
-  const obstacleDensityPer1000 = obstacleCount / Math.max(1, level.finishX / 1000);
-  const sortedHazards = level.entities
-    .filter((entity) => entity.type === "spike" || entity.type === "block")
+  const obstacleDensityPer1000 = hazardCount / Math.max(1, level.finishX / 1000);
+  // Precision pressure comes from how tightly spikes are packed — that is the
+  // reaction window the player must hit. Terrain spacing is irrelevant here.
+  const sortedSpikes = level.entities
+    .filter((entity) => entity.type === "spike")
     .slice()
     .sort((a, b) => a.x - b.x);
   let tightestGap = Number.POSITIVE_INFINITY;
-  for (let i = 1; i < sortedHazards.length; i += 1) {
-    tightestGap = Math.min(tightestGap, sortedHazards[i]!.x - sortedHazards[i - 1]!.x);
+  for (let i = 1; i < sortedSpikes.length; i += 1) {
+    tightestGap = Math.min(tightestGap, sortedSpikes[i]!.x - sortedSpikes[i - 1]!.x);
   }
   const peakPrecisionFrames =
     Number.isFinite(tightestGap) && tightestGap > 0
       ? Math.max(1, Math.round((tightestGap / level.rules.horizontalSpeed) * 60))
-      : 30;
-  const shipPortals = level.entities.filter(
-    (entity) => entity.type === "portal" && entity.mode === "ship",
-  ).length;
-  const cubePortals = level.entities.filter(
-    (entity) => entity.type === "portal" && entity.mode === "cube",
-  ).length;
-  const shipSectionRatio = shipPortals / Math.max(1, shipPortals + cubePortals);
+      : 45;
+  // Distance-based ship ratio: how much of the run is spent threading a
+  // corridor, measured from each ship portal to its following cube exit.
+  const shipPortals = level.entities
+    .filter((entity) => entity.type === "portal" && entity.mode === "ship")
+    .slice()
+    .sort((a, b) => a.x - b.x);
+  let shipSpan = 0;
+  for (const portal of shipPortals) {
+    const exit = level.entities.find(
+      (entity) =>
+        entity.type === "portal" && entity.mode === "cube" && entity.x > portal.x,
+    );
+    if (exit) {
+      shipSpan += exit.x - portal.x;
+    }
+  }
+  const shipSectionRatio = Math.min(1, shipSpan / Math.max(1, level.finishX));
   const estimatedDifficulty = Math.max(
     0,
     Math.min(
       100,
-      obstacleDensityPer1000 * 4.2 +
-        (30 / peakPrecisionFrames) * 18 +
-        shipSectionRatio * 24,
+      obstacleDensityPer1000 * 11 +
+        (24 / peakPrecisionFrames) * 9 +
+        shipSectionRatio * 40,
     ),
   );
   return {

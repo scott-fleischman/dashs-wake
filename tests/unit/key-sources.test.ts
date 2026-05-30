@@ -18,9 +18,10 @@ describe("describeKeySource", () => {
     expect(describeKeySource("hard")).toContain("Electric Wake Gauntlet");
   });
 
-  it("lists insane-key sources across the final level and gauntlets", () => {
+  it("lists insane-key sources across the final levels and gauntlets", () => {
     const insane = describeKeySource("insane");
-    expect(insane).toContain("Final Rift");
+    expect(insane).toContain("Steel Skyline");
+    expect(insane).toContain("Foundry Overdrive");
     expect(insane).toContain("Skyline Trial Gauntlet");
     expect(insane).toContain("Void Circuit Gauntlet");
   });

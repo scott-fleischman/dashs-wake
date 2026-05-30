@@ -1,48 +1,32 @@
 import { expect, test } from "@playwright/test";
-import {
-  hoverThroughShipPassage,
-  waitUntilPercent,
-} from "./helpers/course-play";
 import { seedProfile } from "./helpers/profile-storage";
 
+test.setTimeout(120_000);
+
 test("enters and completes the electric wake gauntlet", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#gauntlets");
   await seedProfile(page, {
     completedLevels: ["level_1", "level_2"],
+    // The Electric Wake stages are full-length cube courses that auto-clear
+    // (ramps + launch pads need no input); 3x speed keeps the journey brisk.
+    settings: { levelColor: "neon", speedMultiplier: 3 },
   });
   await page.reload();
 
-  await page.getByTestId("destination-gauntlets").click();
   await expect(page.getByRole("heading", { name: "Gauntlets" })).toBeVisible();
 
   await page.getByTestId("gauntlet-electric-wake-start").click();
 
-  const progress = page.getByTestId("run-progress");
   const kicker = page.locator(".first-wake-header .kicker");
-  const readPercent = async (): Promise<number> =>
-    Number((await progress.textContent())?.replace("%", ""));
 
+  // Each stage advances on its own once it auto-clears; no input required.
   await expect(kicker).toContainText("Stage 1 of 3");
-  await page.keyboard.down("Space");
-  await expect(kicker).toContainText("Stage 2 of 3", { timeout: 5_000 });
-  await page.keyboard.up("Space");
-  await page.waitForTimeout(100);
-  await page.keyboard.down("Space");
-
-  await expect(kicker).toContainText("Stage 3 of 3", { timeout: 5_000 });
-  await page.keyboard.up("Space");
-  await expect
-    .poll(readPercent, { intervals: [20], timeout: 3_000 })
-    .toBeGreaterThanOrEqual(10);
-  await page.keyboard.press("Space");
-  await waitUntilPercent(page, 43, 6_000);
-  await hoverThroughShipPassage(page, 6_000);
-  await page.keyboard.down("Space");
+  await expect(kicker).toContainText("Stage 2 of 3", { timeout: 30_000 });
+  await expect(kicker).toContainText("Stage 3 of 3", { timeout: 30_000 });
 
   await expect(
     page.getByRole("dialog", { name: "Gauntlet complete" }),
-  ).toBeVisible({ timeout: 6_000 });
-  await page.keyboard.up("Space");
+  ).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("gauntlet-complete-reward")).toHaveText(
     "Earned: 150 Coins + 1 Hard Key",
   );

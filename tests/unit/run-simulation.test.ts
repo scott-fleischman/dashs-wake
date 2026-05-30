@@ -430,6 +430,38 @@ describe("ship mode portals and motion", () => {
   });
 });
 
+describe("mode-aware fall boundary", () => {
+  const dualRules: RunRules = {
+    ...rules,
+    fallBoundaryY: 100,
+    shipFallBoundaryY: 200,
+  };
+  const at = (mode: "cube" | "ship", y: number): RunState => ({
+    consumedTriggerIds: new Set(),
+    elapsedMs: 0,
+    player: { grounded: false, mode, velocityY: 0, x: 50, y },
+    status: "running",
+  });
+
+  it("keeps a ship alive in open air above its lower floor line", () => {
+    const next = tickRun(at("ship", 150), { jumpPressed: true }, 0, dualRules);
+    expect(next.status).toBe("running");
+    expect(next.deathCause).toBeUndefined();
+  });
+
+  it("still falls a cube at the same depth that kills a ship's cube plane", () => {
+    const next = tickRun(at("cube", 150), { jumpPressed: false }, 0, dualRules);
+    expect(next.status).toBe("dead");
+    expect(next.deathCause).toBe("fall");
+  });
+
+  it("falls a ship only once it drops below the floor line", () => {
+    const next = tickRun(at("ship", 250), { jumpPressed: false }, 0, dualRules);
+    expect(next.status).toBe("dead");
+    expect(next.deathCause).toBe("fall");
+  });
+});
+
 describe("launch pad impulses", () => {
   it("applies a pad's configured upward impulse the first time the player overlaps it", () => {
     const pad: LevelEntity = {

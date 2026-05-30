@@ -2,6 +2,12 @@ import type { BlockEntity, LevelEntity } from "../core/run-simulation";
 
 export const SPAWN_SURFACE_Y = 300;
 export const TERRAIN_DEPTH_Y = 540;
+/**
+ * Floor surface for ship corridors. Sits near the bottom of the playfield so a
+ * descending ship lands on a visible line of blocks instead of triggering a
+ * "fell" death high up the screen.
+ */
+export const SHIP_FLOOR_Y = 478;
 
 const TERRAIN_TILE_WIDTH = 92;
 
@@ -53,10 +59,15 @@ export function buildSurfaceRun(
 function flightChannelBlocks(channel: FlightChannel): BlockEntity[] {
   const ceilingBottomY = channel.ceilingBottomY ?? 36;
   const ceilingEndX = Math.min(channel.ceilingEndX ?? channel.endX, channel.endX);
-  const lowerSurfaceY = channel.lowerSurfaceY ?? 410;
+  // Ship corridors keep their floor as a low "line of blocks at the bottom" so
+  // the runner never reads as falling into empty space (see SHIP_FLOOR_Y).
+  const lowerSurfaceY = channel.lowerSurfaceY ?? SHIP_FLOOR_Y;
+  // Keep the exit ramp gentle enough to walk even when the floor sits low: cap
+  // the slope at ~0.9 so a deep corridor doesn't end in a wall-like incline.
+  const rise = lowerSurfaceY - SPAWN_SURFACE_Y;
   const rampWidth =
     lowerSurfaceY > SPAWN_SURFACE_Y
-      ? Math.min(120, channel.endX - channel.startX)
+      ? Math.min(Math.max(120, Math.ceil(rise / 0.9)), channel.endX - channel.startX)
       : 0;
   const lowerRunEndX = channel.endX - rampWidth;
   const blocks = [

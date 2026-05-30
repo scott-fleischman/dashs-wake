@@ -23,7 +23,7 @@ describe("agent gate: module boot", () => {
   });
 
   it("loads every official level at import time", () => {
-    expect(officialLevelCatalog).toHaveLength(5);
+    expect(officialLevelCatalog).toHaveLength(8);
 
     for (const level of officialLevelCatalog) {
       const content = getOfficialLevelContent(level.id);

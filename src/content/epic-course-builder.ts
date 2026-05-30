@@ -7,7 +7,7 @@ import type { ExpectedRoute, LevelContent } from "./official-course";
 import { beatsForOfficialTrack, beatLengthPx } from "./official-course";
 import { OFFICIAL_LEVEL_RULES } from "./level-rules";
 import { buildOfficialBeatMap } from "./official-soundtrack";
-import { withSupportingTerrain, type FlightChannel } from "./terrain";
+import { SHIP_FLOOR_Y, withSupportingTerrain, type FlightChannel } from "./terrain";
 
 type SectionKind =
   | "air-orb"
@@ -162,7 +162,7 @@ export function buildEpicLevel(config: EpicLevelConfig): LevelContent {
         startX: sectionStartX - 80,
         endX: sectionEndX + 80,
         ceilingBottomY: hard ? (section.loft ? 70 : 56) : 96,
-        lowerSurfaceY: hard ? (section.loft ? 350 : 330) : 388,
+        lowerSurfaceY: SHIP_FLOOR_Y,
         gates: hard
           ? [
               {

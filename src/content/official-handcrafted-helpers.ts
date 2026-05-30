@@ -7,7 +7,7 @@ import type {
   SpikeEntity,
 } from "../core/run-simulation";
 import type { FlightChannel } from "./terrain";
-import { SPAWN_SURFACE_Y } from "./terrain";
+import { SHIP_FLOOR_Y, SPAWN_SURFACE_Y } from "./terrain";
 
 export const PLATFORM_THICKNESS = 36;
 
@@ -97,7 +97,7 @@ export function shipChannel(
     ceilingBottomY: 96,
     endX,
     gates,
-    lowerSurfaceY: 388,
+    lowerSurfaceY: SHIP_FLOOR_Y,
     startX,
   };
 }

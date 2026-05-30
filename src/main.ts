@@ -73,7 +73,10 @@ import {
   levelKicker,
 } from "./content/official-levels";
 import type { LevelDemo } from "./core/level-solver";
-import { getGauntletStageContent } from "./content/electric-wake-stages";
+import {
+  getGauntletStageContent,
+  getGauntletStageTrack,
+} from "./content/electric-wake-stages";
 
 function requiredElement(id: string): HTMLElement {
   const element = document.getElementById(id);
@@ -164,9 +167,21 @@ function applyAttemptResult(
   return next;
 }
 
+// Generating a level (and its dense terrain) is deterministic but not free, and
+// the same record is opened repeatedly (play, demo, replay, return-and-retry).
+// Cache by the record object so navigation never regenerates; editing a record
+// produces a new object, which naturally invalidates the stale entry.
+const generatedContentCache = new WeakMap<GeneratedLevelRecord, LevelContent>();
+
 function contentForGeneratedRecord(record: GeneratedLevelRecord): LevelContent {
+  const cached = generatedContentCache.get(record);
+  if (cached) {
+    return cached;
+  }
   const tuning = generatorTuningFromRecord(record);
-  return generateLevel(generatorInputFromRecord(record, tuning));
+  const content = generateLevel(generatorInputFromRecord(record, tuning));
+  generatedContentCache.set(record, content);
+  return content;
 }
 
 const root = requiredElement("app");
@@ -884,13 +899,24 @@ function renderRoute(): void {
 
     const totalStages = activeGauntletRun.stages.length;
     const stageNumber = activeGauntletRun.currentStageIndex + 1;
+    const stageTrack = getGauntletStageTrack(stageId);
+
+    if (stageTrack) {
+      startOfficialAudioPlayback(
+        stageTrack.audioPath,
+        profile.settings.speedMultiplier,
+      );
+    }
 
     disposeView = launchLevelRun(
       stageContent,
-      buildLevelRunMetadata(
-        `${gauntlet.name} - Stage ${stageNumber} of ${totalStages}`,
-        gauntlet.name,
-      ),
+      {
+        ...buildLevelRunMetadata(
+          `${gauntlet.name} - Stage ${stageNumber} of ${totalStages}`,
+          gauntlet.name,
+        ),
+        ...(stageTrack ? { trackLabel: `${stageTrack.title} - Dash's Wake` } : {}),
+      },
       {
         onAttemptResolved: (snapshot) => {
           if (!activeGauntletRun) {
@@ -926,6 +952,7 @@ function renderRoute(): void {
               activeGauntletRun,
             );
           }
+          restartAudioPlayback();
         },
         onReturnHome: () => {
           activeGauntletRun = null;

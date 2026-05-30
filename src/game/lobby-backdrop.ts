@@ -221,6 +221,25 @@ function poly(coords: readonly number[]): Phaser.Math.Vector2[] {
   return points;
 }
 
+/**
+ * Soft neon bloom centered on the player. Stacked translucent discs fake an
+ * additive glow without a post-process pipeline, so the avatar reads as a
+ * lit object against the dark course instead of a flat sticker.
+ */
+function drawNeonGlow(
+  g: Phaser.GameObjects.Graphics,
+  color: number,
+  radius: number,
+): void {
+  const halo = shade(color, 1.35);
+  g.fillStyle(halo, 0.08);
+  g.fillCircle(0, 0, radius * 2.1);
+  g.fillStyle(halo, 0.12);
+  g.fillCircle(0, 0, radius * 1.55);
+  g.fillStyle(color, 0.18);
+  g.fillCircle(0, 0, radius * 1.12);
+}
+
 /** Draws the cube/icon centered at local (0,0) with distinct per-icon detailing. */
 function drawCubeArt(
   g: Phaser.GameObjects.Graphics,
@@ -233,6 +252,8 @@ function drawCubeArt(
   const hh = height / 2;
   const accent = appearance.accent;
   const stroke = PLAYER_STYLE.stroke;
+
+  drawNeonGlow(g, fill, Math.max(hw, hh));
 
   g.lineStyle(PLAYER_STYLE.strokeWidth, stroke, PLAYER_STYLE.strokeAlpha);
   if (appearance.cubeShape === "circle") {
@@ -331,6 +352,9 @@ function drawShipArt(
   const hh = height / 2;
   const accent = appearance.accent;
   const light = shade(fill, 1.5);
+
+  drawNeonGlow(g, fill, Math.max(hw, hh));
+
   g.lineStyle(PLAYER_STYLE.strokeWidth, PLAYER_STYLE.stroke, PLAYER_STYLE.strokeAlpha);
 
   if (appearance.shipArt === "nova") {
@@ -381,6 +405,12 @@ function drawTrail(
       continue;
     }
     const size = (p.ship ? 7 : 5) * (0.35 + age * 0.65);
+    // Soft bloom under the freshest points so the wake glows where it is
+    // brightest and dissolves cleanly into the older, dimmer tail.
+    if (age > 0.5) {
+      g.fillStyle(shade(fill, 1.3), alpha * 0.3);
+      g.fillCircle(p.x, p.y, size * 2.1);
+    }
     switch (appearance.trailArt) {
       case "ring":
         g.lineStyle(1.5, accent, alpha);
@@ -445,6 +475,7 @@ class LevelScene extends Phaser.Scene {
   private courseGraphics?: Phaser.GameObjects.Graphics;
   private finishText?: Phaser.GameObjects.Text;
   private sortedEntities: readonly LevelEntity[] = [];
+  private maxEntityWidth = 0;
   private palette: LevelPalette = LEVEL_PALETTES.neon;
   private state: RunState = createRunState(firstWakeLevel.rules);
   private status: LevelSnapshot["status"] = "running";
@@ -627,13 +658,35 @@ class LevelScene extends Phaser.Scene {
   private hasApproachingOrb(): boolean {
     const triggerReach =
       this.levelContent.rules.horizontalSpeed * (this.cubeInputBufferMs > 0 ? 0.2 : 0.15);
-    return this.levelContent.entities.some(
-      (entity) =>
+    const playerX = this.state.player.x;
+    // Dense song levels can hold thousands of entities; binary-search the sorted
+    // course so a held jump only inspects the orbs immediately ahead instead of
+    // scanning the whole level every input.
+    const lowerBound = playerX - this.maxEntityWidth;
+    let lo = 0;
+    let hi = this.sortedEntities.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.sortedEntities[mid]!.x < lowerBound) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    for (let index = lo; index < this.sortedEntities.length; index += 1) {
+      const entity = this.sortedEntities[index]!;
+      if (entity.x - playerX > triggerReach) {
+        break;
+      }
+      if (
         entity.type === "orb" &&
         !this.state.consumedTriggerIds.has(entity.id) &&
-        entity.x + entity.width >= this.state.player.x &&
-        entity.x - this.state.player.x <= triggerReach,
-    );
+        entity.x + entity.width >= playerX
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   restart(): void {
@@ -690,6 +743,10 @@ class LevelScene extends Phaser.Scene {
     this.sortedEntities = [...this.levelContent.entities].sort(
       (a, b) => a.x - b.x,
     );
+    this.maxEntityWidth = this.sortedEntities.reduce(
+      (widest, entity) => Math.max(widest, entity.width),
+      0,
+    );
 
     this.courseLayer = this.add.container(0, 0);
     this.courseGraphics = this.add.graphics();
@@ -728,6 +785,13 @@ class LevelScene extends Phaser.Scene {
       const x = Math.sin(seed * 127.1) * 43758.5453;
       return x - Math.floor(x);
     };
+
+    // Atmospheric horizon haze: a soft accent bloom hugging the ground line
+    // sits behind every theme's silhouette layers and adds a sense of depth.
+    g.fillStyle(palette.accent, 0.05);
+    g.fillRect(0, groundY - 72, width, 72);
+    g.fillStyle(palette.accent, 0.08);
+    g.fillRect(0, groundY - 32, width, 32);
 
     if (this.theme === "neon") {
       // Layered neon skyline with a glowing grid floor.
@@ -821,7 +885,23 @@ class LevelScene extends Phaser.Scene {
     const left = this.state.player.x - playerScreenX - VIRTUAL_DRAW_MARGIN;
     const right = left + this.scale.width + VIRTUAL_DRAW_MARGIN * 2;
 
-    for (const entity of this.sortedEntities) {
+    // Binary-search the first entity that can still be visible so we don't scan
+    // (and skip) every entity already behind the camera each frame. Entities are
+    // sorted by left edge, so anything with x < left - maxWidth is fully behind.
+    const lowerBound = left - this.maxEntityWidth;
+    let lo = 0;
+    let hi = this.sortedEntities.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.sortedEntities[mid]!.x < lowerBound) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+
+    for (let index = lo; index < this.sortedEntities.length; index += 1) {
+      const entity = this.sortedEntities[index]!;
       if (entity.x > right) {
         break;
       }
@@ -849,22 +929,26 @@ class LevelScene extends Phaser.Scene {
   ): void {
     const y = offsetY + entity.y;
     if (entity.type === "spike") {
+      const tipX = entity.x + entity.width / 2;
+      const baseY = y + entity.height;
+      // Shaded body with a glinting left facet and bright tip for readability.
+      g.fillStyle(shade(palette.spike, 0.62), 1);
+      g.fillTriangle(entity.x, baseY, tipX, y, entity.x + entity.width, baseY);
       g.fillStyle(palette.spike, 1);
-      g.fillTriangle(
-        entity.x,
-        y + entity.height,
-        entity.x + entity.width / 2,
-        y,
-        entity.x + entity.width,
-        y + entity.height,
-      );
+      g.fillTriangle(entity.x, baseY, tipX, y, tipX, baseY);
+      g.fillStyle(shade(palette.spike, 1.7), 0.85);
+      g.fillTriangle(tipX, y, tipX - 3, y + 9, tipX + 3, y + 9);
+      g.lineStyle(1.5, shade(palette.spike, 1.4), 0.6);
+      g.lineBetween(entity.x, baseY, tipX, y);
       return;
     }
 
     if (entity.type === "block") {
-      g.fillStyle(palette.block, 0.96);
+      const light = shade(palette.block, 1.4);
+      const dark = shade(palette.block, 0.62);
       g.lineStyle(2, palette.accent, 0.8);
       if (entity.shape === "ramp-up") {
+        g.fillStyle(palette.block, 0.96);
         g.fillTriangle(
           entity.x,
           y + entity.height,
@@ -873,6 +957,10 @@ class LevelScene extends Phaser.Scene {
           entity.x + entity.width,
           y + entity.height,
         );
+        // Bright lip along the climbing surface.
+        g.lineStyle(2.5, light, 0.85);
+        g.lineBetween(entity.x, y + entity.height, entity.x + entity.width, y);
+        g.lineStyle(2, palette.accent, 0.8);
         g.strokeTriangle(
           entity.x,
           y + entity.height,
@@ -882,6 +970,7 @@ class LevelScene extends Phaser.Scene {
           y + entity.height,
         );
       } else if (entity.shape === "ramp-down") {
+        g.fillStyle(palette.block, 0.96);
         g.fillTriangle(
           entity.x,
           y,
@@ -890,6 +979,9 @@ class LevelScene extends Phaser.Scene {
           entity.x,
           y + entity.height,
         );
+        g.lineStyle(2.5, light, 0.85);
+        g.lineBetween(entity.x, y, entity.x + entity.width, y + entity.height);
+        g.lineStyle(2, palette.accent, 0.8);
         g.strokeTriangle(
           entity.x,
           y,
@@ -899,10 +991,16 @@ class LevelScene extends Phaser.Scene {
           y + entity.height,
         );
       } else {
+        // Vertical gradient face with a lit top edge and a shaded base for depth.
+        g.fillGradientStyle(light, light, palette.block, dark, 1);
         g.fillRect(entity.x, y, entity.width, entity.height);
         g.strokeRect(entity.x, y, entity.width, entity.height);
-        g.lineStyle(1, palette.accent, 0.35);
-        g.lineBetween(entity.x + 8, y + 10, entity.x + entity.width - 8, y + 10);
+        g.fillStyle(light, 0.55);
+        g.fillRect(entity.x + 2, y + 2, entity.width - 4, 3);
+        g.fillStyle(dark, 0.5);
+        g.fillRect(entity.x + 2, y + entity.height - 5, entity.width - 4, 3);
+        g.lineStyle(1, palette.accent, 0.32);
+        g.lineBetween(entity.x + 8, y + 12, entity.x + entity.width - 8, y + 12);
       }
       return;
     }
@@ -1089,7 +1187,11 @@ class LevelScene extends Phaser.Scene {
         : {}),
       status: this.status,
     };
-    const key = JSON.stringify(snapshot);
+    // Build the dedupe key from primitives so the hot path never serializes the
+    // (potentially large) run-recording array that rides along on completion.
+    const key = `${this.attempt}|${this.state.deathCause ?? ""}|${
+      this.state.player.mode
+    }|${percent}|${this.status}`;
 
     if (!force && key === this.lastSnapshotKey) {
       return;

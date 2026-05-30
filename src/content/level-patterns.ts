@@ -25,7 +25,7 @@ import {
   shipPortalPair,
 } from "./official-handcrafted-helpers";
 import type { FlightChannel, FlightGate } from "./terrain";
-import { SPAWN_SURFACE_Y } from "./terrain";
+import { SHIP_FLOOR_Y, SPAWN_SURFACE_Y } from "./terrain";
 
 export type PatternTag =
   | "rest"
@@ -114,6 +114,91 @@ export class CourseBuilder {
 
 /** Comfortable climbing slope for tall hero ramps. */
 const HERO_ASCENT_SLOPE = 0.34;
+
+// ---------------------------------------------------------------------------
+// Decorative density (purely cosmetic background detail)
+// ---------------------------------------------------------------------------
+
+function mulberry(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const DENSITY_BANDS: readonly {
+  kinds: readonly DecorationKind[];
+  spacing: number;
+  yRange: readonly [number, number];
+  size: readonly [number, number];
+}[] = [
+  // Deep parallax skyline far above the playfield.
+  { kinds: ["pillar", "beam"], spacing: 30, yRange: [-260, -150], size: [34, 72] },
+  // Tall pillar forest closer in.
+  { kinds: ["pillar", "beam"], spacing: 26, yRange: [-180, -90], size: [28, 58] },
+  // Dense upper sparkle field of diamonds and flashes.
+  { kinds: ["diamond", "flash", "beam"], spacing: 22, yRange: [-90, 0], size: [18, 44] },
+  // Second sparkle layer woven through the same band.
+  { kinds: ["diamond", "flash", "glow"], spacing: 24, yRange: [-60, 24], size: [14, 34] },
+  // Mid sparkle band threaded through the upper play space.
+  { kinds: ["diamond", "flash", "glow"], spacing: 26, yRange: [10, 100], size: [14, 32] },
+  // Low drifting fog/glow that hugs the surface line.
+  { kinds: ["fog", "glow", "spotlight"], spacing: 40, yRange: [120, 220], size: [36, 84] },
+  // A second low layer of fog for depth at the floor.
+  { kinds: ["fog", "glow"], spacing: 46, yRange: [170, 250], size: [40, 96] },
+];
+
+/**
+ * Scatters a deterministic field of background decorations across the whole
+ * authored course so levels read as dense, detailed places rather than sparse
+ * lanes. Decorations never affect the route (the solver ignores them) and are
+ * clamped to the existing course extent so the finish line and bounds checks
+ * are unaffected. Per-frame rendering is virtualized, so even a very heavy field
+ * only draws what is on screen. Call this last, right before assembling the
+ * level.
+ *
+ * `density` multiplies the base layer count (1 = the authored bands, higher =
+ * proportionally tighter spacing). The default leans heavy for a busy,
+ * arcade-dense look.
+ */
+export function decorateDensely(
+  b: CourseBuilder,
+  options: { seed?: number; mood?: "bright" | "dark"; density?: number } = {},
+): void {
+  const end = b.x;
+  if (end <= 200) {
+    return;
+  }
+  const density = Math.max(0.25, options.density ?? 1);
+  const rng = mulberry(options.seed ?? 1);
+  let bandIndex = 0;
+  for (const band of DENSITY_BANDS) {
+    bandIndex += 1;
+    const spacing = Math.max(10, band.spacing / density);
+    for (let x = 40; x < end - 60; x += spacing) {
+      const jitterX = (rng() - 0.5) * spacing * 0.7;
+      const px = Math.round(x + jitterX);
+      if (px < 0 || px > end - 60) {
+        continue;
+      }
+      const [yLo, yHi] = band.yRange;
+      const py = Math.round(yLo + rng() * (yHi - yLo));
+      const [sLo, sHi] = band.size;
+      const size = Math.round(sLo + rng() * (sHi - sLo));
+      const width = Math.min(size, end - px);
+      const kind = band.kinds[Math.floor(rng() * band.kinds.length)]!;
+      if (options.mood === "dark" && (kind === "glow" || kind === "spotlight") && rng() < 0.5) {
+        b.add(decor("shadow", px, py, width, Math.round(size * 0.8)));
+      } else {
+        b.add(decor(kind, px, py, width, Math.round(size * (bandIndex <= 2 ? 1.3 : 0.9))));
+      }
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Geometry primitives (solver-safe by construction)
@@ -278,6 +363,69 @@ export function bigClimb(
 }
 
 /**
+ * A dedicated vertical showcase: a symmetric staircase that climbs tier by tier
+ * to a high summit and steps back down — reading as a temple/pyramid the
+ * follow-camera scrolls up and over. Tiers are short ramps into plateaus, so the
+ * conservative solver walks the whole structure (ramps are its reliable way up).
+ */
+export function templeSteps(
+  b: CourseBuilder,
+  options: {
+    tiers?: number;
+    tierRise?: number;
+    tierWidth?: number;
+    rampWidth?: number;
+    light?: "bright" | "dark";
+  } = {},
+): void {
+  const tiers = Math.max(2, options.tiers ?? 5);
+  const tierRise = options.tierRise ?? 40;
+  const tierWidth = options.tierWidth ?? 120;
+  const rampWidth = options.rampWidth ?? 76;
+  const base = b.surfaceY;
+
+  const stepUp = (): void => {
+    const top = b.surfaceY - tierRise;
+    b.add(ramp(b.x, rampWidth, b.surfaceY, top));
+    b.advance(rampWidth);
+    b.surfaceY = top;
+    b.add(plateau(b.x, b.surfaceY, tierWidth));
+    b.add(decor("flash", b.x + tierWidth * 0.5 - 13, b.surfaceY - 48, 26, 26));
+    b.advance(tierWidth);
+  };
+
+  const stepDown = (): void => {
+    const bottom = b.surfaceY + tierRise;
+    b.add(ramp(b.x, rampWidth, b.surfaceY, bottom));
+    b.advance(rampWidth);
+    b.surfaceY = bottom;
+    b.add(plateau(b.x, b.surfaceY, tierWidth));
+    b.advance(tierWidth);
+  };
+
+  for (let tier = 0; tier < tiers; tier += 1) {
+    stepUp();
+  }
+  // Crown the summit so it reads as a temple landing.
+  if (options.light === "dark") {
+    b.add(decor("shadow", b.x - tierWidth, b.surfaceY - 150, tierWidth * 2, 140));
+  } else {
+    b.add(decor("glow", b.x - tierWidth, b.surfaceY - 140, tierWidth * 2, 120));
+  }
+  for (let tier = 0; tier < tiers; tier += 1) {
+    stepDown();
+  }
+  // Guarantee we return exactly to the entry surface for clean composition.
+  if (b.surfaceY !== base) {
+    b.add(ramp(b.x, rampWidth, b.surfaceY, base));
+    b.advance(rampWidth);
+    b.surfaceY = base;
+  }
+  b.advance(60);
+  b.tag("vertical", "jump");
+}
+
+/**
  * A spike-pit crossing bridged by an ascending ramp with floating step markers,
  * matching the proven stair-pit geometry. Removes the floor so a miss is fatal.
  */
@@ -430,7 +578,7 @@ export function shipGallery(
   shipReef(b, {
     length: options.length ?? 900,
     ceilingBottomY: 80,
-    lowerSurfaceY: 400,
+    lowerSurfaceY: SHIP_FLOOR_Y,
     ...(options.light ? { light: options.light } : {}),
   });
 }
