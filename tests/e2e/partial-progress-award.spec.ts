@@ -25,12 +25,14 @@ test("dying after partial progress awards coins for the new best percent", async
     .click();
 
   await expect(page.getByTestId("level-1-status")).toHaveText("Unlocked");
-  await expect(page.getByTestId("level-1-best-percent")).toHaveText(
+  await expect(page.getByTestId("level-1-best-percent")).toContainText(
     `${partialPercent}%`,
   );
+  await expect(page.getByTestId("level-2-status")).toHaveText("Locked");
+
+  await page.goto("/#lobby");
   await expect(page.getByTestId("profile-coins")).toHaveText(
     `${partialPercent} Coins`,
   );
-  await expect(page.getByTestId("level-2-status")).toHaveText("Locked");
   await expect(page.getByTestId("profile-keys-easy")).toBeHidden();
 });

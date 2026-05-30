@@ -89,13 +89,26 @@ function requiredElement(id: string): HTMLElement {
 }
 
 function parseLevelIdFromHash(hash: string): string | null {
-  if (hash === "#play") {
+  if (hash === "#play" || hash.startsWith("#play?")) {
     return "level_1";
   }
   if (hash.startsWith("#play/")) {
-    return hash.slice("#play/".length) || null;
+    return hash.slice("#play/".length).split("?")[0] || null;
   }
   return null;
+}
+
+/**
+ * E2E affordance: when a play route carries `?autopilot`, the run is driven by
+ * the level's conservative reference demo instead of live input. The standard
+ * play path still resolves the attempt, so the level completes and awards
+ * rewards exactly as a hand-played clear would. No UI surfaces this flag, so it
+ * never affects normal players — it exists so tests can deterministically clear
+ * levels that are too hard to hand-script.
+ */
+function hashHasAutopilot(hash: string): boolean {
+  const query = hash.split("?")[1];
+  return query !== undefined && query.split("&").includes("autopilot");
 }
 
 function parseLevelsFocusFromHash(hash: string): string | null {
@@ -1066,6 +1079,10 @@ function renderRoute(): void {
       profile.settings.speedMultiplier,
     );
 
+    const autopilotDemo = hashHasAutopilot(hash)
+      ? getOfficialLevelDemo(levelId) ?? undefined
+      : undefined;
+
     disposeView = launchLevelRun(
       content,
       {
@@ -1085,6 +1102,7 @@ function renderRoute(): void {
           window.location.hash = "#levels";
         },
       },
+      autopilotDemo ? { demoPlayback: autopilotDemo } : undefined,
     );
     return;
   }

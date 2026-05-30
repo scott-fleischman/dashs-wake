@@ -14,6 +14,8 @@ export async function seedProfile(
     },
     [PROFILE_STORAGE_KEY, { version: 1, profile }] as const,
   );
+  // Profile is read once at module boot; reload so the app picks up the seed.
+  await page.reload();
 }
 
 export async function clearPersistedProfile(page: Page): Promise<void> {

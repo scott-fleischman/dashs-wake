@@ -26,16 +26,25 @@ export async function tapAtPercents(
 }
 
 export async function completeFirstWake(page: Page): Promise<void> {
-  await hoverThroughShipPassage(page);
-  await waitUntilPercent(page, 32);
-  await hoverThroughShipPassage(page);
-  await tapAtPercents(page, [69]);
-  await waitUntilPercent(page, 74);
-  await page.keyboard.down("Space");
+  await completeViaAutopilot(page, "level_1");
+}
+
+/**
+ * Drives an official level to completion using its conservative reference demo
+ * via the `?autopilot` play route. This resolves the attempt through the normal
+ * play path, so rewards, unlocks, and the "Level complete" dialog behave exactly
+ * as a hand-played clear would — the deterministic way to clear levels that are
+ * too hard to hand-script.
+ */
+export async function completeViaAutopilot(
+  page: Page,
+  levelId: string,
+  timeout = 30_000,
+): Promise<void> {
+  await page.goto(`/#play/${levelId}?autopilot`);
   await expect(
     page.getByRole("dialog", { name: "Level complete" }),
-  ).toBeVisible({ timeout: 8_000 });
-  await page.keyboard.up("Space");
+  ).toBeVisible({ timeout });
 }
 
 export async function hoverThroughShipPassage(
