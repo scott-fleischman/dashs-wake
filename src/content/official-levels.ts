@@ -57,14 +57,14 @@ export const officialLevelCatalog: readonly OfficialLevelMetadata[] = [
   {
     id: "level_3",
     name: "Neon Drift",
-    difficulty: "normal",
+    difficulty: "hard",
     track: trackFor("level_3"),
     unlockRequirement: { requiredCompletedLevels: ["level_2"] },
   },
   {
     id: "level_4",
     name: "Prism Ascent",
-    difficulty: "hard",
+    difficulty: "harder",
     track: trackFor("level_4"),
     unlockRequirement: { requiredCompletedLevels: ["level_3"] },
   },

@@ -4,6 +4,11 @@ import type {
   GeneratedLevelRecord,
   PlayerProfile,
 } from "../core/profile";
+import {
+  buildBeatMapForBpm,
+  songLibrary,
+  type SongLibraryEntry,
+} from "../content/official-soundtrack";
 import { hasRecording } from "../persistence/level-recordings";
 import { mountGeneratorTuningPanel } from "./generator-tuning-panel";
 import { buildRoomRow, buildRoomShell, safeTestId } from "./room-shell";
@@ -14,10 +19,125 @@ interface GeneratedLevelsRoomActions {
   onEdit: (recordId: string) => void;
   onGenerate: (tuning: GeneratorTuning) => void;
   onImportAudio: (file: File, tuning: GeneratorTuning) => void;
+  onUseSong: (song: SongLibraryEntry, tuning: GeneratorTuning) => void;
   onPlay: (recordId: string) => void;
   onReturnToLobby: () => void;
   onWatchDemo: (recordId: string) => void;
   onWatchReplay: (recordId: string) => void;
+}
+
+/** Builds a generated-level record backed by a bundled in-game song. */
+export function buildSongLibraryLevel(
+  index: number,
+  song: SongLibraryEntry,
+  tuning: GeneratorTuning,
+): GeneratedLevelRecord {
+  const beatMap = buildBeatMapForBpm(song.bpm, song.durationMs);
+  return {
+    audioFileName: song.title,
+    bundledAudioPath: song.audioPath,
+    beatIntensities: beatMap.beats.map((_, i) =>
+      i % 2 === 0 ? ("intense" as const) : ("quiet" as const),
+    ),
+    beatMap,
+    difficulty: tuning.difficulty,
+    generatorTuning: tuning,
+    id: `song-level-${index}`,
+    name: song.title,
+    seed: 4000 + index,
+    source: "generator",
+    subRank: tuning.subRank,
+    synced: true,
+    theme: tuning.theme,
+  };
+}
+
+function buildSongLibrary(
+  onUseSong: (song: SongLibraryEntry) => void,
+): HTMLElement {
+  const section = document.createElement("section");
+  section.className = "song-library";
+  section.setAttribute("data-testid", "song-library");
+  const heading = document.createElement("h2");
+  heading.textContent = "Song Library";
+  const blurb = document.createElement("p");
+  blurb.className = "song-library-blurb";
+  blurb.textContent =
+    "Pick a built-in song, preview it, then build a level synced to its beat.";
+  section.append(heading, blurb);
+
+  const grid = document.createElement("div");
+  grid.className = "song-library-grid";
+  let previewAudio: HTMLAudioElement | undefined;
+  let previewingId: string | undefined;
+
+  for (const song of songLibrary) {
+    const card = document.createElement("div");
+    card.className = "song-card";
+    card.setAttribute("data-testid", `song-card-${song.id}`);
+
+    const title = document.createElement("p");
+    title.className = "song-card-title";
+    title.textContent = song.title;
+    const meta = document.createElement("p");
+    meta.className = "song-card-meta";
+    meta.textContent = `${song.mood} - ${song.bpm} BPM`;
+
+    const controls = document.createElement("div");
+    controls.className = "song-card-controls";
+
+    const preview = document.createElement("button");
+    preview.type = "button";
+    preview.className = "utility-button";
+    preview.setAttribute("data-testid", `song-preview-${song.id}`);
+    preview.textContent = "Preview";
+    preview.addEventListener("click", () => {
+      if (previewAudio && previewingId === song.id) {
+        previewAudio.pause();
+        previewAudio.remove();
+        previewAudio = undefined;
+        previewingId = undefined;
+        preview.textContent = "Preview";
+        return;
+      }
+      if (previewAudio) {
+        previewAudio.pause();
+        previewAudio.remove();
+      }
+      for (const button of grid.querySelectorAll<HTMLButtonElement>(
+        ".song-card-controls .utility-button",
+      )) {
+        button.textContent = "Preview";
+      }
+      previewAudio = new Audio(song.audioPath);
+      previewAudio.loop = true;
+      previewingId = song.id;
+      preview.textContent = "Stop";
+      previewAudio.play().catch(() => undefined);
+    });
+
+    const use = document.createElement("button");
+    use.type = "button";
+    use.className = "primary-button";
+    use.setAttribute("data-testid", `song-use-${song.id}`);
+    use.textContent = "Build Level";
+    use.addEventListener("click", () => {
+      if (previewAudio) {
+        previewAudio.pause();
+        previewAudio.remove();
+        previewAudio = undefined;
+        previewingId = undefined;
+      }
+      onUseSong(song);
+    });
+
+    controls.append(preview, use);
+    card.append(title, meta, controls);
+    grid.appendChild(card);
+  }
+
+  section.appendChild(grid);
+  return section;
 }
 
 function buildCreateButton(onCreate: () => void): HTMLButtonElement {
@@ -77,6 +197,11 @@ export function mountGeneratedLevelsRoom(
     const header = main.querySelector("header");
     const tuningPanel = mountGeneratorTuningPanel();
     main.insertBefore(tuningPanel.element, main.querySelector(".room-list"));
+
+    const songLibrarySection = buildSongLibrary((song) =>
+      actions.onUseSong(song, tuningPanel.readTuning()),
+    );
+    main.insertBefore(songLibrarySection, main.querySelector(".room-list"));
 
     const headerActions = document.createElement("div");
     headerActions.className = "generated-header-actions";

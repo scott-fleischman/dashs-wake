@@ -21,6 +21,8 @@ export interface AuthoredLevelLayout {
 export interface GeneratedLevelRecord {
   authoredLayout?: AuthoredLevelLayout;
   audioBlobKey?: string;
+  /** Set when the level uses a bundled in-game song instead of an uploaded file. */
+  bundledAudioPath?: string;
   audioFileName?: string;
   beatIntensities: readonly ("intense" | "quiet")[];
   beatMap: { readonly beats: readonly number[]; readonly durationMs: number };

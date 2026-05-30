@@ -11,6 +11,7 @@ import { mountGauntletsRoom } from "./ui/gauntlets-room";
 import {
   buildAudioDerivedLevel,
   buildPlaceholderGeneratedLevel,
+  buildSongLibraryLevel,
   mountGeneratedLevelsRoom,
 } from "./ui/generated-levels-room";
 import { mountLobby } from "./ui/lobby";
@@ -576,6 +577,25 @@ function renderRoute(): void {
       onWatchReplay: (recordId) => {
         window.location.hash = `#replay/generated/${recordId}`;
       },
+      onUseSong: (song, tuning) => {
+        const nextIndex =
+          profile.generatedLevels.filter((entry) =>
+            entry.id.startsWith("song-level-"),
+          ).length + 1;
+        let record = buildSongLibraryLevel(nextIndex, song, tuning);
+        const built = generatePlayableTunedLevel(record, tuning);
+        record = { ...record, seed: built.seed };
+        updateProfile({
+          ...profile,
+          generatedLevels: [...profile.generatedLevels, record],
+        });
+        if (built.demo.success) {
+          saveLevelRecording(record.id, "reference", built.demo);
+          window.location.hash = `#demo/generated/${record.id}`;
+        } else {
+          renderRoute();
+        }
+      },
       onImportAudio: (file, tuning) => {
         const finalize = (
           audioBlobKey: string | undefined,
@@ -769,7 +789,12 @@ function renderRoute(): void {
     const content =
       contentForCreatedLevel(record) ?? contentForGeneratedRecord(record);
 
-    if (record.audioBlobKey) {
+    if (record.bundledAudioPath) {
+      startOfficialAudioPlayback(
+        record.bundledAudioPath,
+        profile.settings.speedMultiplier,
+      );
+    } else if (record.audioBlobKey) {
       void startAudioPlayback(
         record.audioBlobKey,
         profile.settings.speedMultiplier,
@@ -791,7 +816,13 @@ function renderRoute(): void {
           saveProfile(profile);
         },
         onRestart: () => {
-          if (record.audioBlobKey) {
+          if (record.bundledAudioPath) {
+            stopAudioPlayback();
+            startOfficialAudioPlayback(
+              record.bundledAudioPath,
+              profile.settings.speedMultiplier,
+            );
+          } else if (record.audioBlobKey) {
             stopAudioPlayback();
             void startAudioPlayback(
               record.audioBlobKey,

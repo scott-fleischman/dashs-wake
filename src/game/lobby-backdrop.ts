@@ -1,15 +1,12 @@
 import Phaser from "phaser";
 import { firstWakeLevel, type LevelContent } from "../content/first-wake";
-import type {
-  CosmeticAppearance,
-  CubeShapeKind,
-  ShipShapeKind,
-} from "../core/inventory";
+import type { CosmeticAppearance } from "../core/inventory";
 import type { LevelColorTheme } from "../core/profile";
 import {
   createRunState,
   resetRunState,
   tickRun,
+  type LevelEntity,
   type RunState,
 } from "../core/run-simulation";
 import type { LevelDemo, LevelDemoFrame } from "../core/level-solver";
@@ -26,6 +23,12 @@ const LEVEL_SCENE_KEY = "level-run";
 const CAMERA_FOLLOW_LERP = 0.22;
 /** Screen-height fraction the player rides at while the course scrolls beneath. */
 const CAMERA_TOP_BAND_RATIO = 0.36;
+/**
+ * Extra world width (px) drawn beyond each screen edge so entities don't pop in.
+ * Only entities inside the visible window are drawn each frame, which keeps the
+ * per-frame draw work bounded regardless of total level length.
+ */
+const VIRTUAL_DRAW_MARGIN = 220;
 
 class LobbyBackdropScene extends Phaser.Scene {
   private pulse?: Phaser.GameObjects.Arc;
@@ -125,6 +128,9 @@ const DEFAULT_PLAYER_APPEARANCE: CosmeticAppearance = {
   fillRunning: 0x19d9f3,
   motif: "core",
   shipShape: "triangle",
+  iconArt: "plate",
+  shipArt: "skiff",
+  trailArt: "core",
 };
 
 const PLAYER_STYLE = {
@@ -199,68 +205,211 @@ function playerFillFor(
   return status === "dead" ? appearance.fillDead : appearance.fillRunning;
 }
 
-function applyPlayerStrokeStyle<T extends Phaser.GameObjects.Shape>(
-  shape: T,
-): T {
-  shape.setStrokeStyle(
-    PLAYER_STYLE.strokeWidth,
-    PLAYER_STYLE.stroke,
-    PLAYER_STYLE.strokeAlpha,
-  );
-  return shape;
+function shade(color: number, factor: number): number {
+  const r = (color >> 16) & 0xff;
+  const g = (color >> 8) & 0xff;
+  const b = color & 0xff;
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+  return (clamp(r * factor) << 16) | (clamp(g * factor) << 8) | clamp(b * factor);
 }
 
-function createPlayerCube(
-  scene: Phaser.Scene,
-  kind: CubeShapeKind,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  fill: number,
-): Phaser.GameObjects.Shape {
-  if (kind === "circle") {
-    return scene.add.circle(x, y, Math.min(width, height) / 2, fill);
+function poly(coords: readonly number[]): Phaser.Math.Vector2[] {
+  const points: Phaser.Math.Vector2[] = [];
+  for (let i = 0; i < coords.length; i += 2) {
+    points.push(new Phaser.Math.Vector2(coords[i]!, coords[i + 1]!));
   }
-  if (kind === "diamond") {
-    const halfW = width / 2;
-    const halfH = height / 2;
-    return scene.add.polygon(
-      x,
-      y,
-      [0, -halfH, halfW, 0, 0, halfH, -halfW, 0],
-      fill,
-    );
-  }
-  return scene.add.rectangle(x, y, width, height, fill);
+  return points;
 }
 
-function createPlayerShip(
-  scene: Phaser.Scene,
-  _kind: ShipShapeKind,
-  x: number,
-  y: number,
+/** Draws the cube/icon centered at local (0,0) with distinct per-icon detailing. */
+function drawCubeArt(
+  g: Phaser.GameObjects.Graphics,
+  appearance: CosmeticAppearance,
+  fill: number,
   width: number,
   height: number,
+): void {
+  const hw = width / 2;
+  const hh = height / 2;
+  const accent = appearance.accent;
+  const stroke = PLAYER_STYLE.stroke;
+
+  g.lineStyle(PLAYER_STYLE.strokeWidth, stroke, PLAYER_STYLE.strokeAlpha);
+  if (appearance.cubeShape === "circle") {
+    g.fillStyle(fill, 1);
+    g.fillCircle(0, 0, Math.min(width, height) / 2);
+    g.strokeCircle(0, 0, Math.min(width, height) / 2);
+  } else if (appearance.cubeShape === "diamond") {
+    const pts = poly([0, -hh, hw, 0, 0, hh, -hw, 0]);
+    g.fillStyle(fill, 1);
+    g.fillPoints(pts, true);
+    g.strokePoints(pts, true);
+  } else {
+    g.fillStyle(fill, 1);
+    g.fillRect(-hw, -hh, width, height);
+    g.strokeRect(-hw, -hh, width, height);
+  }
+
+  const light = shade(fill, 1.5);
+  const dark = shade(fill, 0.55);
+  switch (appearance.iconArt) {
+    case "circuit": {
+      // Circuit-board traces with solder nodes.
+      g.lineStyle(2, accent, 0.95);
+      g.lineBetween(-hw + 5, -4, 2, -4);
+      g.lineBetween(2, -4, 2, hh - 5);
+      g.lineBetween(-2, -hh + 5, -2, 6);
+      g.lineBetween(-2, 6, hw - 5, 6);
+      g.fillStyle(light, 1);
+      g.fillCircle(2, -4, 2.6);
+      g.fillCircle(-2, 6, 2.6);
+      g.fillCircle(hw - 5, 6, 2.2);
+      g.fillStyle(dark, 1);
+      g.fillRect(-hw + 4, hh - 9, 6, 5);
+      break;
+    }
+    case "spark": {
+      // Lightning bolt.
+      g.fillStyle(accent, 1);
+      g.fillPoints(
+        poly([2, -hh + 4, -5, 2, 0, 2, -3, hh - 4, 8, -3, 2, -3]),
+        true,
+      );
+      break;
+    }
+    case "pulse": {
+      // Concentric rings.
+      g.lineStyle(2, accent, 0.9);
+      g.strokeCircle(0, 0, hw * 0.62);
+      g.lineStyle(1.5, light, 0.8);
+      g.strokeCircle(0, 0, hw * 0.32);
+      g.fillStyle(light, 1);
+      g.fillCircle(0, 0, 2);
+      break;
+    }
+    case "prism": {
+      // Faceted gem lines.
+      g.lineStyle(1.5, light, 0.85);
+      g.lineBetween(0, -hh + 3, 0, hh - 3);
+      g.lineBetween(-hw + 3, 0, hw - 3, 0);
+      g.lineStyle(1.5, accent, 0.7);
+      g.lineBetween(0, -hh + 3, hw - 3, 0);
+      g.lineBetween(0, hh - 3, -hw + 3, 0);
+      break;
+    }
+    case "flare": {
+      // Radiating burst.
+      g.lineStyle(1.5, accent, 0.85);
+      for (let i = 0; i < 8; i += 1) {
+        const a = (i / 8) * Math.PI * 2;
+        g.lineBetween(0, 0, Math.cos(a) * hw * 0.85, Math.sin(a) * hh * 0.85);
+      }
+      g.fillStyle(light, 1);
+      g.fillCircle(0, 0, 3);
+      break;
+    }
+    default: {
+      // Clean plate with sheen + bevel.
+      g.lineStyle(2, light, 0.7);
+      g.lineBetween(-hw + 5, -hh + 5, hw - 5, -hh + 5);
+      g.fillStyle(dark, 0.8);
+      g.fillRect(-hw + 4, hh - 8, width - 8, 4);
+      break;
+    }
+  }
+}
+
+/** Draws the ship hull centered at local (0,0), nose pointing +x. */
+function drawShipArt(
+  g: Phaser.GameObjects.Graphics,
+  appearance: CosmeticAppearance,
   fill: number,
-): Phaser.GameObjects.Shape {
-  const halfWidth = width / 2;
-  const halfHeight = height / 2;
-  return scene.add.polygon(
-    x,
-    y,
-    [
-      -halfWidth,
-      -halfHeight * 0.62,
-      halfWidth,
-      0,
-      -halfWidth,
-      halfHeight * 0.62,
-      -halfWidth * 0.48,
-      0,
-    ],
-    fill,
-  );
+  width: number,
+  height: number,
+): void {
+  const hw = width / 2;
+  const hh = height / 2;
+  const accent = appearance.accent;
+  const light = shade(fill, 1.5);
+  g.lineStyle(PLAYER_STYLE.strokeWidth, PLAYER_STYLE.stroke, PLAYER_STYLE.strokeAlpha);
+
+  if (appearance.shipArt === "nova") {
+    // Swept arrow fighter with wings.
+    const hull = poly([hw, 0, -hw * 0.4, -hh * 0.7, -hw, -hh * 0.3, -hw * 0.5, 0, -hw, hh * 0.3, -hw * 0.4, hh * 0.7]);
+    g.fillStyle(fill, 1);
+    g.fillPoints(hull, true);
+    g.strokePoints(hull, true);
+    g.fillStyle(accent, 0.95);
+    g.fillCircle(hw * 0.2, 0, 3.2);
+  } else if (appearance.shipArt === "comet") {
+    // Narrow dart with twin tail fins.
+    const hull = poly([hw, 0, -hw * 0.6, -hh * 0.5, -hw, -hh * 0.85, -hw * 0.4, 0, -hw, hh * 0.85, -hw * 0.6, hh * 0.5]);
+    g.fillStyle(fill, 1);
+    g.fillPoints(hull, true);
+    g.strokePoints(hull, true);
+    g.fillStyle(light, 1);
+    g.fillCircle(hw * 0.1, 0, 2.6);
+  } else {
+    // Skiff: classic rounded glider.
+    const hull = poly([hw, 0, -hw, -hh * 0.62, -hw * 0.48, 0, -hw, hh * 0.62]);
+    g.fillStyle(fill, 1);
+    g.fillPoints(hull, true);
+    g.strokePoints(hull, true);
+    g.fillStyle(accent, 0.9);
+    g.fillCircle(0, -hh * 0.1, 3);
+  }
+}
+
+/** Trail style per cosmetic, streamed behind the player in world coordinates. */
+function drawTrail(
+  g: Phaser.GameObjects.Graphics,
+  points: readonly { x: number; y: number; ship: boolean }[],
+  appearance: CosmeticAppearance,
+  fill: number,
+): void {
+  g.clear();
+  if (points.length < 2) {
+    return;
+  }
+  const accent = appearance.accent;
+  const count = points.length;
+  for (let i = 0; i < count; i += 1) {
+    const p = points[i]!;
+    const age = i / count; // 0 = oldest, 1 = newest
+    const alpha = age * age * 0.8;
+    if (alpha <= 0.01) {
+      continue;
+    }
+    const size = (p.ship ? 7 : 5) * (0.35 + age * 0.65);
+    switch (appearance.trailArt) {
+      case "ring":
+        g.lineStyle(1.5, accent, alpha);
+        g.strokeCircle(p.x, p.y, size);
+        break;
+      case "flare":
+        g.fillStyle(shade(fill, 1.4), alpha);
+        g.fillTriangle(
+          p.x - size,
+          p.y - size,
+          p.x + size,
+          p.y,
+          p.x - size,
+          p.y + size,
+        );
+        break;
+      case "prism":
+        g.fillStyle(i % 2 === 0 ? accent : fill, alpha);
+        g.fillPoints(
+          poly([p.x, p.y - size, p.x + size, p.y, p.x, p.y + size, p.x - size, p.y]),
+          true,
+        );
+        break;
+      default:
+        g.fillStyle(fill, alpha);
+        g.fillCircle(p.x, p.y, size);
+        break;
+    }
+  }
 }
 
 interface LevelSceneInitData {
@@ -290,9 +439,13 @@ class LevelScene extends Phaser.Scene {
   private levelContent: LevelContent = firstWakeLevel;
   private onSnapshot?: (snapshot: LevelSnapshot) => void;
   private paused = false;
-  private playerCube?: Phaser.GameObjects.Shape;
-  private postFxLayer?: Phaser.GameObjects.Container;
-  private playerShip?: Phaser.GameObjects.Shape;
+  private playerGfx?: Phaser.GameObjects.Graphics;
+  private trailGfx?: Phaser.GameObjects.Graphics;
+  private trailPoints: { x: number; y: number; ship: boolean }[] = [];
+  private courseGraphics?: Phaser.GameObjects.Graphics;
+  private finishText?: Phaser.GameObjects.Text;
+  private sortedEntities: readonly LevelEntity[] = [];
+  private palette: LevelPalette = LEVEL_PALETTES.neon;
   private state: RunState = createRunState(firstWakeLevel.rules);
   private status: LevelSnapshot["status"] = "running";
   private theme: LevelColorTheme = "neon";
@@ -493,6 +646,7 @@ class LevelScene extends Phaser.Scene {
     this.cameraY = 0;
     this.demoFrameIndex = 0;
     this.runRecordingFrames = [];
+    this.trailPoints = [];
     this.state = resetRunState(this.state, this.levelContent.rules);
     this.status = "running";
     this.updatePresentation();
@@ -510,9 +664,9 @@ class LevelScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     const rules = this.levelContent.rules;
-    const entities = this.levelContent.entities;
     const finishX = this.levelContent.finishX;
     const palette = LEVEL_PALETTES[this.theme];
+    this.palette = palette;
 
     this.children.removeAll();
     const spawnScreenY = height * 0.71;
@@ -528,23 +682,175 @@ class LevelScene extends Phaser.Scene {
     );
     wash.fillRect(0, 0, width, height);
 
-    const horizon = this.add.graphics();
-    horizon.lineStyle(1, palette.accent, 0.16);
-    for (let y = spawnScreenY - 150; y < spawnScreenY; y += 38) {
-      horizon.lineBetween(0, y, width, y);
-    }
+    const backdrop = this.add.graphics();
+    this.drawThemeBackdrop(backdrop, width, height, spawnScreenY);
+
+    // Entities are sorted by their left edge so the per-frame redraw can scan a
+    // contiguous visible window and stop early once it passes the right edge.
+    this.sortedEntities = [...this.levelContent.entities].sort(
+      (a, b) => a.x - b.x,
+    );
 
     this.courseLayer = this.add.container(0, 0);
+    this.courseGraphics = this.add.graphics();
+    this.courseLayer.add(this.courseGraphics);
+    this.trailGfx = this.add.graphics();
+    this.courseLayer.add(this.trailGfx);
+    this.trailPoints = [];
 
-    const hazards = this.add.graphics();
-    hazards.fillStyle(palette.spike, 1);
-    for (const entity of entities) {
-      if (entity.type !== "spike") {
+    const finishBaseY = this.worldOffsetY + rules.spawnY;
+    this.finishText = this.add.text(finishX - 30, finishBaseY - 177, "FINISH", {
+      color: "#ecfcff",
+      fontFamily: "Arial, sans-serif",
+      fontSize: "12px",
+      letterSpacing: 2,
+    });
+    this.courseLayer.add(this.finishText);
+
+    // Player is drawn on top of the scrolling course layer.
+    this.playerGfx = this.add.graphics();
+
+    this.updatePresentation();
+  }
+
+  /**
+   * Draws a distinct, themed parallax backdrop plus a ground band so each level
+   * theme reads as its own place rather than a flat gradient.
+   */
+  private drawThemeBackdrop(
+    g: Phaser.GameObjects.Graphics,
+    width: number,
+    height: number,
+    groundY: number,
+  ): void {
+    const palette = this.palette;
+    const rng = (seed: number): number => {
+      const x = Math.sin(seed * 127.1) * 43758.5453;
+      return x - Math.floor(x);
+    };
+
+    if (this.theme === "neon") {
+      // Layered neon skyline with a glowing grid floor.
+      for (let layer = 0; layer < 2; layer += 1) {
+        const baseY = groundY - 30 - layer * 26;
+        const tint = layer === 0 ? shade(palette.block, 0.7) : shade(palette.block, 1.1);
+        g.fillStyle(tint, layer === 0 ? 0.5 : 0.7);
+        for (let x = -40; x < width + 60; x += 58) {
+          const h = 40 + rng(x * (layer + 1)) * (90 + layer * 50);
+          g.fillRect(x, baseY - h, 40, h);
+          g.fillStyle(palette.accent, 0.18);
+          g.fillRect(x + 8, baseY - h + 8, 6, 6);
+          g.fillStyle(tint, layer === 0 ? 0.5 : 0.7);
+        }
+      }
+      g.lineStyle(1, palette.accent, 0.12);
+      for (let y = groundY + 26; y < height; y += 26) {
+        g.lineBetween(0, y, width, y);
+      }
+    } else if (this.theme === "sunset") {
+      // Setting sun with layered dune ridges.
+      g.fillStyle(0xffd27a, 0.32);
+      g.fillCircle(width * 0.72, groundY - 150, 110);
+      g.fillStyle(0xffb15a, 0.5);
+      g.fillCircle(width * 0.72, groundY - 150, 70);
+      for (let layer = 0; layer < 3; layer += 1) {
+        const baseY = groundY - 40 + layer * 24;
+        g.fillStyle(shade(palette.block, 0.7 + layer * 0.25), 0.6);
+        g.beginPath();
+        g.moveTo(0, height);
+        for (let x = 0; x <= width; x += 40) {
+          const ridge = baseY - Math.sin((x / width) * Math.PI * (2 + layer)) * (26 - layer * 6);
+          g.lineTo(x, ridge);
+        }
+        g.lineTo(width, height);
+        g.closePath();
+        g.fillPath();
+      }
+    } else if (this.theme === "forest") {
+      // Silhouetted canopy and trunks.
+      for (let layer = 0; layer < 2; layer += 1) {
+        const baseY = groundY - 10 - layer * 18;
+        g.fillStyle(shade(palette.block, 0.6 + layer * 0.5), layer === 0 ? 0.55 : 0.75);
+        for (let x = -30; x < width + 60; x += 70) {
+          const treeH = 90 + rng(x * (layer + 3)) * 110;
+          const trunkW = 14;
+          g.fillRect(x + 12, baseY - treeH * 0.4, trunkW, treeH * 0.4);
+          g.fillTriangle(x - 6, baseY - treeH * 0.35, x + 18, baseY - treeH, x + 42, baseY - treeH * 0.35);
+        }
+      }
+    } else {
+      // Void: starfield and distant shards.
+      for (let i = 0; i < 80; i += 1) {
+        const x = rng(i * 1.7) * width;
+        const y = rng(i * 3.3) * groundY;
+        const r = rng(i * 5.1) * 1.6 + 0.4;
+        g.fillStyle(0xeafdff, 0.15 + rng(i) * 0.4);
+        g.fillCircle(x, y, r);
+      }
+      g.fillStyle(palette.accent, 0.1);
+      for (let i = 0; i < 4; i += 1) {
+        const cx = (i + 0.5) * (width / 4);
+        const cy = groundY - 60 - rng(i) * 80;
+        const s = 30 + rng(i * 2) * 50;
+        g.fillTriangle(cx, cy - s, cx + s * 0.6, cy + s, cx - s * 0.6, cy + s);
+      }
+    }
+
+    // Ground band beneath the playfield surface for a consistent floor.
+    g.fillStyle(shade(palette.block, 0.55), 1);
+    g.fillRect(0, groundY, width, height - groundY);
+    g.lineStyle(2, palette.accent, 0.4);
+    g.lineBetween(0, groundY, width, groundY);
+  }
+
+  /**
+   * Redraws only the entities inside the current viewport into a single reused
+   * Graphics object. This bounds per-frame draw cost to roughly one screen of
+   * geometry, so long generated levels keep a steady frame rate.
+   */
+  private redrawVisibleCourse(): void {
+    const g = this.courseGraphics;
+    if (!g) {
+      return;
+    }
+
+    g.clear();
+    const palette = this.palette;
+    const offsetY = this.worldOffsetY;
+    const playerScreenX = this.scale.width * 0.22;
+    const left = this.state.player.x - playerScreenX - VIRTUAL_DRAW_MARGIN;
+    const right = left + this.scale.width + VIRTUAL_DRAW_MARGIN * 2;
+
+    for (const entity of this.sortedEntities) {
+      if (entity.x > right) {
+        break;
+      }
+      if (entity.x + entity.width < left) {
         continue;
       }
+      this.drawEntity(g, entity, offsetY, palette);
+    }
 
-      const y = this.worldOffsetY + entity.y;
-      hazards.fillTriangle(
+    const finishX = this.levelContent.finishX;
+    if (finishX + 20 >= left && finishX - 20 <= right) {
+      const finishBaseY = offsetY + this.levelContent.rules.spawnY;
+      g.lineStyle(4, palette.accent, 0.85);
+      g.lineBetween(finishX, finishBaseY - 132, finishX, finishBaseY);
+      g.lineStyle(2, 0xecfcff, 0.62);
+      g.strokeCircle(finishX, finishBaseY - 145, 10);
+    }
+  }
+
+  private drawEntity(
+    g: Phaser.GameObjects.Graphics,
+    entity: LevelEntity,
+    offsetY: number,
+    palette: LevelPalette,
+  ): void {
+    const y = offsetY + entity.y;
+    if (entity.type === "spike") {
+      g.fillStyle(palette.spike, 1);
+      g.fillTriangle(
         entity.x,
         y + entity.height,
         entity.x + entity.width / 2,
@@ -552,19 +858,14 @@ class LevelScene extends Phaser.Scene {
         entity.x + entity.width,
         y + entity.height,
       );
+      return;
     }
-    this.courseLayer.add(hazards);
 
-    const blocks = this.add.graphics();
-    for (const entity of entities) {
-      if (entity.type !== "block") {
-        continue;
-      }
-      const y = this.worldOffsetY + entity.y;
-      blocks.fillStyle(palette.block, 0.96);
-      blocks.lineStyle(2, palette.accent, 0.8);
+    if (entity.type === "block") {
+      g.fillStyle(palette.block, 0.96);
+      g.lineStyle(2, palette.accent, 0.8);
       if (entity.shape === "ramp-up") {
-        blocks.fillTriangle(
+        g.fillTriangle(
           entity.x,
           y + entity.height,
           entity.x + entity.width,
@@ -572,7 +873,7 @@ class LevelScene extends Phaser.Scene {
           entity.x + entity.width,
           y + entity.height,
         );
-        blocks.strokeTriangle(
+        g.strokeTriangle(
           entity.x,
           y + entity.height,
           entity.x + entity.width,
@@ -581,7 +882,7 @@ class LevelScene extends Phaser.Scene {
           y + entity.height,
         );
       } else if (entity.shape === "ramp-down") {
-        blocks.fillTriangle(
+        g.fillTriangle(
           entity.x,
           y,
           entity.x + entity.width,
@@ -589,7 +890,7 @@ class LevelScene extends Phaser.Scene {
           entity.x,
           y + entity.height,
         );
-        blocks.strokeTriangle(
+        g.strokeTriangle(
           entity.x,
           y,
           entity.x + entity.width,
@@ -598,210 +899,106 @@ class LevelScene extends Phaser.Scene {
           y + entity.height,
         );
       } else {
-        blocks.fillRect(entity.x, y, entity.width, entity.height);
-        blocks.strokeRect(entity.x, y, entity.width, entity.height);
-        blocks.lineStyle(1, palette.accent, 0.35);
-        blocks.lineBetween(entity.x + 8, y + 10, entity.x + entity.width - 8, y + 10);
+        g.fillRect(entity.x, y, entity.width, entity.height);
+        g.strokeRect(entity.x, y, entity.width, entity.height);
+        g.lineStyle(1, palette.accent, 0.35);
+        g.lineBetween(entity.x + 8, y + 10, entity.x + entity.width - 8, y + 10);
       }
+      return;
     }
-    this.courseLayer.add(blocks);
 
-    const decorations = this.add.graphics();
-    const postFxLayer = this.add.container(0, 0);
-    for (const entity of entities) {
-      if (entity.type !== "decoration") {
-        continue;
-      }
-      const y = this.worldOffsetY + entity.y;
-      decorations.lineStyle(2, palette.decoration, 0.27);
-      if (entity.kind === "diamond") {
-        decorations.strokeTriangle(
-          entity.x + entity.width / 2,
-          y,
-          entity.x + entity.width,
-          y + entity.height / 2,
-          entity.x + entity.width / 2,
-          y + entity.height,
-        );
-        decorations.lineBetween(
-          entity.x + entity.width / 2,
-          y + entity.height,
-          entity.x,
-          y + entity.height / 2,
-        );
-      } else if (entity.kind === "beam") {
-        decorations.lineBetween(entity.x, y + entity.height, entity.x + entity.width, y);
-        decorations.lineBetween(entity.x + 12, y + entity.height, entity.x + entity.width + 12, y);
-      } else if (entity.kind === "flash") {
-        decorations.lineStyle(2, palette.accent, 0.5);
-        decorations.strokeRect(entity.x, y, entity.width, entity.height);
-        decorations.lineBetween(entity.x, y + entity.height / 2, entity.x + entity.width, y + entity.height / 2);
-      } else if (entity.kind === "fog") {
-        const fog = this.add.rectangle(
-          entity.x + entity.width / 2,
-          y + entity.height / 2,
-          entity.width,
-          entity.height,
-          0xd8f8ff,
-          0.07,
-        );
-        postFxLayer.add(fog);
-      } else if (entity.kind === "dark") {
-        const dark = this.add.rectangle(
-          entity.x + entity.width / 2,
-          y + entity.height / 2,
-          entity.width,
-          entity.height,
-          0x02030a,
-          0.4,
-        );
-        postFxLayer.add(dark);
-      } else if (entity.kind === "shadow") {
-        const shadow = this.add.rectangle(
-          entity.x + entity.width / 2,
-          y + entity.height / 2,
-          entity.width,
-          entity.height,
-          0x01020a,
-          0.66,
-        );
-        postFxLayer.add(shadow);
-      } else if (entity.kind === "glow") {
-        const glow = this.add.rectangle(
-          entity.x + entity.width / 2,
-          y + entity.height / 2,
-          entity.width,
-          entity.height,
-          0x8ff6ff,
-          0.12,
-        );
-        postFxLayer.add(glow);
-        const core = this.add.rectangle(
-          entity.x + entity.width / 2,
-          y + entity.height / 2,
-          entity.width * 0.5,
-          entity.height * 0.5,
-          0xeafdff,
-          0.16,
-        );
-        postFxLayer.add(core);
-      } else if (entity.kind === "spotlight") {
-        const beam = this.add.graphics();
-        beam.fillStyle(0xfff4c4, 0.12);
-        beam.fillTriangle(
-          entity.x + entity.width / 2,
-          y,
-          entity.x,
-          y + entity.height,
-          entity.x + entity.width,
-          y + entity.height,
-        );
-        beam.fillStyle(0xffffff, 0.18);
-        beam.fillCircle(entity.x + entity.width / 2, y + 6, 7);
-        postFxLayer.add(beam);
-      } else {
-        decorations.strokeRect(entity.x, y, entity.width, entity.height);
-      }
+    if (entity.type === "decoration") {
+      this.drawDecoration(g, entity, y, palette);
+      return;
     }
-    this.courseLayer.add(decorations);
-    this.courseLayer.add(postFxLayer);
-    this.postFxLayer = postFxLayer;
 
-    const portals = this.add.graphics();
-    for (const entity of entities) {
-      if (entity.type !== "portal") {
-        continue;
-      }
-
-      const y = this.worldOffsetY + entity.y;
+    if (entity.type === "portal") {
       const portalColor = PORTAL_STYLE[entity.mode as "cube" | "ship"];
-      portals.fillStyle(portalColor, 0.18);
-      portals.fillRect(entity.x, y, entity.width, entity.height);
-      portals.lineStyle(3, portalColor, 0.95);
-      portals.strokeRect(entity.x, y, entity.width, entity.height);
+      g.fillStyle(portalColor, 0.18);
+      g.fillRect(entity.x, y, entity.width, entity.height);
+      g.lineStyle(3, portalColor, 0.95);
+      g.strokeRect(entity.x, y, entity.width, entity.height);
+      return;
     }
-    this.courseLayer.add(portals);
 
-    const pads = this.add.graphics();
-    for (const entity of entities) {
-      if (entity.type !== "pad") {
-        continue;
-      }
-
-      const y = this.worldOffsetY + entity.y;
-      pads.fillStyle(PAD_STYLE.fill, 0.85);
-      pads.fillRect(entity.x, y, entity.width, entity.height);
-      pads.lineStyle(2, PAD_STYLE.stroke, 0.95);
-      pads.strokeRect(entity.x, y, entity.width, entity.height);
-      pads.lineStyle(2, PAD_STYLE.stroke, 0.55);
-      pads.lineBetween(entity.x + 6, y + 2, entity.x + entity.width - 6, y + 2);
+    if (entity.type === "pad") {
+      g.fillStyle(PAD_STYLE.fill, 0.85);
+      g.fillRect(entity.x, y, entity.width, entity.height);
+      g.lineStyle(2, PAD_STYLE.stroke, 0.95);
+      g.strokeRect(entity.x, y, entity.width, entity.height);
+      g.lineStyle(2, PAD_STYLE.stroke, 0.55);
+      g.lineBetween(entity.x + 6, y + 2, entity.x + entity.width - 6, y + 2);
+      return;
     }
-    this.courseLayer.add(pads);
 
-    const orbs = this.add.graphics();
-    for (const entity of entities) {
-      if (entity.type !== "orb") {
-        continue;
-      }
-
+    if (entity.type === "orb") {
       const centerX = entity.x + entity.width / 2;
-      const centerY = this.worldOffsetY + entity.y + entity.height / 2;
+      const centerY = y + entity.height / 2;
       const radius = Math.min(entity.width, entity.height) / 2;
-
-      orbs.fillStyle(ORB_STYLE.fill, 0.55);
-      orbs.fillCircle(centerX, centerY, radius);
-      orbs.lineStyle(2, ORB_STYLE.stroke, 0.95);
-      orbs.strokeCircle(centerX, centerY, radius);
-      orbs.lineStyle(2, ORB_STYLE.stroke, 0.45);
-      orbs.strokeCircle(centerX, centerY, radius + 5);
+      g.fillStyle(ORB_STYLE.fill, 0.55);
+      g.fillCircle(centerX, centerY, radius);
+      g.lineStyle(2, ORB_STYLE.stroke, 0.95);
+      g.strokeCircle(centerX, centerY, radius);
+      g.lineStyle(2, ORB_STYLE.stroke, 0.45);
+      g.strokeCircle(centerX, centerY, radius + 5);
     }
-    this.courseLayer.add(orbs);
+  }
 
-    const finishGate = this.add.graphics();
-    const finishBaseY = this.worldOffsetY + rules.spawnY;
-    finishGate.lineStyle(4, palette.accent, 0.85);
-    finishGate.lineBetween(finishX, finishBaseY - 132, finishX, finishBaseY);
-    finishGate.lineStyle(2, 0xecfcff, 0.62);
-    finishGate.strokeCircle(finishX, finishBaseY - 145, 10);
-    this.courseLayer.add(finishGate);
-    this.courseLayer.add(
-      this.add.text(finishX - 30, finishBaseY - 177, "FINISH", {
-        color: "#ecfcff",
-        fontFamily: "Arial, sans-serif",
-        fontSize: "12px",
-        letterSpacing: 2,
-      }),
-    );
-
-    const playerScreenX = width * 0.22;
-    const playerScreenY = finishBaseY - rules.playerHeight / 2;
-    const initialFill = playerFillFor(this.status, this.appearance);
-
-    this.playerCube = applyPlayerStrokeStyle(
-      createPlayerCube(
-        this,
-        this.appearance.cubeShape,
-        playerScreenX,
-        playerScreenY,
-        rules.playerWidth,
-        rules.playerHeight,
-        initialFill,
-      ),
-    );
-
-    this.playerShip = applyPlayerStrokeStyle(
-      createPlayerShip(
-        this,
-        this.appearance.shipShape,
-        playerScreenX,
-        playerScreenY,
-        rules.playerWidth,
-        rules.playerHeight,
-        initialFill,
-      ),
-    ).setVisible(false);
-
-    this.updatePresentation();
+  private drawDecoration(
+    g: Phaser.GameObjects.Graphics,
+    entity: Extract<LevelEntity, { type: "decoration" }>,
+    y: number,
+    palette: LevelPalette,
+  ): void {
+    const cx = entity.x + entity.width / 2;
+    const cy = y + entity.height / 2;
+    if (entity.kind === "diamond") {
+      g.lineStyle(2, palette.decoration, 0.27);
+      g.strokeTriangle(
+        cx,
+        y,
+        entity.x + entity.width,
+        cy,
+        cx,
+        y + entity.height,
+      );
+      g.lineBetween(cx, y + entity.height, entity.x, cy);
+    } else if (entity.kind === "beam") {
+      g.lineStyle(2, palette.decoration, 0.27);
+      g.lineBetween(entity.x, y + entity.height, entity.x + entity.width, y);
+      g.lineBetween(entity.x + 12, y + entity.height, entity.x + entity.width + 12, y);
+    } else if (entity.kind === "flash") {
+      g.lineStyle(2, palette.accent, 0.5);
+      g.strokeRect(entity.x, y, entity.width, entity.height);
+      g.lineBetween(entity.x, cy, entity.x + entity.width, cy);
+    } else if (entity.kind === "fog") {
+      g.fillStyle(0xd8f8ff, 0.07);
+      g.fillRect(entity.x, y, entity.width, entity.height);
+    } else if (entity.kind === "dark") {
+      g.fillStyle(0x02030a, 0.4);
+      g.fillRect(entity.x, y, entity.width, entity.height);
+    } else if (entity.kind === "shadow") {
+      g.fillStyle(0x01020a, 0.66);
+      g.fillRect(entity.x, y, entity.width, entity.height);
+    } else if (entity.kind === "glow") {
+      g.fillStyle(0x8ff6ff, 0.12);
+      g.fillRect(entity.x, y, entity.width, entity.height);
+      g.fillStyle(0xeafdff, 0.16);
+      g.fillRect(
+        cx - entity.width * 0.25,
+        cy - entity.height * 0.25,
+        entity.width * 0.5,
+        entity.height * 0.5,
+      );
+    } else if (entity.kind === "spotlight") {
+      g.fillStyle(0xfff4c4, 0.12);
+      g.fillTriangle(cx, y, entity.x, y + entity.height, entity.x + entity.width, y + entity.height);
+      g.fillStyle(0xffffff, 0.18);
+      g.fillCircle(cx, y + 6, 7);
+    } else {
+      g.lineStyle(2, palette.decoration, 0.27);
+      g.strokeRect(entity.x, y, entity.width, entity.height);
+    }
   }
 
   private updatePresentation(): void {
@@ -830,17 +1027,50 @@ class LevelScene extends Phaser.Scene {
     this.cameraY += (targetCameraY - this.cameraY) * CAMERA_FOLLOW_LERP;
     const camY = this.cameraY;
 
+    this.redrawVisibleCourse();
     this.courseLayer?.setPosition(playerScreenX - this.state.player.x, camY);
-    this.playerCube
-      ?.setVisible(!isShip)
-      .setY(cubeScreenY + camY)
-      .setRotation(isShip ? 0 : cubeRotation)
-      .setFillStyle(fillColor);
-    this.playerShip
-      ?.setVisible(isShip)
-      .setY(simulationCenterY + camY)
-      .setRotation(this.state.player.velocityY * 0.0006)
-      .setFillStyle(fillColor);
+
+    // Stream a trail in world coordinates so it lags behind as the world scrolls.
+    const trailWorldY = isShip
+      ? simulationCenterY
+      : cubeScreenY;
+    this.trailPoints.push({
+      x: this.state.player.x,
+      y: trailWorldY,
+      ship: isShip,
+    });
+    if (this.trailPoints.length > 26) {
+      this.trailPoints.shift();
+    }
+    if (this.trailGfx) {
+      drawTrail(this.trailGfx, this.trailPoints, this.appearance, fillColor);
+    }
+
+    if (this.playerGfx) {
+      const screenY = isShip ? simulationCenterY + camY : cubeScreenY + camY;
+      const rotation = isShip
+        ? this.state.player.velocityY * 0.0006
+        : cubeRotation;
+      this.playerGfx.clear();
+      this.playerGfx.setPosition(playerScreenX, screenY).setRotation(rotation);
+      if (isShip) {
+        drawShipArt(
+          this.playerGfx,
+          this.appearance,
+          fillColor,
+          rules.playerWidth,
+          rules.playerHeight,
+        );
+      } else {
+        drawCubeArt(
+          this.playerGfx,
+          this.appearance,
+          fillColor,
+          rules.playerWidth,
+          rules.playerHeight,
+        );
+      }
+    }
   }
 
   private publishSnapshot(force = false): void {

@@ -79,122 +79,73 @@ function placementTop(worldY: number, height: number): number {
   return Math.max(0, Math.min(TERRAIN_DEPTH_Y - height, snapWorld(worldY)));
 }
 
+/**
+ * Dimensions for each placeable tool. Placement treats the pointer as the
+ * CENTER of the piece (snapped to the grid), which makes positioning ramps and
+ * wide pieces predictable instead of anchoring to a hard-to-see corner.
+ */
+const TOOL_DIMENSIONS: Partial<Record<CreatorTool, { width: number; height: number }>> = {
+  block: { width: GRID_SIZE * 2, height: GRID_SIZE * 2 },
+  "block-ramp-up": { width: GRID_SIZE * 4, height: GRID_SIZE * 3 },
+  "block-ramp-down": { width: GRID_SIZE * 4, height: GRID_SIZE * 3 },
+  spike: { width: GRID_SIZE * 2, height: GRID_SIZE * 2 },
+  pad: { width: GRID_SIZE * 3, height: GRID_SIZE },
+  orb: { width: GRID_SIZE * 3, height: GRID_SIZE * 3 },
+  "ship-portal": { width: GRID_SIZE, height: GRID_SIZE * 5 },
+  "cube-portal": { width: GRID_SIZE, height: GRID_SIZE * 5 },
+  decoration: { width: GRID_SIZE * 3, height: GRID_SIZE * 3 },
+  "flash-zone": { width: GRID_SIZE * 7, height: GRID_SIZE * 4 },
+  "fog-zone": { width: GRID_SIZE * 9, height: GRID_SIZE * 4 },
+  "dark-zone": { width: GRID_SIZE * 9, height: GRID_SIZE * 6 },
+};
+
 function entityForTool(
   tool: CreatorTool,
   id: string,
-  x: number,
-  worldY: number,
+  centerX: number,
+  centerY: number,
 ): LevelEntity | undefined {
+  const dims = TOOL_DIMENSIONS[tool];
+  if (!dims) {
+    return undefined;
+  }
+  const { width, height } = dims;
+  const x = Math.max(0, snapWorld(centerX - width / 2));
+  const y = placementTop(centerY - height / 2, height);
+
   switch (tool) {
     case "block":
-      return {
-        type: "block",
-        shape: "rectangle",
-        height: GRID_SIZE * 2,
-        width: GRID_SIZE * 2,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 2),
-      };
+      return { type: "block", shape: "rectangle", width, height, x, y };
     case "block-ramp-up":
-      return {
-        type: "block",
-        shape: "ramp-up",
-        height: GRID_SIZE * 3,
-        width: GRID_SIZE * 4,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 3),
-      };
+      return { type: "block", shape: "ramp-up", width, height, x, y };
     case "block-ramp-down":
-      return {
-        type: "block",
-        shape: "ramp-down",
-        height: GRID_SIZE * 3,
-        width: GRID_SIZE * 4,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 3),
-      };
+      return { type: "block", shape: "ramp-down", width, height, x, y };
     case "spike":
-      return {
-        type: "spike",
-        height: GRID_SIZE * 2,
-        width: GRID_SIZE * 2,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 2),
-      };
+      return { type: "spike", width, height, x, y };
     case "pad":
-      return {
-        type: "pad",
-        id,
-        impulse: 720,
-        height: GRID_SIZE,
-        width: GRID_SIZE * 3,
-        x,
-        y: placementTop(worldY, GRID_SIZE),
-      };
+      return { type: "pad", id, impulse: 720, width, height, x, y };
     case "orb":
       return {
         type: "orb",
         id,
         effect: { kind: "impulse", magnitude: 720 },
-        height: GRID_SIZE * 3,
-        width: GRID_SIZE * 3,
+        width,
+        height,
         x,
-        y: placementTop(worldY, GRID_SIZE * 3),
+        y,
       };
     case "ship-portal":
-      return {
-        type: "portal",
-        mode: "ship",
-        height: GRID_SIZE * 5,
-        width: GRID_SIZE,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 5),
-      };
+      return { type: "portal", mode: "ship", width, height, x, y };
     case "cube-portal":
-      return {
-        type: "portal",
-        mode: "cube",
-        height: GRID_SIZE * 5,
-        width: GRID_SIZE,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 5),
-      };
+      return { type: "portal", mode: "cube", width, height, x, y };
     case "decoration":
-      return {
-        type: "decoration",
-        kind: "diamond",
-        height: GRID_SIZE * 3,
-        width: GRID_SIZE * 3,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 3),
-      };
+      return { type: "decoration", kind: "diamond", width, height, x, y };
     case "flash-zone":
-      return {
-        type: "decoration",
-        kind: "flash",
-        height: GRID_SIZE * 4,
-        width: GRID_SIZE * 7,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 4),
-      };
+      return { type: "decoration", kind: "flash", width, height, x, y };
     case "fog-zone":
-      return {
-        type: "decoration",
-        kind: "fog",
-        height: GRID_SIZE * 4,
-        width: GRID_SIZE * 9,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 4),
-      };
+      return { type: "decoration", kind: "fog", width, height, x, y };
     case "dark-zone":
-      return {
-        type: "decoration",
-        kind: "dark",
-        height: GRID_SIZE * 6,
-        width: GRID_SIZE * 9,
-        x,
-        y: placementTop(worldY, GRID_SIZE * 6),
-      };
+      return { type: "decoration", kind: "dark", width, height, x, y };
     default:
       return undefined;
   }
@@ -319,7 +270,7 @@ export function mountLevelCreator(
           <button class="utility-button selected" type="button" data-testid="creator-mode-build">Build</button>
           <button class="utility-button" type="button" data-testid="creator-mode-edit">Edit</button>
         </div>
-        <label class="creator-paint-toggle"><input type="checkbox" data-testid="creator-paint"> Swipe paint blocks</label>
+        <label class="creator-paint-toggle"><input type="checkbox" data-testid="creator-paint"> Swipe paint (all pieces)</label>
         <div class="creator-zoom" aria-label="Zoom">
           <button class="utility-button" type="button" data-testid="creator-zoom-out">-</button>
           <span data-testid="creator-zoom-label">50%</span>
@@ -526,6 +477,7 @@ export function mountLevelCreator(
     if (x >= finishX - GRID_SIZE) return;
     const entity = entityForTool(selectedTool, `created-trigger-${nextEntityId}`, x, y);
     if (!entity) return;
+    if (entity.x + entity.width > finishX) return;
     const duplicate = entities.some(
       (existing) =>
         existing.type === entity.type &&
@@ -547,7 +499,10 @@ export function mountLevelCreator(
       return;
     }
     placeAtPointer(event);
-    painting = paintToggle.checked && (selectedTool === "block" || selectedTool === "erase");
+    // Swipe paint now applies to every build tool (blocks, spikes, ramps,
+    // pads, orbs, decor, zones) and erase — only the single finish point is
+    // excluded from drag-painting.
+    painting = paintToggle.checked && selectedTool !== "finish";
     if (painting) course.setPointerCapture(event.pointerId);
   };
 

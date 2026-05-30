@@ -917,6 +917,63 @@ kbd {
   justify-content: flex-end;
 }
 
+.song-library {
+  margin: 0 0 1.5rem;
+}
+
+.song-library h2 {
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  margin: 0 0 0.25rem;
+  text-transform: uppercase;
+}
+
+.song-library-blurb {
+  color: rgba(214, 234, 248, 0.7);
+  font-size: 0.8rem;
+  margin: 0 0 0.85rem;
+}
+
+.song-library-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.song-card {
+  background: rgba(10, 23, 38, 0.72);
+  border: 1px solid rgba(142, 170, 189, 0.28);
+  border-radius: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0.9rem;
+}
+
+.song-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.song-card-meta {
+  color: rgba(214, 234, 248, 0.66);
+  font-size: 0.72rem;
+  margin: 0 0 0.4rem;
+}
+
+.song-card-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.song-card-controls button {
+  flex: 1;
+  font-size: 0.68rem;
+  padding: 0.55rem 0.6rem;
+}
+
 .level-carousel-nav {
   display: flex;
   flex-wrap: wrap;

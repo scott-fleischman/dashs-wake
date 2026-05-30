@@ -16,6 +16,8 @@ export interface GauntletDefinition {
 }
 
 export interface GauntletEntry extends GauntletDefinition {
+  /** Gauntlets are all top-tier; this drives the difficulty badge in the UI. */
+  difficulty: "nightmare";
   name: string;
   reward: Reward;
   unlockRequirement: UnlockRequirement;
@@ -101,6 +103,7 @@ export const gauntletCatalog: readonly GauntletEntry[] = [
   {
     id: "electric-wake",
     name: "Electric Wake Gauntlet",
+    difficulty: "nightmare",
     stages: ["electric-wake-1", "electric-wake-2", "electric-wake-3"],
     unlockRequirement: {
       requiredCompletedLevels: ["level_1", "level_2"],
@@ -113,6 +116,7 @@ export const gauntletCatalog: readonly GauntletEntry[] = [
   {
     id: "skyline-trial",
     name: "Skyline Trial Gauntlet",
+    difficulty: "nightmare",
     stages: ["skyline-trial-1", "skyline-trial-2", "skyline-trial-3"],
     unlockRequirement: {
       requiredCompletedLevels: ["level_4"],
@@ -125,6 +129,7 @@ export const gauntletCatalog: readonly GauntletEntry[] = [
   {
     id: "void-circuit",
     name: "Void Circuit Gauntlet",
+    difficulty: "nightmare",
     stages: ["void-circuit-1", "void-circuit-2", "void-circuit-3"],
     unlockRequirement: {
       requiredCompletedLevels: ["level_5"],

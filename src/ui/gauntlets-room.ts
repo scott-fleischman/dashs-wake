@@ -90,7 +90,7 @@ export function mountGauntletsRoom(
       const completed = profile.completedGauntletIds.includes(gauntlet.id);
       const testId = safeTestId(gauntlet.id);
       const detail = unlocked
-        ? `${gauntlet.stages.length} stages`
+        ? `Nightmare - ${gauntlet.stages.length} stages`
         : gauntletUnlockHint(gauntlet);
 
       list.appendChild(

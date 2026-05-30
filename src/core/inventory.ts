@@ -10,6 +10,19 @@ export type CosmeticCategory =
 export type CubeShapeKind = "rectangle" | "diamond" | "circle";
 export type ShipShapeKind = "triangle" | "arrow" | "dart";
 
+/** Distinct icon artwork, drawn independently of the chosen colors. */
+export type IconArtKind =
+  | "plate"
+  | "spark"
+  | "pulse"
+  | "prism"
+  | "circuit"
+  | "flare";
+/** Distinct ship hull artwork. */
+export type ShipArtKind = "skiff" | "nova" | "comet";
+/** Distinct trail rendering style streamed behind the player. */
+export type TrailArtKind = "core" | "ring" | "flare" | "prism";
+
 export interface CosmeticAppearance {
   accent: number;
   cubeShape: CubeShapeKind;
@@ -17,6 +30,9 @@ export interface CosmeticAppearance {
   fillRunning: number;
   motif: "bolt" | "circuit" | "core" | "flare" | "prism" | "ring";
   shipShape: ShipShapeKind;
+  iconArt: IconArtKind;
+  shipArt: ShipArtKind;
+  trailArt: TrailArtKind;
 }
 
 export interface CosmeticItem {
@@ -34,61 +50,76 @@ const DEFAULT_APPEARANCE: CosmeticAppearance = {
   fillRunning: 0x19d9f3,
   motif: "core",
   shipShape: "triangle",
+  iconArt: "plate",
+  shipArt: "skiff",
+  trailArt: "core",
 };
 
 const SPARK_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
   accent: 0xffffff,
   cubeShape: "diamond",
   fillDead: 0xff8c42,
   fillRunning: 0xffc857,
   motif: "bolt",
   shipShape: "arrow",
+  iconArt: "spark",
 };
 
 const PULSE_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
   accent: 0xffd6f4,
   cubeShape: "circle",
   fillDead: 0xff437d,
   fillRunning: 0xa45bff,
   motif: "ring",
   shipShape: "dart",
+  iconArt: "pulse",
 };
 
 const PRISM_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
   accent: 0xb4fff1,
   cubeShape: "diamond",
   fillDead: 0xff437d,
   fillRunning: 0x34e8b3,
   motif: "prism",
   shipShape: "dart",
+  iconArt: "prism",
 };
 
 const CIRCUIT_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
   accent: 0x19d9f3,
   cubeShape: "rectangle",
   fillDead: 0xff8c42,
   fillRunning: 0x2056da,
   motif: "circuit",
   shipShape: "arrow",
+  iconArt: "circuit",
 };
 
 const FLARE_APPEARANCE: CosmeticAppearance = {
+  ...DEFAULT_APPEARANCE,
   accent: 0xffefb0,
   cubeShape: "circle",
   fillDead: 0xff437d,
   fillRunning: 0xff714b,
   motif: "flare",
   shipShape: "triangle",
+  iconArt: "flare",
 };
 
 const NOVA_SHIP_APPEARANCE: CosmeticAppearance = {
   ...DEFAULT_APPEARANCE,
   shipShape: "arrow",
+  shipArt: "nova",
 };
 
 const COMET_SHIP_APPEARANCE: CosmeticAppearance = {
   ...DEFAULT_APPEARANCE,
   shipShape: "dart",
+  shipArt: "comet",
 };
 
 const PRIMARY_COLOR_SOLAR: CosmeticAppearance = {
@@ -127,16 +158,19 @@ const SECONDARY_COLOR_BLUSH: CosmeticAppearance = {
 const TRAIL_RING_APPEARANCE: CosmeticAppearance = {
   ...DEFAULT_APPEARANCE,
   motif: "ring",
+  trailArt: "ring",
 };
 
 const TRAIL_FLARE_APPEARANCE: CosmeticAppearance = {
   ...DEFAULT_APPEARANCE,
   motif: "flare",
+  trailArt: "flare",
 };
 
 const TRAIL_PRISM_APPEARANCE: CosmeticAppearance = {
   ...DEFAULT_APPEARANCE,
   motif: "prism",
+  trailArt: "prism",
 };
 
 export const cosmeticCatalog: readonly CosmeticItem[] = [
@@ -298,12 +332,15 @@ export function selectedAppearance(profile: PlayerProfile): CosmeticAppearance {
   return {
     ...DEFAULT_APPEARANCE,
     cubeShape: icon?.appearance.cubeShape ?? DEFAULT_APPEARANCE.cubeShape,
+    iconArt: icon?.appearance.iconArt ?? DEFAULT_APPEARANCE.iconArt,
     shipShape: ship?.appearance.shipShape ?? DEFAULT_APPEARANCE.shipShape,
+    shipArt: ship?.appearance.shipArt ?? DEFAULT_APPEARANCE.shipArt,
     fillRunning:
       primary?.appearance.fillRunning ?? DEFAULT_APPEARANCE.fillRunning,
     fillDead: primary?.appearance.fillDead ?? DEFAULT_APPEARANCE.fillDead,
     accent: secondary?.appearance.accent ?? DEFAULT_APPEARANCE.accent,
     motif: trail?.appearance.motif ?? DEFAULT_APPEARANCE.motif,
+    trailArt: trail?.appearance.trailArt ?? DEFAULT_APPEARANCE.trailArt,
   };
 }
 
